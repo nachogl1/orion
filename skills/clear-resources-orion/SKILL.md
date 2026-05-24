@@ -1,6 +1,6 @@
 ---
 name: clear-resources-orion
-description: List and remove all local branches, git worktrees, and remote branches authored by the current user (anything that is not the default branch with at least one commit by `git config user.email`). Presents three lists for ONE consolidated confirmation before deleting anything. Use when the user says "/clear-resources-orion", "clean up my branches", "remove my worktrees", "tidy my git resources", or wants to clear out finished feature branches.
+description: List and remove all local branches, git worktrees, and remote branches the current user created (anything that is not the default branch whose first/divergent commit is authored by `git config user.email`). Presents three lists for ONE consolidated confirmation before deleting anything. Use when the user says "/clear-resources-orion", "clean up my branches", "remove my worktrees", "tidy my git resources", or wants to clear out finished feature branches.
 ---
 
 # clear-resources-orion
@@ -9,16 +9,17 @@ Cleans up the user's own git resources after a stretch of work: local branches, 
 
 Works in any git repository on any platform. Everything is derived at runtime — the default branch, the remote name, and the user's identity are all detected, never hard-coded.
 
-## What counts as "authored by me"
+## What counts as "created by me"
 
-A branch (local or remote) is "authored by me" if:
+A branch (local or remote) is "mine" only if **I created it** — not merely if I have commits on it. Git does not store a branch creator natively, so the proxy is the **author of the first commit unique to the branch** (the commit where it diverged from the default branch):
+
 - It is **not** the default branch (`main`, `master`, `develop`, or whatever the repo uses — detect dynamically; see Phase 1).
-- It has **at least one commit not on the default branch** whose author email matches `git config user.email`.
+- The **author email of its first/divergent commit** (the oldest commit in `<default_branch>..<branch>`) matches `git config user.email`.
 
-This is robust across machines and naming conventions. It deliberately excludes:
+This is robust across machines and naming conventions (it does not rely on reflog, which is local-only and expires). It deliberately excludes:
 - The default branch (never deletable).
 - Branches with zero commits beyond the default branch (would be a no-op delete — skip silently).
-- Branches whose unique commits are all by other authors (someone else's work).
+- **Branches I did not create** — someone else authored the first/divergent commit — **even if I have since committed to them.** Pushing a fix onto a colleague's branch no longer makes it "mine".
 
 For worktrees: any worktree whose HEAD is NOT on the default branch is in scope. The main worktree (cwd, on the default branch) is always preserved.
 
@@ -70,7 +71,10 @@ Resolve these first; every later command references them. Notation below uses `<
    - *bash:* `git for-each-ref --format='%(refname:short)' refs/heads/ | grep -vx '<default_branch>'`
 
    For each candidate, classify:
-   - **Mine** if `git log <default_branch>..<branch> --author="<my_email>" --format=%H` returns non-empty.
+   - **Mine (I created it)** — compare the author email of the branch's **first/divergent commit** (the oldest commit unique to the branch) to `<my_email>`. Get that author email:
+     - *PowerShell:* `git log <default_branch>..<branch> --reverse --format='%ae' | Select-Object -First 1`
+     - *bash:* `git log <default_branch>..<branch> --reverse --format='%ae' | head -1`
+     - If it equals `<my_email>` → **mine**. If it's someone else → **not mine**, even if I have later commits on the branch. If the command returns nothing (no commits beyond `<default_branch>`) → skip silently (no-op delete).
    - **Safe to delete** if `git log <branch> --not --remotes --format=%H` is empty (every commit on this branch is reachable from at least one remote ref — no local-only work to lose). If there is no remote, treat unpushed-detection as "all branches are unsafe unless the user opts in" and say so in the report.
    - Mark each branch as `(mine ✓ | mine ✗)` and `(safe ✓ | unsafe ✗)`.
 
@@ -80,8 +84,10 @@ Resolve these first; every later command references them. Notation below uses `<
 
 7. **List candidate remote branches** (skip entirely if no remote):
    - `git for-each-ref --format='%(refname:short)' refs/remotes/<remote>/` and drop `<remote>/<default_branch>` and `<remote>/HEAD`.
-   - Strip the `<remote>/` prefix to get branch names. For each, check authorship:
-     - `git log <remote>/<default_branch>..<remote>/<branch> --author="<my_email>" --format=%H` non-empty → mine.
+   - Strip the `<remote>/` prefix to get branch names. For each, check who created it — the author email of its first/divergent commit, same rule as local branches:
+     - *PowerShell:* `git log <remote>/<default_branch>..<remote>/<branch> --reverse --format='%ae' | Select-Object -First 1`
+     - *bash:* `git log <remote>/<default_branch>..<remote>/<branch> --reverse --format='%ae' | head -1`
+     - Equals `<my_email>` → mine. Someone else → not mine, even if I have later commits on it.
 
 ## Phase 2 — Present the lists for ONE confirmation
 
@@ -115,8 +121,7 @@ Resolve these first; every later command references them. Notation below uses `<
 
    ── Excluded (with reason) ─────────────────────────────────────────
      • <branch>           reason: has unpushed commits (would lose work)
-     • <branch>           reason: not yours (last 3 authors: <list>)
-     • <branch>           reason: only commit by me is on the default branch already
+     • <branch>           reason: not yours (created by <other-author>; you only have later commits)
      [or: none excluded]
 
    ────────────────────────────────────────────────────────────────────
@@ -169,7 +174,7 @@ Delete in this order — worktrees first, because removing a worktree releases t
 
 - Does NOT delete the default branch.
 - Does NOT delete branches with unpushed commits.
-- Does NOT delete branches whose unique commits are all by other authors.
+- Does NOT delete branches I did not create — branches whose first/divergent commit is by someone else — **even if I have later commits on them.**
 - Does NOT touch tags or stashes.
 - Does NOT force-push to anything.
 - Does NOT close pull/merge requests (a deleted branch may have an open PR — hosts typically auto-close it; the skill does not).
