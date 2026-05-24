@@ -129,7 +129,7 @@ if ($Update) { return }
 # Scheduled auto-pull (opt-in; manual updates are the default)
 if ($Schedule -eq 'prompt') {
     Write-Host ""
-    Write-Host "Updates are manual by default — run '.\install.ps1 -Update' (or ask Claude to)"
+    Write-Host "Updates are manual by default - run '.\install.ps1 -Update' (or ask Claude to)"
     Write-Host "when you want to pull the latest skills."
     $resp = Read-Host "Register a scheduled auto-pull anyway? (daily/hourly/none) [none]"
     if ([string]::IsNullOrWhiteSpace($resp)) { $resp = 'none' }
