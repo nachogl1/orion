@@ -5,6 +5,9 @@ description: 'Guided, story-by-story QA of a batch of already-developed stories,
 
 # guided-qa-orion
 
+> [!NOTE]
+> **Thinking of editing this skill?** Prefer creating a *new version* — copy it to a new skill name (e.g. bump a `-vN` suffix) — and leave this one as-is. People and automated workflows may rely on the current behaviour, so versioning beats editing in place.
+
 Companion-style QA for a batch of stories that are already built and merged onto a batch branch, where the user hands you a **QA report** (e.g. `qa-report.html`, a markdown report, a list of issues with expected behaviour — often the artifact an automated batch pipeline produces) and wants to certify the batch for production.
 
 The defining rule: **one story at a time, exhaustive QA, then a hard HALT with exhaustive feedback, then the user decides the next move.** You are the user's QA companion — you do the testing, you surface everything, and the two of you decide together whether the batch is safe to ship. You do not race ahead. This makes it a natural fit to run **in parallel with a long-running pipeline**: the pipeline builds, you QA what it has already produced.
