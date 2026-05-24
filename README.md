@@ -1,6 +1,10 @@
 # orion
 
-A collection of general-purpose, **non-work** user-level [Claude Code](https://claude.com/claude-code) skills, kept in one repo and shared across every machine I work on.
+> [!CAUTION]
+> **Read every skill before you run it. You are responsible for what you execute.**
+> These skills instruct an AI agent to run commands, edit files, delete branches, and call external tools on your machine. Before installing or invoking any skill, **open its `SKILL.md` and read it in full** — make sure there are no instructions, commands, or clauses that could be harmful or damaging in *your* context. Treat them like any other code you'd run: review first, trust nothing blindly, and only run what you understand and accept the consequences of.
+
+A collection of general-purpose [Claude Code](https://claude.com/claude-code) skills.
 
 The installer links each `skills/<name>/` folder into the agent's user skills directory (default `~/.claude/skills/`) using **directory junctions on Windows** and **symlinks on macOS/Linux**. The link points back at the cloned repo, so `git pull` *is* the update mechanism — no copy step, no re-install, no "apply" action. **Updates are manual**: run the installer with `-Update` / `--update` (or just ask Claude to do it for you) when you want to pull the latest skills. An optional scheduled auto-pull is available but disabled by default — see "How updates work" for the tradeoff.
 
