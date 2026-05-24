@@ -17,7 +17,8 @@ User says `/create-up-to-speed-report-orion`, asks for an onboarding deck, asks 
 ## Operating principles (read these first)
 
 - **Audience**: junior dev, no prior knowledge of the project's tech stack or domain. Always define jargon on first use. Use analogies (nightclub bouncer for auth, recipe for templates, etc.) — the right analogy depends on the project; pick one that fits the actual code you're reading.
-- **Tone**: friendly, concrete, example-driven. Short paragraphs. Tables and code blocks over prose. Never assume the reader knows what a DLL, OIDC, SignalR, Kerberos, or any domain-specific term is — define every term inline on first use.
+- **Be exhaustive about the domain and what this repository does.** This is the whole point of the deck — the reader should finish knowing, in plain language, **what problem the project solves, the domain vocabulary, what this specific repository is responsible for within the wider system, and how each major feature works end-to-end.** Bias toward over-explaining the domain rather than under-explaining it. Every concept gets: a plain-English definition, *why it exists here*, and a **concrete example pulled from the actual repo** (a real entity, a real endpoint, a real screen, a real user journey — with the file path so the reader can go look). Abstract description without a concrete example from this codebase is a miss. When a domain term has a real-world meaning, give that first, then how this project uses it.
+- **Tone**: friendly, concrete, example-driven. Short paragraphs. Tables and code blocks over prose. Never assume the reader knows any acronym, library, framework, or domain term — define every one inline on first use. **Which terms need defining depends entirely on this repo's stack** — they are whatever actually appears in the code you read in Step 1. It might be DLLs / OIDC / SignalR in one project; goroutines / gRPC in a Go service; hooks / hydration / SSR in a React app; coroutines / DI containers in Kotlin; CRDTs / WebRTC in a realtime tool. Do **not** carry a fixed term list (including these examples) over from another project — define the terms this repository genuinely uses, and skip the ones it doesn't.
 - **Source of truth = the repo + GitHub**. Read files for architecture. Use `gh` CLI for live issue / story / contributor data. **Do not invent numbers.**
 - **Output is a single HTML file**. No external assets, no CSS frameworks loaded over the network. All styles inline. Use a `<template id="slides">` + JS clone pattern for navigation so the file is portable.
 - **Color-code ownership** on the per-story slides: blue = current user shipped, green = teammate shipped, red = pending.
@@ -91,13 +92,15 @@ Each chapter is one divider slide + N content slides. Adapt the chapter list to 
 **Default chapter outline:**
 
 1. **Cover** — project name, "Junior onboarding · merged deck", nav hints (← / → / Space / F for fullscreen)
-2. **The Product** (~6–8 slides)
+2. **The Product & this repo's role** (~8–12 slides — be generous here; this is the chapter that orients everything else)
    - One-paragraph elevator pitch
-   - Foundational concepts the reader needs **specific to this project's domain** — figure them out by reading the docs. Don't reuse another project's domain primitives.
+   - **What this specific repository is responsible for** — its slice of the larger system (is it the API? the web client? a worker? the whole monolith?), what it owns vs. what it delegates to other services/repos, and where it sits in the overall topology. Cite the entry points.
+   - Foundational domain concepts the reader needs **specific to this project's domain** — figure them out by reading the docs/code. Don't reuse another project's domain primitives. Each concept: plain definition → why it exists → a concrete instance from this repo (file path).
+   - **The core workflows / user journeys**, narrated step by step in plain English — e.g. "a user does X → the request hits `<file>` → this happens → they see Y." One per major feature. This is where the reader learns what the thing actually *does*.
    - Competitors / alternatives and how this product differs
    - Legacy / predecessor (if it's a rewrite) and why
-   - User personas (named, with what each cares about)
-   - Domain vocabulary glossary
+   - User personas (named, with what each cares about, and which features serve them)
+   - **Domain vocabulary glossary** — exhaustive: every domain noun a newcomer would stumble on, each with a one-line plain definition and (where possible) the code artifact it maps to. Err on the side of including more terms.
 3. **Big Architectural Ideas** (3–5 slides)
    - The 3–5 patterns that shape every story
    - One concrete walkthrough per pattern — a timeline of what happens when a real scenario plays out
