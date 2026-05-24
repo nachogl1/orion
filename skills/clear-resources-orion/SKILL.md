@@ -5,6 +5,9 @@ description: List and remove all local branches, git worktrees, and remote branc
 
 # clear-resources-orion
 
+> [!NOTE]
+> **Thinking of editing this skill?** Prefer creating a *new version* — copy it to a new skill name (e.g. bump a `-vN` suffix) — and leave this one as-is. People and automated workflows may rely on the current behaviour, so versioning beats editing in place.
+
 Cleans up the user's own git resources after a stretch of work: local branches, git worktrees, and remote branches that they authored. Never touches the default branch. Always confirms the full list with the user before deleting anything.
 
 Works in any git repository on any platform. Everything is derived at runtime — the default branch, the remote name, and the user's identity are all detected, never hard-coded.

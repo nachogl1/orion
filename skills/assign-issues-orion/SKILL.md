@@ -5,6 +5,9 @@ description: Analyse the current repository's open issues and produce a ~2-day w
 
 # assign-issues-orion
 
+> [!NOTE]
+> **Thinking of editing this skill?** Prefer creating a *new version* — copy it to a new skill name (e.g. bump a `-vN` suffix) — and leave this one as-is. People and automated workflows may rely on the current behaviour, so versioning beats editing in place.
+
 You are a technical project manager. Analyse this repository's open issues on the project's issue host (GitHub via `gh` in the examples below — substitute your host's CLI/API if different) and produce a **~2-day work plan for one engineer: the person running this skill.** Then assign the chosen issues to them.
 
 The window is fixed at **2 days of work.** Within that window the engineer wants a specific *number* of issues assigned. Your job is to decide whether that number is feasible, pick the best-fitting issues, and keep the engineer **in their own lane** — clustered in a single feature slice that teammates are not actively touching, so the work is parallelizable and low-collision.
