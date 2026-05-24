@@ -75,6 +75,7 @@ If you still want it, register the scheduled task explicitly:
 |---|---|
 | **clear-resources-orion** | Lists and removes the local branches, git worktrees, and remote branches you *created* (anything not the default branch whose first/divergent commit is authored by your `git config user.email` — branches you only contributed a commit to are left alone). Default branch, remote, and identity are all detected at runtime — works in any repo on any platform. Presents three lists for one consolidated confirmation before deleting. |
 | **itemize-orion** | Walks through a list of items, concerns, or decisions one at a time, treating you as a junior dev with zero domain knowledge. For each item: restate plainly, present options, give an explicit recommendation, then wait for your pick before continuing. |
+| **guided-qa-orion** | Companion-style, story-by-story QA of an already-built batch, driven by a QA report (HTML/MD) you provide. QAs one story at a time against the live app, HALTS with an exhaustive verdict + findings, and asks you what to do (fix / log an issue / defer / accept) before advancing. Nothing commits until the full test suite + e2e are green and you approve. Stack, test commands, auth, and issue tracker are all detected/parameterized — pairs well with a long-running pipeline that emits the report. |
 
 ## Add a new skill
 
