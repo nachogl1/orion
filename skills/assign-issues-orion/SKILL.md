@@ -78,7 +78,11 @@ For each candidate in the target lane:
     2. `gh pr view <pr> --json state,mergeCommit` → `state == "MERGED"`, grab `mergeCommit.oid`.
     3. `git merge-base --is-ancestor <merge-sha> origin/<default_branch>` → the merge is actually reachable from the default branch HEAD.
     Cache these lookups within the run. If any step fails, the upstream is **not** satisfied.
-  - Never pick an issue with an unsatisfied upstream dep. If the blocker is itself unassigned (or assigned to `<engineer_username>`), **promote the blocker** into the candidate pool instead and record a "Substitution". Walk the chain (if #2 depends on #1, promote #1).
+  - **Never pick an issue whose hard dependency is unsatisfied.** How you treat the blocker depends on who owns it — cross-reference it against the occupied-lanes set from Step 2:
+    - **Blocker is free** (open, unassigned, no in-flight PR/branch) and itself workable → **promote it** into the candidate pool in place of the downstream issue, record a "Substitution", and walk the chain (if #2 depends on #1, promote #1).
+    - **Blocker is owned or in-flight by someone else** (assigned to another person, has an open PR, or sits in an occupied lane) → do **not** promote it (you can't take their work) and do **not** pick the downstream issue. This is the worst case: the issue cannot start until another person finishes, on a timeline you don't control. Exclude it and raise it in Problems Found as a **hard cross-person dependency**.
+    - **Blocker is yours** (assigned to `<engineer_username>` but not done) → the downstream isn't ready yet; prefer scheduling the blocker itself first if it fits the window.
+  - Distinguish **hard** dependencies (the issue genuinely cannot proceed — code/data/contract it builds on) from **soft** ones (related but not strictly required). Hard + unsatisfied → exclude. Soft + unsatisfied → allow but flag the risk.
 - **Size.** Estimate S = ½ day, M = 1 day, L = 2 days.
 - **Feasibility vs. the 2-day window.** The window caps total work at 2 days. If `<to_assign>` issues of realistic size won't fit, the count is **not feasible** — surface this, propose the number that *does* fit, and let the user confirm before assigning.
 - **Isolation.** Drop candidates in a lane another active assignee occupies (collision risk) unless the user accepts it; note these in Problems Found.
@@ -99,6 +103,7 @@ Print, in this order:
    - **Dependency chains** found in the graph; **cycles / contradictions** in the metadata.
    - **Feasibility shortfalls** — requested N but only M fit the 2-day window.
    - **Collision risks** — lane shared with `<other_assignee>`.
+   - **Hard cross-person dependencies** — a candidate's hard dependency is unfinished and owned/in-flight by someone else; it can't start until they're done. Name the dependency, its owner, and the downstream issue.
    - **Under-allocation** — picked fewer than asked, with the reason.
    - **Suspected-but-unverified dependencies** — ambiguous text where you made a conservative call.
 2. **Already assigned** (counted toward `<requested_count>`): the `<already_assigned>` list.
@@ -109,7 +114,7 @@ Print, in this order:
 
    "Why workable now" = no open upstream deps, isolated module/files, no coordination needed. "Isolation" = no other active assignee in this lane (or the risk if there is one).
 4. **Per picked issue**: expected touched directories / files, key implementation notes, risks to avoid, validation / testing expectations.
-5. **Excluded** candidates with reasons: upstream dep open · assigned to another engineer · teammate active in this lane · too large for the window · unclear scope · shared-infra / cross-cutting · high merge-conflict risk.
+5. **Excluded** candidates with reasons: upstream dep open · hard dependency owned / in-flight by another engineer · assigned to another engineer · teammate active in this lane · too large for the window · unclear scope · shared-infra / cross-cutting · high merge-conflict risk.
 
 ## Step 6 — Assign (autonomous, new issues only)
 
