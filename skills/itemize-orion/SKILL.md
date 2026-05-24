@@ -1,9 +1,9 @@
 ---
-name: itemize-nacho-orion
-description: Walk through a user-supplied list of items, concerns, questions, or decisions ONE AT A TIME. For each item, treat the user as a junior developer with zero domain or tech-stack knowledge — restate the item plainly, present options/alternatives, give an explicit recommendation, then wait for the user's pick before moving to the next. If the choice requires action, take it. If not, just record the decision and continue. Use when the user says "/itemize-nacho-orion", "let's go through these one by one", "walk me through this list", or pastes a list of items to discuss.
+name: itemize-orion
+description: Walk through a user-supplied list of items, concerns, questions, or decisions ONE AT A TIME. For each item, treat the user as a junior developer with zero domain or tech-stack knowledge — restate the item plainly, present options/alternatives, give an explicit recommendation, then wait for the user's pick before moving to the next. If the choice requires action, take it. If not, just record the decision and continue. Use when the user says "/itemize-orion", "let's go through these one by one", "walk me through this list", or pastes a list of items to discuss.
 ---
 
-# itemize-nacho-orion
+# itemize-orion
 
 A guided walk-through for a list of items the user wants to discuss or decide on. Each item is its own micro-session: explained at junior-dev level, options laid out, recommendation given, decision recorded, action taken if needed. Then move on.
 
@@ -17,19 +17,19 @@ The list comes from the user, in one of these forms:
 
 1. **As args to the slash command:**
    ```
-   /itemize-nacho-orion
-   - Should we use TanStack Query or SWR?
-   - Why is the SignalR connection dropping after 30 min?
-   - I don't understand how the audit interceptor works
-   - Migration from npm to bun: worth it?
+   /itemize-orion
+   - Should we use library X or library Y for data fetching?
+   - Why does the websocket connection drop after a while?
+   - I don't understand how the request-logging middleware works
+   - Switching package managers: worth it?
    ```
 
-2. **Plain text after `/itemize-nacho-orion`** with no leading dashes — numbered list, paragraph with line-break-separated items, or just multi-line text:
+2. **Plain text after `/itemize-orion`** with no leading dashes — numbered list, paragraph with line-break-separated items, or just multi-line text:
    ```
-   /itemize-nacho-orion
-   1. EF Core migration timing
-   2. Keycloak realm naming
-   3. Whether to drop hangfire for native BackgroundService
+   /itemize-orion
+   1. When to run the database migration
+   2. How to name the deployment environments
+   3. Whether to drop the background-job library for a built-in scheduler
    ```
 
 3. **No args** — agent asks: *"What items would you like to walk through? Paste the list (one per line) and I'll take them one by one."*
@@ -53,9 +53,9 @@ The user wants a list they can see at any time, not just in chat scroll-back. Us
 Rules:
 
 1. **Create all tasks up front, before walking any item.** Loop through parsed items and call `TaskCreate` once per item:
-   - `subject`: a short imperative-form rendering of the item (max ~60 chars). E.g. user pasted "Should we use TanStack Query or SWR?" → subject `"Decide TanStack Query vs SWR"`. If the item is already a clean short statement, use it verbatim.
+   - `subject`: a short imperative-form rendering of the item (max ~60 chars). E.g. user pasted "Should we use library X or library Y for data fetching?" → subject `"Decide library X vs Y for data fetching"`. If the item is already a clean short statement, use it verbatim.
    - `description`: the full original item text as the user wrote it. This is the canonical record of what they meant.
-   - `activeForm`: present-continuous form for the spinner (optional). E.g. `"Walking through TanStack vs SWR decision"`.
+   - `activeForm`: present-continuous form for the spinner (optional). E.g. `"Walking through the data-fetching library decision"`.
 
 2. **Mark the current item as `in_progress`** with `TaskUpdate` right before you start sub-step A for that item. Only one task is `in_progress` at any time — never two.
 
@@ -99,17 +99,17 @@ For EACH item, walk these sub-steps:
 
 State the item as you understand it, in 1-2 sentences. If the user's phrasing was ambiguous or there are multiple valid interpretations, pick the most likely one and flag the alternative:
 
-> "Item 3: **'I don't understand how the audit interceptor works'**.
-> I'm reading this as 'walk me through what the EF Core `AuditInterceptor` does and how it's wired in,' not 'I think the audit interceptor has a bug' — let me know if it's actually the second."
+> "Item 3: **'I don't understand how the request-logging middleware works'**.
+> I'm reading this as 'walk me through what the logging middleware does and how it's wired in,' not 'I think the logging middleware has a bug' — let me know if it's actually the second."
 
 ### Sub-step B — Context (junior-dev brief)
 
 Explain the context as if introducing it for the first time. Cover:
 
-- **What is this thing?** Name + plain-English summary. ("An ORM interceptor is a hook that runs in the middle of database operations.")
-- **Why does it exist in this codebase?** ("Compliance requirement — every admin-driven write must be logged to a tamper-evident table.")
-- **Where does it live?** File paths so they can read the code. ("`<module>/AuditInterceptor.<ext>` is the implementation; it's registered in the DI / service-registration entry point.")
-- **What you'd see when it runs.** ("Every save triggers it; rows in the `audit_log` table appear with `actor`, `entity`, `before`, `after` columns filled.")
+- **What is this thing?** Name + plain-English summary. ("Middleware is code that runs in the middle of handling a request, before it reaches your main logic.")
+- **Why does it exist in this codebase?** ("So every incoming request is logged for debugging and audit purposes.")
+- **Where does it live?** File paths so they can read the code. (Point at the actual file in this repo and the place it's registered/wired in.)
+- **What you'd see when it runs.** ("Every request produces a log line with method, path, status, and duration.")
 
 Keep this short — 4-6 sentences. The user is junior, not slow.
 
@@ -125,27 +125,27 @@ For each option:
 
 Example:
 
-> Options for migrating npm → bun:
+> Options for switching package manager (Tool A → Tool B):
 >
-> - **Option A — keep npm.** Status quo, no migration cost.
+> - **Option A — keep the current tool.** Status quo, no migration cost.
 >   - Pros: zero risk; CI already wired; team knows it.
->   - Cons: slow installs; package-lock.json conflicts every PR.
+>   - Cons: slower installs; lockfile conflicts on every PR.
 >
-> - **Option B — switch to bun for installs only, keep npm for scripts.**
->   - Pros: fast installs; minimal config change.
->   - Cons: dual-tool confusion; bun's lockfile vs. npm's lockfile drift.
+> - **Option B — switch for installs only, keep current tool for scripts.**
+>   - Pros: faster installs; minimal config change.
+>   - Cons: dual-tool confusion; two lockfiles can drift.
 >
 > - **Option C — full switch (installs + scripts + workspaces).**
->   - Pros: fastest end-to-end; single tool; matches Vite default.
->   - Cons: need to migrate CI; risk of script incompatibility on Windows; team learning curve.
+>   - Pros: fastest end-to-end; single tool to learn.
+>   - Cons: must migrate CI; risk of script incompatibility per-OS; team learning curve.
 
 ### Sub-step D — Recommendation
 
 Give ONE specific recommendation with the reason. Don't waffle. Don't hedge with "depends on your priorities." Pick one and defend it briefly.
 
-> **My pick: Option C (full switch).** The repo already uses bun for the frontend build (`apps/web/package.json` calls `bun run dev`), so we're paying the cost of mixed tooling already. Going all-in removes that drift and unlocks bun's workspace handling for future monorepo work. The CI cost is one workflow file change.
+> **My pick: Option C (full switch).** If part of the repo already uses the new tool, you're paying the cost of mixed tooling anyway — going all-in removes that drift and unlocks the tool's workspace handling for future work. The CI cost is one workflow-file change.
 
-For "explain this to me" items, the "recommendation" is replaced by a "what I'd suggest doing with this knowledge" sentence — e.g. "I'd suggest opening `AuditInterceptor.cs` alongside this explanation; it's 80 lines, you'll spot the pattern fast."
+For "explain this to me" items, the "recommendation" is replaced by a "what I'd suggest doing with this knowledge" sentence — e.g. "I'd suggest opening the middleware file alongside this explanation; it's short, you'll spot the pattern fast."
 
 ### Sub-step E — Ask the user
 
@@ -178,7 +178,7 @@ Call `TaskUpdate` on the current item's task:
 
 Print one short line in chat confirming the update:
 
-> **Item 3 done.** Decision recorded in task list: "Audit interceptor — explanation given; user understood." Moving to item 4.
+> **Item 3 done.** Decision recorded in task list: "Logging middleware — explanation given; user understood." Moving to item 4.
 
 The task list panel now reflects the new state — the user can see it at a glance without scrolling the chat.
 
@@ -188,7 +188,7 @@ Once the last item is done, print a consolidated summary:
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║ /itemize-nacho-orion — walkthrough complete                            ║
+║ /itemize-orion — walkthrough complete                              ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 Items walked: <N>
@@ -208,7 +208,7 @@ If the user says "done" / "no" / similar → exit cleanly with "Done. Have at it
 - Does NOT bundle items — strictly one at a time, with the user's pick required to advance.
 - Does NOT assume tech-stack familiarity even if prior conversation suggests otherwise. Junior-dev framing is the contract.
 - Does NOT write any output file (no `decisions.md`, no `notes.md`). The conversation log is the artifact; if the user wants persistence, they'll ask.
-- Does NOT create GitHub issues unless the chosen option for an item explicitly says "file this as an issue" — then it uses `gh issue create` after confirming title and body with the user.
+- Does NOT create issues unless the chosen option for an item explicitly says "file this as an issue" — then it uses the project's issue tracker (e.g. `gh issue create`) after confirming title and body with the user.
 - Does NOT make recommendations without a stated reason. If you cannot justify a pick in one sentence, the options aren't actually different enough — collapse them and re-present.
 
 ## Style guardrails
@@ -217,7 +217,7 @@ If the user says "done" / "no" / similar → exit cleanly with "Done. Have at it
 - **Length per item**: aim for the whole context+options+recommendation+ask block to fit in roughly 200-400 words. Longer is fine for genuinely complex items; shorter for trivial ones.
 - **Code excerpts**: if explaining code, paste 5-20 relevant lines with `file_path:line_number` reference. Don't paste whole files.
 - **One recommendation per item**, never multi-pick suggestions in the "my pick" line.
-- **No emojis unless the user uses them first** (per project convention).
+- **Match the surrounding conventions** — mirror the tone and formatting the user has been using; don't introduce emojis unless the user does first.
 
 ## Failure modes
 
