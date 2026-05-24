@@ -1,9 +1,9 @@
 ---
-name: sequential-batch-pipeline-orion
+name: sequential-bmad-github-orion-v1
 description: Fully automated sequential GitHub-issue execution against a batch feature branch. **Assumes BMAD methodology** (slash commands `/bmad-create-story`, `/bmad-dev-story`, `/bmad-code-review` available) AND **GitHub Issues as source of truth** — the orchestrator confirms both preconditions with the user at Phase 0 before doing anything else. Per issue runs a four-agent pipeline (Opus create-story → Sonnet dev-story → Opus code-review → Sonnet build/PR/CI/merge into batch). After the queue: one Opus batch-QA sub-agent (full tests → full e2e → live-stack Junior-tester QA gate → Draft PR batch→main). Issues stay open until batch→main merges manually; skill then long-polls and updates the user's status HTML in place on merge. Strict one-issue-at-a-time serialization. Build/test commands auto-detected from project files.
 ---
 
-# sequential-batch-pipeline-orion
+# sequential-bmad-github-orion-v1
 
 You are the **ORCHESTRATOR** running on `main` in the user's repo. You drive a strict, one-at-a-time sequential execution of a user-supplied list of GitHub issues against a single shared **batch feature branch**. Per issue you spawn a four-agent pipeline in strict sequence — Agent A (Opus, `/bmad-create-story`) → Agent B (Sonnet, `/bmad-dev-story` implementation) → Agent C (Opus, `/bmad-code-review` + auto-fix) → Agent D (Sonnet, build + full tests + commit + push + PR + CI + merge into batch). After the queue completes you autonomously spawn ONE Opus batch-QA sub-agent that runs the full test suite, the full e2e suite, and a live-stack Junior-tester QA gate against the integrated batch branch, then opens a Draft PR batch→main and writes a junior-friendly QA HTML report. You then autonomously schedule an hourly long-poll for the human to merge that PR. On detected merge you close every batched issue and update the user's status HTML presentation in place (with a version banner).
 
@@ -209,7 +209,7 @@ Written at end-of-run (success or halt) to `<session-folder>/manifest.md`:
 Every agent prompt begins with this block. Defined once here to avoid duplication.
 
 ```
-You are AGENT <X> (<role>) for issue #<N> in a /sequential-batch-pipeline-orion run.
+You are AGENT <X> (<role>) for issue #<N> in a /sequential-bmad-github-orion-v1 run.
 
 Repo root: <repo-root>
 Worktree: <worktree-parent>/<repo-name>-<N>
@@ -617,7 +617,7 @@ Agent tool: `subagent_type: "general-purpose"`, `model: "opus"`, foreground.
 **Batch-QA prompt (substitute every bracketed value):**
 
 ```
-You are the BATCH-QA sub-agent for the sequential-batch-pipeline-orion run that just merged <count> issues into <batch-branch>. The batched issues are: #<N1>, #<N2>, …, #<Nk>.
+You are the BATCH-QA sub-agent for the sequential-bmad-github-orion-v1 run that just merged <count> issues into <batch-branch>. The batched issues are: #<N1>, #<N2>, …, #<Nk>.
 
 Worktree (absolute): <worktree-parent>/<repo-name>-batch-<timestamp>
 Batch branch: <batch-branch>
@@ -750,7 +750,7 @@ Title format notes:
 Batch PR body template:
 ```
 ## Batch summary
-This Draft PR integrates <count> issues merged sequentially via /sequential-batch-pipeline-orion.
+This Draft PR integrates <count> issues merged sequentially via /sequential-bmad-github-orion-v1.
 
 **Issues shipped:** #<N1>, #<N2>, …, #<Nk>
 
@@ -847,7 +847,7 @@ ScheduleWakeup(
 **RESUME PROMPT TEMPLATE** (substitute every bracketed value at scheduling time; copy-paste the ENTIRE Phase 4 procedure verbatim — Finding #26: paraphrasing has been shown to drop the Phase 4.3 status-HTML step):
 
 ```
-You are resuming /sequential-batch-pipeline-orion Phase 3 long-poll for run <timestamp>.
+You are resuming /sequential-bmad-github-orion-v1 Phase 3 long-poll for run <timestamp>.
 
 State:
 - Batch branch: <batch-branch>
