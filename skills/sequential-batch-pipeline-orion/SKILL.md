@@ -155,8 +155,8 @@ Resolve once at Phase 0 and reuse for the whole run:
 - `<repo-root>` = `git rev-parse --show-toplevel`
 - `<repo-name>` = resolved by the Phase 0 step 6 procedure (basename → memory override → ask-and-remember if ambiguous)
 - `<worktree-parent>` = parent dir of `<repo-root>`
-- `<timestamp>` = current local time formatted `DD_MM_YYYY-HH_MM` (filename-safe on Windows — no colons; matches the user's `DD_MM_YYYY` status-HTML convention; minute-resolution because two runs in the same minute is effectively impossible for this skill)
-- `<issue-suffix>` = `i<N1>-<N2>-<N3>-...` — every batched issue number, joined with hyphens, prefixed with a single `i` (e.g. four issues #39 #43 #131 #363 → `i39-43-131-363`)
+- `<timestamp>` = current local time formatted `DD_MM_YYYY-HH_MM` (filename-safe on Windows — no colons; aligns with the `DD_MM_YYYY` date stamp used for the status-HTML filename; minute-resolution because two runs in the same minute is effectively impossible for this skill)
+- `<issue-suffix>` = `i<N1>-<N2>-<N3>-...` — every batched issue number, joined with hyphens, prefixed with a single `i` (e.g. four issues #12 #34 #56 #78 → `i12-34-56-78`)
 - `<batch-branch>` = `batch/<gh-login>/<repo-name>-<timestamp>`
 - `<session-folder>` = `~/Downloads/batch-<repo-name>-<timestamp>-<issue-suffix>/`
 - `<status-html>` = `~/Downloads/<repo-name>-status-<DD_MM_YYYY>.html` (`<DD_MM_YYYY>` = today's local date)
@@ -745,7 +745,7 @@ Title format notes:
   • `<count>` = number of batched issues.
   • The parenthesized list is EVERY batched issue number, comma-separated with a `#` prefix on each (GitHub auto-links them in the PR list view).
   • `<date>` = today's date as `YYYY-MM-DD` (orchestrator local time at PR creation).
-  • Example: `[batch] <gh-login> — 4 issues (#39, #43, #131, #363) — 2026-05-19`
+  • Example: `[batch] <gh-login> — 4 issues (#12, #34, #56, #78) — YYYY-MM-DD`
 
 Batch PR body template:
 ```
