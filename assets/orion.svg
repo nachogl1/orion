@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 260" width="820" height="260" font-family="Segoe UI, system-ui, -apple-system, sans-serif">
+  <defs>
+    <filter id="glow4" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- transparent background; works on light or dark README -->
+  <rect width="820" height="260" fill="none"/>
+
+  <!-- thin-line constellation on the left -->
+  <g transform="translate(40,20)" stroke="#5cc8ff" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".9">
+    <path d="M40 70 L190 55"/>
+    <path d="M40 70 L110 18 L190 55"/>
+    <path d="M40 70 L72 150"/>
+    <path d="M190 55 L148 138"/>
+    <path d="M72 150 L108 140 L148 138"/>
+    <path d="M72 150 L62 222"/>
+    <path d="M148 138 L196 226"/>
+  </g>
+  <g transform="translate(40,20)" filter="url(#glow4)" fill="#5cc8ff">
+    <circle cx="40" cy="70" r="5.5"/>
+    <circle cx="190" cy="55" r="4"/>
+    <circle cx="110" cy="18" r="3"/>
+    <circle cx="72" cy="150" r="3.6"/>
+    <circle cx="108" cy="140" r="3.6"/>
+    <circle cx="148" cy="138" r="3.6"/>
+    <circle cx="62" cy="222" r="3.6"/>
+    <circle cx="196" cy="226" r="5.5"/>
+  </g>
+
+  <!-- lowercase thin wordmark -->
+  <text x="320" y="140" font-size="92" font-weight="300" letter-spacing="4" fill="#5cc8ff">orion</text>
+  <text x="324" y="178" font-size="19" font-weight="400" letter-spacing="5" fill="#8aa0c2">claude code skills</text>
+</svg>
