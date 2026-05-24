@@ -73,7 +73,7 @@ If you still want it, register the scheduled task explicitly:
 
 | Skill | What it does |
 |---|---|
-| **clear-resources-nacho-orion** | Lists and removes all your local branches, git worktrees, and remote branches (anything not `main` with at least one commit by your `git config user.email`). Presents three lists for one consolidated confirmation before deleting. |
+| **clear-resources-orion** | Lists and removes all your local branches, git worktrees, and remote branches (anything not the default branch with at least one commit by your `git config user.email`). Default branch, remote, and identity are all detected at runtime — works in any repo on any platform. Presents three lists for one consolidated confirmation before deleting. |
 | **itemize-nacho-orion** | Walks through a list of items, concerns, or decisions one at a time, treating you as a junior dev with zero domain knowledge. For each item: restate plainly, present options, give an explicit recommendation, then wait for your pick before continuing. |
 
 ## Add a new skill
