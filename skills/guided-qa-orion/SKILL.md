@@ -20,7 +20,7 @@ This skill is interactive and gated. It is the opposite of a fire-and-forget aut
 2. **Exhaustive per story.** Happy path + every action/variant + role/persona gating + localization (if the app is multi-language) + adjacent-area regressions + edge cases + the network/DB side-effects. Verify against the LIVE app, not just unit tests.
 3. **Exhaustive feedback, every story.** The halt report is the product. It must let the user decide with full information.
 4. **The user decides every transition.** Never advance to the next story, and never commit, without an explicit user decision.
-5. **Truth over the document.** The QA report is a guide and a set of claims — verify them. Flag inaccuracies, distinguish real bugs from documented TODOs and from test-environment/seed limitations.
+5. **Truth over the document — and the report is ephemeral.** The QA report is a *throwaway guide* for this session only: a set of claims to verify, not a file to maintain. **Do not keep it updated, re-sync it, or treat its file-state as meaningful** — its accuracy doesn't matter; the QA you perform and the inconsistencies you surface do. Verify every claim against the live app; flag each report-vs-reality mismatch as a **doc-inaccuracy finding** (logged in the durable findings log / per-story verdict), and distinguish real bugs from documented TODOs and from test-environment/seed limitations. If the report is wrong, that's a finding — never a reason to edit the report.
 6. **Don't report automation artifacts as product bugs.** UI driving (browser-automation clicks especially) can silently no-op or be refused. Prove a UI bug with DOM-level evidence before calling it (see "The UI-click pitfall").
 7. **Nothing ships red.** Fixes trigger a full test suite + e2e run; commits are gated behind green + user approval + a final pre-commit test run.
 8. **Branch discipline.** Work on the batch branch. Never commit to the default branch. Commit/push only when the user asks. (Honor any repo ground-rules file, e.g. `CLAUDE.md`.)
@@ -46,16 +46,19 @@ If the working branch is the default branch, or no QA report is available, stop 
    - Per story: a one-line plain-English summary, the expected behaviours / acceptance criteria, and the **explicit click-through / verification steps**.
    - **Known TODOs / acknowledged limitations** per story (e.g. "route doesn't exist yet → 404 by design", "no seed data", "sublabels stay in language X"). Keep this list separate — these are NOT bugs.
    - Any **claims** the report makes (test counts, "verified live", deep-link params, storage keys). These are to be *verified*, not trusted.
+   - **The report is ephemeral** (principle 5): you extract from it once, here, to plan the QA — you never edit, update, or re-sync it. Inaccuracies become findings, not edits.
    - The accounts / personas and their permissions, and the **stack start instructions**.
 2. **Create a task list** — one task per story, in order, plus a "stack up" task and a "batch wrap-up" task. This is the spine of the run.
 3. **Confirm scope with the user** only if the order, personas, or which-report is ambiguous. Otherwise state your plan briefly and proceed.
 
 ## Phase 1 — Bring up the stack (and confirm true readiness)
 
-4. **Check if it's already running** (probe the app port / health). If not, start it with the project's command (from the report or detected).
+4. **Ask about a clean slate before starting.** Use `AskUserQuestion`: *"Kill all running servers and reset Docker resources (stop + remove containers and volumes) for a clean-slate QA run?"* — options: **Yes, clean slate** / **No, use what's running**. If yes: stop the project's dev servers/processes, then `docker compose down -v` (or `docker rm -f` + `docker volume rm` for the project's containers/volumes). **Never remove or prune images** (`docker rmi` / `docker image prune` / `docker system prune` are off-limits — image rebuilds are expensive and not the user's intent). Then bring the stack up fresh. If no: probe and reuse the running stack.
+4b. **Check if it's already running** (probe the app port / health). If not (or after a clean-slate reset), start it with the project's command (from the report or detected).
 5. **Wait for *true* readiness, not just the dev server.** A live SPA port ≠ a ready stack. Wait for the auth provider (OIDC/SSO/session), the DB/migrations, and the API health/ready marker. Poll until the real "ready" signal appears (log line, health 200, dashboard green), with a sane timeout.
 6. **If startup fails, diagnose before nuking.** Common failure modes: orphaned containers, stuck DB/migration locks, migration-history drift. Surgical fixes beat a full volume wipe. Surface the diagnosis if you can't recover quickly.
-7. **Confirm you can log in** as each persona you'll need. Note the default UI language; if the user can't read it, offer to switch the UI to their language for the walkthrough (do this once, early).
+7. **Confirm you can log in** as each persona you'll need.
+8. **Establish the QA language up front, and run the whole walkthrough in it.** Confirm the language the user actually reads (ask once if unknown) and treat that as the **base language** for the entire QA. If the app boots in a different default UI language, **switch the UI to the user's language immediately** — before story 1 — so the user can follow every step. Do this once, early; don't make the user read a language they don't speak. (Locale *coverage* — confirming each supported locale renders without raw keys — still happens per story in Phase 2; that's a verification step, not the language you narrate in.)
 
 ## Phase 2 — Per-story exhaustive QA loop (THE CORE)
 
@@ -66,8 +69,11 @@ Repeat this whole block for each story, **in order, one at a time.**
 - List its acceptance criteria / expected behaviours **and** its known TODOs (from Phase 0). You'll judge findings against both.
 
 ### 2B — Exhaustive live QA
+
+**QA like a HUMAN USER, not a computer (read before driving).** Reach every feature the way a real user would: start from the home/login page and **navigate through the actual UI** — click the nav menu, the buttons, the links — to get where you're going. Do NOT deep-link by typing a URL you happen to know into the address bar, and do NOT call the API directly to set up UI state, *unless that deep-link/endpoint is itself the behavior under test* (then verify both the human click-path AND the direct path). A computer "knows" the URL and jumps straight there; a human has to find the door — and that path is exactly where real-user bugs hide: a missing or broken nav entry, a button that doesn't wire up, a route guard that redirects, a link with the wrong href, a menu item hidden for the wrong role. If a feature can't be reached by clicking like a user, that's a finding in itself — even when the page renders fine on a direct URL visit.
+
 Pick the right tool for the story type:
-- **UI stories** → drive the real browser with a browser-automation tool (e.g. Playwright, including via an MCP server): navigate, type, click, snapshot. Walk the actual user journey end-to-end.
+- **UI stories** → drive the real browser with a browser-automation tool (e.g. Playwright, including via an MCP server): navigate, type, click, snapshot. Walk the actual user journey end-to-end, reaching each screen through the UI as above (not by jumping to known URLs).
 - **Backend/API stories** → real HTTP calls against the running API (authenticated), inspect responses, DB rows, audit/activity logs.
 - **Background/job stories** → trigger the job, observe the dashboard + DB state.
 
@@ -105,8 +111,8 @@ Use `AskUserQuestion` (multi-select) to let the user choose what to do with this
 - **Fix now** (apply fixes on the batch branch),
 - **Log an issue** (in the project's tracker, for out-of-scope / deferred items),
 - **Log to MD/HTML report** (append findings to a running QA log),
-- **Accept & continue** (notes only),
-- **Defer / out-of-scope**.
+- **Accept & continue** (genuine non-work — notes only),
+- **Defer (real future work)** — produces a tracked `#N` (or a ledger entry carrying one); a bare note doesn't count (see Phase 3).
 
 Then ask whether to **proceed to the next story**. **Do not move on until the user decides.** This is the heart of the skill — the two of you decide together, story by story.
 
@@ -118,8 +124,9 @@ Then ask whether to **proceed to the next story**. **Do not move on until the us
   - If a fix is more invasive than a one-liner (new dependency, shared component, test-infra/config change), **surface the trade-off** before committing to it; don't silently expand scope. (For example: introducing a UI component that depends on a context provider from a component library can require the test runner to dedupe/inline that package so a single context instance is used — that's a config change worth flagging.)
   - **Do not commit yet** — commits are gated by Phase 5.
 - **Log an issue**: title + repro steps + expected/actual + scope/impact + suggested fix; apply sensible existing labels; **no assignee unless asked**. Use the project's issue tracker (e.g. GitHub via `gh issue create`, or whatever the repo uses). Confirm the issue URL back to the user.
-- **Log to MD/HTML**: append to the agreed findings file. If the file is a "status" artifact the user treats as canonical, follow their update rules (update in place, append-only history, preserve content verbatim).
-- **Defer / accept**: record it in your notes and the per-story verdict; move on.
+- **Log to MD/HTML**: append to the agreed **findings log** (the durable QA output — distinct from the input report, which is ephemeral; see Phase 0). If that findings file is a "status" artifact the user treats as canonical, follow their update rules (update in place, append-only history, preserve content verbatim).
+- **Defer (real future work)**: must produce a **tracked artifact** — a filed `#N` (via the project's tracker) **or** an entry in a running ledger that itself carries a follow-up `#N`. A bare note is **not** sufficient — this is exactly the path that loses committed work.
+- **Accept / non-work**: notes-only is allowed ONLY for genuine non-work — by-design 404s, role-scoped empty results, environment/seed limitations, or documented TODOs that **already** carry a `#N`. Record it in the per-story verdict and move on.
 
 ## Phase 4 — Advance only on the user's say-so
 
@@ -147,6 +154,10 @@ Steps:
 - Never reports a browser-automation artifact (silent no-op / hit-test refusal) as a product bug without DOM-level proof (`pointer-events`, `elementFromPoint`, dispatched-event control).
 - Never labels a documented TODO, by-design 404, role-scoped empty result, or absent-seed result as a bug — classify it correctly and say so.
 - Never overstates a verdict: if a test was skipped or only partially verifiable in the environment, say exactly that.
+- Never defers real future code work with only a note — it must carry a tracked `#N` (or a ledger entry that does). Notes-only is for genuine non-work.
+- Never edits, updates, or re-syncs the input QA report — it's an ephemeral guide; its inaccuracies are findings, not edits.
+- Never removes or prunes Docker images, even on a clean-slate reset — containers and volumes only.
+- Never QAs like a computer when a human path exists: reach features by navigating the UI from the landing page, not by jumping to known URLs or pre-seeding state via the API (except to additionally test an intended deep-link/endpoint). An unreachable-by-clicking feature is a finding.
 
 ## Field notes & recurring pitfalls (from real runs)
 
@@ -162,5 +173,5 @@ Steps:
 - [ ] Scratch artifacts (screenshots, temp files) are outside the committed tree or removed.
 - [ ] No marker/scratch files staged.
 - [ ] Stack left in the state the user expects (running if they want to keep testing; stopped if asked).
-- [ ] Every story has a recorded verdict; deferred items are logged where the user chose (issue / MD / HTML).
+- [ ] Every story has a recorded verdict; deferred items are logged where the user chose. **Deferred items representing code work have a GitHub `#N`** — an MD/HTML note alone does not satisfy this. Genuine non-work (by-design 404s, role-scoped empties, env/seed limits, already-`#N`'d TODOs) may be notes-only.
 - [ ] Nothing committed unless the full suite + e2e were green and the user approved.
