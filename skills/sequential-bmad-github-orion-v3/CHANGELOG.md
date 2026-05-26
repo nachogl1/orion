@@ -19,11 +19,11 @@ Forked from `sequential-bmad-github-orion-v2` (kept as-is per the versioning con
 
 - **Editor note added.** A `> [!NOTE]` block at the top of `SKILL.md` and `README.md` recommends creating a *new version* (bump the `-vN` suffix) over editing this skill in place, since people and automated workflows may depend on the current behaviour.
 - **Final sensitive-data scrub for distribution** (three independent Opus review rounds). Neutralized the last project-specific tells so the skill adapts to any user/repo (only BMAD + GitHub Issues are assumed):
-  - A real-looking issue number in the auto-close-keyword example (`Closes #494` → `Refs #494`) replaced with a generic `#123`.
-  - A project-specific DB table name in an Agent D flag example (`activity_log`) generalized to "an audit/log table".
-  - A team-revealing locale set (`confirm DE + EN render`) generalized to "confirm each supported locale renders".
-  - A project-specific locale-switch key (`localStorage.setItem('app:locale', …)`) generalized to `localStorage.setItem('<locale-key>', '<lang>')` with a "use the project's actual mechanism" caveat, consistently across both batch-QA prompts.
-  - The CHANGELOG's own residual tell ("German persona names") reworded to "Locale-specific persona names".
+  - A real-looking issue number in the auto-close-keyword example replaced with a generic placeholder.
+  - A project-specific DB table name in an Agent D flag example generalized to "an audit/log table".
+  - A team-revealing locale set in a QA example generalized to "each supported locale".
+  - A project-specific locale-switch storage key generalized to `localStorage.setItem('<locale-key>', '<lang>')` with a "use the project's actual mechanism" caveat, consistently across both batch-QA prompts.
+  - The CHANGELOG's own residual locale tell reworded to a generic "locale-specific persona names".
 - **Fixed dangling skill references.** Two pointers to non-existent skills from the original environment (`pick-parallel-issues` in `README.md`, `/pick-next-issue` in `SKILL.md`) now point to the companion issue-selection skill `/assign-issues-orion`, with the surrounding prose corrected to describe what it actually does (select a parallelizable, collision-free set of issues to feed this skill via `@me`).
 - No behaviour, logic, or structural changes — scrub + note only.
 
