@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/orion.svg" alt="orion — a collection of general-purpose Claude Code skills" width="520"/>
+  <img src="assets/orion-twinkle.gif" alt="orion — a collection of general-purpose Claude Code skills" width="520"/>
 </p>
 
 # orion
