@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v4.1 — Fix-in-place-first gate: stop over-deferring work that could ship in the current PR
+
+Motivating finding: v4.0 built rich machinery for *tracking* deferrals (Core Principle #9 — file-and-link a `#N`, dedupe, pre-close check, scope-ledger) but never defined a rule for *whether* something should defer at all. The only implicit boundary was binary scope ("in the story's ACs or not"), so any finding a hair outside the ACs fell into the frictionless deferral funnel — even small, safe fixes the agent was already positioned to make. This release adds the missing counterweight. Edited in place on `-v3` (not forked) by explicit user choice.
+
+- **New Core Principle #10 — fix-in-place-first; defer is the fallback, not the default.** Defines the reusable **cheap-and-safe test**: a finding is fixed NOW in the current PR when it is *small · local · covered by tests already running · low blast-radius · scope-neutral*; it defers (and is then tracked per #9) only when it FAILS the test. "It wasn't in the story's ACs" is explicitly NOT a sufficient reason to defer. Each deferral names the single criterion it failed, so the choice is auditable; ties break toward defer (safety). Principle #9 now points at #10 ("apply #10 first").
+- **Agent C (code-review) step 6b** — adjacent findings (just outside the diff / ACs) run the gate: pass → apply an "🛠 Opportunistic fix (in-scope per CP#10)" beyond the original diff; fail → tracked deferral naming the failing criterion. Step 8 no longer returns `incomplete` for a non-blocking adjacent finding — it records a deferral and continues. Return summary gains **Opportunistic fixes applied** and **Findings deferred** (with failing criterion) fields.
+- **Agent B (dev-story) step 5b** — opportunistic in-place fixes for small/safe defects crossed while implementing, governed by the same gate; failures recorded as deferred checks in the handoff. Explicitly NOT a license to hunt unrelated work.
+- **Batch-QA `test-and-fix`** — new "EVERYTHING ELSE: FIX-IN-PLACE-FIRST" section after the hard SCOPE EXCLUSIONS: anything not in the three hard-exclusion blocks is subject to the gate; prefer fixing over handing the pr-author a deferral.
+
+---
+
 ## v4.0 — New skill version (`-v3`): close the deferral scope-leak + hard CI-green merge gate + human-like QA
 
 Forked from `sequential-bmad-github-orion-v2` (kept as-is per the versioning convention). The motivating finding: the pipeline already *detected* deferred work (pre-existing baseline failures, carry-forward gaps, TODOs) but never *filed or linked* it, so "out of scope" prose reached PR bodies with no tracking `#N` and quietly leaked. Plus two operational gaps surfaced from real runs.
