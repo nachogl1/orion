@@ -16,6 +16,12 @@ SCOPE EXCLUSIONS — DO NOT QA OR FIX
 
 <new-todos-by-issue-block>
 
+───────────────────────────────────────────────────────────────────────
+EVERYTHING ELSE: FIX-IN-PLACE-FIRST (Core Principle #10)
+───────────────────────────────────────────────────────────────────────
+
+The three blocks above are HARD exclusions — leave them alone. **Every other bug or gap you find during the gates is subject to the fix-in-place-first gate: deferring is the fallback, not the default.** Before you route any finding to the pr-author as "out of scope / follow-up," run the cheap-and-safe test: is it **small · local · covered by the gates you're already running · low blast-radius (no schema/migration, no shared-contract or public-API change, no new dependency) · scope-neutral**? If it PASSES, fix it here and re-verify — even if it wasn't anyone's story AC. If it FAILS (large, cross-cutting, touches a shared contract/schema, needs a product/design decision, or belongs to a different slice), hand it to the pr-author as a deferral and name the single failing criterion so it becomes a tracked `#N`. When genuinely unsure about blast-radius, defer.
+
 ═══════════════════════════════════════════════════════════════════════
 PRIORITY: PRE-EXISTING BASELINE FAILURES REPEATED ACROSS THE QUEUE
 ═══════════════════════════════════════════════════════════════════════
