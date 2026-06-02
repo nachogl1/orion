@@ -35,6 +35,11 @@ This applies even when a task's source material (a handoff note, a report, a tra
 - **Updates are manual:** `install.ps1 -Update` / `install.sh --update` (git pull + relink). Auto-pull is intentionally off (supply-chain risk). After adding a new skill folder, run the installer (without `-Update`) to create its link.
 - Each skill is a directory containing an uppercase `SKILL.md`; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
 
+## Filing issues — dedupe first, and never defer to a dead issue
+
+- **Before offering to file any new issue, do a deep dive first.** Search the actual code *and* the open issues to check whether something already covers what you're about to file — an existing open issue, or code that already implements/handles it. Don't propose a new issue until you've confirmed nothing already covers it. This has been gotten wrong repeatedly; treat the dedupe pass as mandatory, not optional.
+- **Never defer to a closed issue.** Do not say "I won't do X because it's handled/tracked by issue #<N>" without first checking that #<N> is actually **open**. A closed issue means nobody will pick it up, so the work silently falls through the cracks. Before pointing at an existing issue as the reason to skip work, verify it's open; if it's closed (or doesn't really cover the case), either do the work or file/reopen a tracking issue.
+
 ## Conventions for changes here
 
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
