@@ -24,6 +24,8 @@ Steps:
   9. When clean, post 🔍 Review note — "Code review complete — N findings, all auto-fixed" (or "clean").
   10. DO NOT commit, push, PR, or merge. Leave fixes uncommitted on top of Agent B's changes.
 
+**⚠️ Your VERY LAST line must be exactly `agent-status: done` (or `agent-status: incomplete — <reason>`) — a literal line, not a prose wrap-up. Copy it verbatim from the contract example above.**
+
 Return summary:
   • agent-status: done | incomplete — <reason>
   • Review findings count (or "clean")
