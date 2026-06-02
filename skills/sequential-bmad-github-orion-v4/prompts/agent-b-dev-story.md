@@ -15,6 +15,8 @@ Steps:
   9. When implementation is complete, post ONE 🤝 Dev → Review handoff comment with sections Dependencies / Assumptions / Decisions / Potential merge conflicts / Skipped checks. Always post (use "None" for empty sections) — it's the audit trail Agent C + Phase 2 batch QA will read.
   10. DO NOT commit, push, open a PR, or merge. Leave changes uncommitted for Agent C.
 
+**⚠️ Your VERY LAST line must be exactly `agent-status: done` (or `agent-status: incomplete — <reason>`) — a literal line, not a prose wrap-up. Copy it verbatim from the contract example above.**
+
 Return summary:
   • agent-status: done | incomplete — <reason>
   • Files changed (count + key file list, from `git status --porcelain`)
