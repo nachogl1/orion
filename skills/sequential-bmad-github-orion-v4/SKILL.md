@@ -42,7 +42,7 @@ This skill is **project-agnostic.** Agents detect the build/test toolchain from 
 
 ## Core principles
 
-1. **Production-ready code is the success bar.** Every batched issue ships in a state a senior dev would merge to the base branch without follow-up: all tests + e2e green; live-stack QA green; zero regressions vs batch baseline; no `Closes #N` keyword leakage; no stubbed surfaces (every AC actually wired); TODO/FIXME/HACK markers surfaced (not buried) AND recorded as a lessons-learned finding the moment they're introduced, so a left-behind feature/gap can't be forgotten (Agent C step 5b; lessons-learned contract); project conventions followed; Conventional-Commits clean history (one squash per issue). **A per-issue PR is merged into the batch ONLY when its CI is fully green — never with a red, errored, cancelled, or still-pending required check** (enforced by Agent D's pre-merge re-check, §1.4 / Agent D step 8b, and backstopped by an orchestrator post-merge audit in §1.5). Every other principle serves this bar.
+1. **Production-ready code is the success bar.** Every batched issue ships in a state a senior dev would merge to the base branch without follow-up: all tests + e2e green; live-stack QA green; zero regressions vs batch baseline; no `Closes #N` keyword leakage; no stubbed surfaces (every AC actually wired); TODO/FIXME/HACK markers surfaced (not buried) AND recorded as a lessons-learned finding the moment they're introduced, so a left-behind feature/gap can't be forgotten (Agent C step 5b; lessons-learned contract); project conventions followed; Conventional-Commits clean history (one squash per issue). **A per-issue PR is merged into the batch ONLY when its CI is fully green — never with a red, errored, cancelled, or still-pending required check** (enforced by the orchestrator-owned hard pre-merge CI gate in §1.4 — Agent D now stops at PR-open and the orchestrator runs the CI-watch + gate + merge, settling an empty rollup before any no-CI fallback — and backstopped by an orchestrator post-merge audit in §1.5). Every other principle serves this bar.
 2. **GitHub issue is the SOURCE OF TRUTH for status.** Every milestone is an issue comment. Never write to BMAD `sprint-status.yaml`, `epics-done.md`, or similar. BMAD story files + code-review reports are dev aids and audit trail, not status.
 3. **Issues stay OPEN until batch→base-branch lands.** Per-issue PRs target the batch branch with `Refs #<N>` (NOT `Closes #<N>`). Phase 4 closes each batched issue explicitly after detecting the manual batch→base-branch merge.
 4. **Strict serialization.** Issue `i+1` cannot start until issue `i` is merged into the batch branch and its worktree torn down. No parallel branches or worktrees.
@@ -69,7 +69,7 @@ This skill is **project-agnostic.** Agents detect the build/test toolchain from 
 | **A** | `/bmad-create-story` → produce BMAD story file | Opus | Strategy + scope decisions; getting the spec right is high-leverage |
 | **B** | `/bmad-dev-story` → implement code + targeted tests + i18n + AC ticks | Sonnet | Longest token-spending step; Agent C catches slips |
 | **C** | `/bmad-code-review` against the uncommitted diff → auto-fix every finding | Opus | Critical-thinking step; do not cheap out |
-| **D** | Full build + full tests + commit + push + PR + wait CI green + squash-merge into batch | Sonnet | Mostly mechanical bash + waiting; retries cap at 5 per command |
+| **D** | Compile + targeted tests + commit + push + open PR — **stops at PR-open**; the orchestrator then owns the CI-watch + hard pre-merge gate + squash-merge | Sonnet | Mechanical bash; the long CI wait + merge moved to the orchestrator so the sub-agent can't background-yield mid-wait |
 
 Each agent operates inside the same worktree, reading and writing on-disk state. Handoff happens through the worktree, not through agent memory. The orchestrator chains them.
 
@@ -95,7 +95,7 @@ Parse rules:
 - **Explicit numeric list → honor caller-supplied order; skip the Phase 0 heuristic.** The user's deliberate ordering signal is preserved.
 - `@me` resolving to zero issues → exit cleanly with "No open issues assigned to you. Assign yourself some via `gh issue edit <N> --add-assignee @me` and re-run, or pass explicit numbers."
 
-**Validate every issue** via `gh issue view <N> --json number,title,state,assignees,labels,url`: each must be `state: OPEN` and either unassigned or assigned to the current user. List all violations at once and stop. Do not partially run.
+**Validate every issue** via `gh issue view <N> --json number,title,state,assignees,labels,url`: each must be `state: OPEN` and either unassigned or assigned to the current user. List all violations at once and stop. Do not partially run. (Phase 0 step 5b-r additionally scans each issue body for unresolved human-gate banners — blocked / decision-needed — and offers to exclude them, distinguishing open gates from lifted `✅ DECISION MADE` ones.)
 
 ---
 
@@ -218,7 +218,7 @@ Sub-agents report back; the orchestrator transcribes their results when they ret
 
 **Required checkpoints:**
 - Run-level: `queue-start`, `batch-branch-created`, `session-folder-created`, `compact-checkpoint`, `queue-end`, `batch-qa-spawned`, `batch-qa-returned`, `deferral-filing-map-built`, `deferrals-filed`, `wait-start`, `wait-poll`, `merge-detected`, `finalize-start`, `finalize-end`, `stats-report-written`, `session-complete`.
-- Per issue: `queued`, `branch-created`, `worktree-created`, `issue-prepped`, `agent-A-spawned`, `agent-A-returned`, ... (analogous for B/C/D), `pre-merge-ci-gate-pass` or `pre-merge-local-gate-pass` (Agent D step 8b — exactly one per merged issue, depending on whether CI ran), `post-merge-ci-audit-clean` (or `red-ci-merge-detected` on a gate miss), `merged-into-batch`, `cleanup-complete`.
+- Per issue: `queued`, `branch-created`, `worktree-created`, `issue-prepped`, `agent-A-spawned`, `agent-A-returned`, ... (analogous for B/C/D), `pre-merge-ci-gate-pass` or `pre-merge-local-gate-pass` (§1.4 orchestrator gate — exactly one per merged issue, depending on whether CI ran), `post-merge-ci-audit-clean` (or `red-ci-merge-detected` on a gate miss), `merged-into-batch`, `cleanup-complete`.
 - Phase 4: `pre-close-link-check-clean` (or `deferral-linked-before-close`) per issue, then `issue-closed`.
 
 ### Manifest
@@ -311,6 +311,8 @@ Both boilerplates share the same universal contracts (return-summary, project-ru
    - Explicit numeric list → honor caller order; skip heuristic.
    - Otherwise auto-order: fetch issue bodies + labels; topo-sort by strong dependency edges (`depends on #N`, `blocked by #N`, `after #N`, etc.; refuse on cycles → halt with "Cyclic dependencies between #A and #B. Resolve in GitHub or pass explicit ordering."). Within independent slots, rank by blast radius (riskiest first): `bug` label → tech-debt/refactor/breaking-change → infrastructure/schema/migration → UI/visual last → oldest `createdAt` as tie-break.
    - **Print resolved order with one-line per-issue reasoning.** No confirmation question. Proceed.
+
+5b-r. **Issue readiness gate (human-gates) — runs before the batch-size checkpoint so the count reflects exclusions.** Phase 0 confirms each issue is OPEN + assigned (above) but NOT whether it is *implementable yet*. Fetch each issue body (`gh issue view <N> --json body,title,labels`) and scan for human-gate banners meaning "a person must decide/unblock before any agent touches this" — case-insensitive markers such as `do not auto-implement`, `do not pick unilaterally`, `approach decision needed`, `decision required`, `blocked on`, `blocked by a dependency`, `needs human`, `confirm before starting`, `STOP`, and leading-blockquote ⚠️/🔗/🚧 banners. **Crucially, distinguish an OPEN gate from a LIFTED one:** a body that ALSO contains `✅ DECISION MADE` / `Ready to implement` / `gate lifted` / `unblocked` (clearly superseding the gate text) is NOT blocked — the gate was resolved; do not exclude it. If ANY issue carries an unlifted gate, present ONE `AskUserQuestion` (multiSelect) listing each gated issue with its matched banner text, **defaulting to EXCLUDING** it: per issue, "Exclude #<N> (gated: <banner>) (Recommended)" vs "Include #<N> anyway — I've resolved the gate". Drop the excluded issues from the queue; keep any the user explicitly includes. When the lifted-vs-open call is genuinely ambiguous, ASK rather than auto-exclude. Explicit numeric args are scanned too (a passed number can turn out to be gated). Log `readiness-gate` with the gated set + the user's choices. If no issue is gated, skip silently.
 
 5c. **Batch-size confirmation checkpoint.** Threshold = 4 (override via env var `BATCH_PIPELINE_SIZE_PROMPT_THRESHOLD`). If queue > threshold, ONE `AskUserQuestion` before any branch/folder creation:
 
@@ -414,7 +416,9 @@ Spawn with the concatenated prompt: `prompts/shared-boilerplate.md` (placeholder
 
 When Agent A returns:
 - Log `agent-A-returned` with the story file path.
-- `agent-status: done` → proceed to Agent B.
+- `agent-status: done` → check the `expected-diff:` field of the return summary:
+  - `expected-diff: code-change` (the normal case) → proceed to Agent B.
+  - `expected-diff: none — <evidence>` (Agent A found the issue ALREADY RESOLVED / overtaken-by-events — step 2b of its prompt) → **no-op short-circuit.** Do NOT spawn B/C/D against an empty diff (that would burn a dev→review→finalize cycle plus a recovery pause to reach the same conclusion). First independently confirm: grep the batch tip for the cited commit/file/line that already satisfies the ask. **If confirmed:** tear down this issue's worktree (no commits to revert), then PAUSE and converse with the user (same pattern as §1.7 step 3) — print the evidence and ask whether to **close the issue as already-resolved** (run `gh issue close <N> --reason completed` with an audit comment, drop it from the batch) or **keep it open** (drop from the batch, leave for a future run). Do NOT advance the queue until the user answers; on their signal, act, then resume from §1.1 with the next issue. Log `no-op-issue-detected` + the user's choice. **If the grep does NOT confirm** Agent A's claim → treat it as a normal `code-change` and proceed to Agent B (Agent A was wrong about the no-op).
 - `agent-status: incomplete — <reason>` → spawn recovery agent (§1.7 step 1). On success → Agent B. On failure → §1.7.
 - Missing/invalid `agent-status:` line → Terminal-line recovery (below). On failure → §1.7.
 - Tool error envelope → per-agent crash retry (below). Third crash → §1.7.
@@ -441,23 +445,37 @@ Post 📦 Batch status — "Agent C returned. Spawning Agent D (finalize, Sonnet
 
 Spawn with concatenated prompt: shared-boilerplate + `prompts/agent-d-finalize.md`. Inject `<issue-title>`.
 
+**Agent D stops at PR-open and hands the CI-watch + merge to YOU (the orchestrator).** This is deliberate: the long CI wait used to live inside Agent D's turn, and the Sonnet finalize agent repeatedly reached for a background `Monitor`/wait tool and ended its turn non-terminally (no contract line), forcing ad-hoc recovery. Removing the wait from the sub-agent removes the failure mode by construction. You own everything from CI-watch through squash-merge, running it FOREGROUND in your own turn with synchronous `gh` polling — NEVER a background `Monitor`/`ScheduleWakeup`.
+
 When Agent D returns:
 - Tool error envelope → per-agent crash retry. Third crash → §1.7.
-- `agent-status: done` → parse the `merge-sha:` line from the same return summary. Log `agent-D-returned` + `merged-into-batch` with the squash SHA. Proceed to 1.5. (Missing `merge-sha:` on a `done` return → §1.7 with diagnosis `"Agent D returned done but no merge-sha line"`.)
+- `agent-status: pr-opened pr:<N>` → log `agent-D-returned` with the PR number. Run the **orchestrator-owned CI-watch + hard pre-merge gate + merge** (below).
 - `agent-status: incomplete — <reason>` → classify:
-  - **CI infra flake** (reason mentions `setup-bun` / `setup-node` / `setup-dotnet` 401/503, `Failed to fetch url`, `Bad credentials`, `ECONNRESET`, runner provisioning failures): one `gh run rerun --failed <run-id>`, re-poll. If green, treat as `done` (parse `merge-sha:`) → 1.5. If still red, fall through.
-  - **Code regression / build red / test red / true CI red after rerun** → recovery agent (§1.7 step 1). On success → 1.5. On failure → §1.7.
-- Missing/invalid `agent-status:` → Terminal-line recovery. On success → log + 1.5 with the recovered SHA. On failure → §1.7.
+  - **CI infra flake** (reason mentions `setup-bun` / `setup-node` / `setup-dotnet` 401/503, `Failed to fetch url`, `Bad credentials`, `ECONNRESET`, runner provisioning failures — only possible on a re-dispatched fix turn): one `gh run rerun --failed <run-id>`, then re-run the gate below. If still red, fall through.
+  - **Build/targeted-test red / true CI red after rerun / merge-blocked** → recovery agent (§1.7 step 1). On success (recovery fixed + pushed) → re-run the gate below. On failure → §1.7.
+- Missing/invalid `agent-status:` → Terminal-line recovery. On success → run the gate below. On failure → §1.7.
 
-**Post-merge CI audit (orchestrator-side backstop for Core Principle #1).** On any `done` return, BEFORE proceeding to §1.5, verify the per-issue PR actually merged green — never trust the merge happened on green just because Agent D returned done. The pipeline cannot rely on GitHub branch protection (the runner may lack admin access), so this audit mirrors Agent D step 8b exactly. Run `gh pr view <pr-number> --json state,mergedAt,statusCheckRollup` and inspect every entry in `statusCheckRollup`. **Treat every present check as merge-gating, NOT only the ones GitHub marks "required"** (without branch protection nothing is flagged required, so a "required-only" reading would certify nothing):
-  - **Non-empty rollup:** the merge is acceptable ONLY if every entry reached a terminal `SUCCESS` (treat `NEUTRAL`/`SKIPPED` as acceptable). If ANY entry is `FAILURE` / `ERROR` / `CANCELLED` / `TIMED_OUT` / `ACTION_REQUIRED`, or any entry never reached a terminal conclusion (still `PENDING`/`IN_PROGRESS`/`QUEUED`/`EXPECTED` at merge time), Agent D breached the CI gate and merged a red or unfinished PR into the batch — the single most damaging failure mode.
-  - **Empty rollup (no workflow fired for this PR's changed paths):** do NOT wave it through as vacuously green. The merge is acceptable ONLY if Agent D logged `pre-merge-local-gate-pass` — the green local build + test it ran as merge evidence per step 8b. If the rollup is empty AND no `pre-merge-local-gate-pass` evidence exists in this issue's run-log/return summary, Agent D passed the gate vacuously — treat it as a gate breach.
+##### Orchestrator-owned CI-watch + hard pre-merge gate + merge (runs on a `pr-opened` return)
+
+This is the gate Agent D used to run as its step 8/8b — it now lives HERE, foreground in your own turn (synchronous `gh` polling; never a background wait). For PR `<pr>` on head branch `feature/<N>-<slug>`:
+
+1. **Watch CI synchronously.** Poll `gh pr view <pr> --json mergeable,mergeStateStatus,statusCheckRollup` (and/or `gh pr checks <pr>`) in a foreground loop until every entry in `statusCheckRollup` reaches a terminal conclusion — or the empty-rollup settle below resolves. No background tool.
+2. **Hard pre-merge gate — treat EVERY check in `statusCheckRollup` as merge-gating, NOT only the ones GitHub marks "required"** (without branch protection nothing is flagged required, so a "required-only" reading would gate on nothing and pass everything):
+   - **Non-empty rollup:** mergeable ONLY if every entry has `conclusion` ∈ {`SUCCESS`, `NEUTRAL`, `SKIPPED`} AND `status` is `COMPLETED`; AND nothing is `QUEUED`/`IN_PROGRESS`/`PENDING`/`EXPECTED`; AND `mergeStateStatus` is not `DIRTY`/`BLOCKED`/`BEHIND` for a CI reason. Any `FAILURE`/`ERROR`/`CANCELLED`/`TIMED_OUT`/`ACTION_REQUIRED` → red → step 4. Still-running → keep polling within a bounded window.
+   - **Empty rollup → settle-and-repoll; do NOT treat it as no-CI immediately.** *An empty rollup right after `gh pr create` is almost always a registration race, not an absence of CI.* Re-poll for a settle window of **≥90–120s (4–6 reads ~20–30s apart)** AND cross-check `gh run list --branch feature/<N>-<slug> --json databaseId,status,conclusion,event`. Treat the rollup as GENUINELY empty (no CI configured for these paths) ONLY if it stays empty across the whole settle window AND `gh run list` shows zero runs for the head branch. If checks appear late, fall through to the non-empty path.
+   - **Genuine-no-CI fallback (only after the settle confirms zero runs):** the local build is the gate. Agent D only ran targeted tests + a compile, so run the project's FULL build + FULL test suite in the worktree (`<worktree-parent>/<repo-name>-<N>`) as the merge evidence. If green, log `pre-merge-local-gate-pass` with the commands and proceed to merge (step 3). If red → step 4.
+3. **Merge** (only when the gate passed): `gh pr merge <pr> --squash --delete-branch` (never `--admin`/override). Capture the squash SHA: `gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`. For a non-empty all-green rollup, log `pre-merge-ci-gate-pass` with the audited check count. Log `merged-into-batch` with the SHA; post 📦 Batch status — "Merged into batch as <squash-sha>" on issue #<N>. Proceed to the post-merge audit (below), then §1.5.
+4. **Red CI / merge-blocked:** do NOT merge. Classify: infra-flake (patterns above) → `gh run rerun --failed <run-id>`, back to step 1. Real red → re-dispatch the fix — spawn the recovery agent (§1.7 step 1), OR re-spawn Agent D with a focused directive (*"CI red on PR #<pr>: <failing checks> — fix in the worktree, commit, push, return `agent-status: pr-opened pr:<N>`"*). Bounded at 5 fix cycles. On a fix return → back to step 1 (re-watch + re-gate). Still red after the budget → §1.7 with the diagnosis.
+
+**Post-merge CI audit (orchestrator-side backstop for Core Principle #1).** After the orchestrator-owned merge above, BEFORE proceeding to §1.5, re-verify the per-issue PR actually merged green — a cheap belt-and-suspenders re-read even though the gate just passed (it also covers a re-dispatched-fix race). The pipeline cannot rely on GitHub branch protection (the runner may lack admin access), so this audit mirrors the hard pre-merge gate above exactly. Run `gh pr view <pr-number> --json state,mergedAt,statusCheckRollup` and inspect every entry in `statusCheckRollup`. **Treat every present check as merge-gating, NOT only the ones GitHub marks "required"** (without branch protection nothing is flagged required, so a "required-only" reading would certify nothing):
+  - **Non-empty rollup:** the merge is acceptable ONLY if every entry reached a terminal `SUCCESS` (treat `NEUTRAL`/`SKIPPED` as acceptable). If ANY entry is `FAILURE` / `ERROR` / `CANCELLED` / `TIMED_OUT` / `ACTION_REQUIRED`, or any entry never reached a terminal conclusion (still `PENDING`/`IN_PROGRESS`/`QUEUED`/`EXPECTED` at merge time), the §1.4 gate was breached and a red or unfinished PR was merged into the batch — the single most damaging failure mode.
+  - **Empty rollup (no workflow fired for this PR's changed paths):** do NOT wave it through as vacuously green. The merge is acceptable ONLY if the orchestrator logged `pre-merge-local-gate-pass` — the green FULL local build + test run as merge evidence in the gate above, AFTER the ≥90–120s settle-and-repoll confirmed zero CI runs. If the rollup is empty AND no `pre-merge-local-gate-pass` evidence exists in this issue's run-log, the gate passed vacuously — treat it as a gate breach.
 If the merge is not acceptable by either branch above, do NOT proceed to §1.5. Instead:
   1. Log `red-ci-merge-detected` with the offending PR + the list of non-green checks (or, for an empty rollup with no `pre-merge-local-gate-pass` evidence, the detail `empty rollup waved through without local-build evidence`).
   2. Revert the contaminating squash off the batch branch: `git checkout <batch-branch> && git revert --no-edit <squash-sha> && git push origin <batch-branch>` (then `git checkout <base-branch>` to return — the orchestrator never lingers off the base branch). Verify the revert landed (`git merge-base --is-ancestor <revert-sha> origin/<batch-branch>`).
   3. Post a 🚧 Batch status on issue #<N>: *"Per-issue PR #<pr> merged into the batch with non-green CI (<failing-checks>); the squash has been reverted off the batch branch. This is a hard gate — see Core Principle #1."*
-  4. Route to §1.7 with diagnosis `"Agent D merged PR #<pr> into the batch with non-green CI (<failing checks>); squash reverted off batch — needs investigation before retry"`. Append a lessons-learned finding (the gate failed; the next iteration should harden Agent D step 8b).
-This backstop catches a gate miss; Agent D step 8b is the primary defense (it should make this audit a no-op on every healthy run). Log `post-merge-ci-audit-clean` when acceptable — with the audited check count for a non-empty rollup, or the `pre-merge-local-gate-pass` reference for an empty-rollup local-build merge.
+  4. Route to §1.7 with diagnosis `"The §1.4 orchestrator gate merged PR #<pr> into the batch with non-green CI (<failing checks>); squash reverted off batch — needs investigation before retry"`. Append a lessons-learned finding (the gate failed; the next iteration should harden the §1.4 orchestrator gate).
+This backstop catches a gate miss; the §1.4 orchestrator pre-merge gate is the primary defense (it should make this audit a no-op on every healthy run). Log `post-merge-ci-audit-clean` when acceptable — with the audited check count for a non-empty rollup, or the `pre-merge-local-gate-pass` reference for an empty-rollup local-build merge.
 
 **Annotation ingest (orchestrator-side, on Agent D return):** parse three structured fields and append each entry to `annotations[]` with the issue_number stamped:
 - `Pre-existing baseline failures observed` → `{ issue_number: N, kind: "baseline-failure", test_file: <path> }` (one per file).
@@ -473,7 +491,7 @@ Runtime crash = tool error envelope with no return summary. Logical incompletes 
 1. Log `crash-retry-start` with slot + attempt number.
 2. Reset state for the dead agent:
    - **Before Agent A**: `cd <worktree>`, `git reset --hard HEAD`, `git clean -fdx` (wipes partial BMAD story file, build artifacts).
-   - **Before Agent B**: same reset BUT preserve the story file at `_bmad-output/implementation-artifacts/...` — use `git stash` if `git clean -fdx` would remove it.
+   - **Before Agent B**: same reset BUT preserve the story file at `_bmad-output/implementation-artifacts/...` — do NOT `git stash` (the stash stack is a repo-global ref shared across worktrees and can corrupt another tree). Instead copy the story file to `<session-folder>/scratch/agent-A-<N>/` before the reset and copy it back afterward (or scope `git clean` to exclude it).
    - **Before Agent C / Agent D**: do NOT reset — uncommitted implementation must survive. Just `cd` back and re-spawn.
    - `cd <repo-root>` afterward.
 3. Post 🔄 Batch status: "Agent <X> crashed (runtime error). State reset; re-spawning. Crash retry <N> of 2 — third crash invokes the per-issue failure procedure."
@@ -494,7 +512,11 @@ The agent returned a full summary; only the literal `agent-status:` line is miss
 a. Log `terminal-line-recovery-start` with slot.
 b. **SendMessage availability check** (probe via `ToolSearch` for `select:SendMessage`):
    - **Available** → SendMessage to the same sub-agent ID: *"Your final response is missing the literal `agent-status:` contract line (or used an invalid value). The only valid terminal values are `agent-status: done` or `agent-status: incomplete — <reason>`. Reply with EXACTLY one of those lines and nothing else. Do not redo any work."* Parse the reply for the literal line.
-   - **Not available** → apply **inferred-terminal-proceed**. All three gates already passed; the work is presumed complete. Log `terminal-line-inferred-proceed` with the slot + the original line value. Post a 🔄 Batch status: *"Agent <X> contract-line was missing/invalid; SendMessage unavailable in this harness, so the orchestrator inferred terminal state from the parsed summary."* Append a lessons-learned finding. Treat as recovery success.
+   - **Not available** → apply **inferred-terminal-proceed**, but ONLY after a **mandatory on-disk artifact check** (a required gate, not an incidental nicety — inferred-proceed is a fallback and must never be easier to reach than a real contract line). Verify the slot's expected artifact actually exists on disk and is consistent with a terminal state:
+     - Agent A → the story file exists and is non-empty (path from the parsed summary).
+     - Agent B / Agent C → `git -C <worktree> diff origin/<batch-branch>...HEAD` (or `git status --porcelain`) is non-empty — real implementation / fixes are present.
+     - Agent D → the PR for the parsed `pr:<N>` exists: `gh pr view <N> --json state` returns `OPEN` or `MERGED`.
+     If the artifact check FAILS (no story file / empty diff / no PR), do NOT infer-proceed — route to §1.7 with diagnosis `"Agent <X> contract-line missing AND expected on-disk artifact absent — cannot infer completion"`. Only when it PASSES: log `terminal-line-inferred-proceed` with the slot + the original line value + the verified artifact, post a 🔄 Batch status (*"Agent <X> contract-line was missing/invalid; SendMessage unavailable, so the orchestrator inferred terminal state AFTER verifying the on-disk artifact (<what was checked>)."*), append a lessons-learned finding, and treat as recovery success.
 c. SendMessage reply contains a valid line → log `terminal-line-recovery-success` + the recovered value. Post 🔄 Batch status: *"Agent <X> contract-line recovered after one orchestrator follow-up."* Proceed normally.
 d. SendMessage reply still missing valid line OR hedged → §1.7 with diagnosis `"Agent <X> terminal-line recovery failed: <one-line summary>"`. Log `terminal-line-recovery-failed`. No second SendMessage.
 
@@ -502,7 +524,7 @@ d. SendMessage reply still missing valid line OR hedged → §1.7 with diagnosis
 
 ### 1.5 Post-merge teardown for this issue
 
-**Trigger:** Agent D returned `agent-status: done` (with parsed `merge-sha:`).
+**Trigger:** the orchestrator-owned CI-watch + gate (§1.4) squash-merged the per-issue PR and captured the squash SHA.
 
 a. **Verify merge on batch**: `git fetch origin <batch-branch>` then `git merge-base --is-ancestor <squash-sha> origin/<batch-branch>`. Not ancestor → retry once after 30s. Still not → §1.7 with diagnosis `"Agent D returned done but squash SHA <sha> is not an ancestor of origin/<batch-branch> on refetch"`. Do NOT halt the queue.
 b. **Remove the worktree**: `git worktree remove --force <worktree-parent>/<repo-name>-<N>`. Force is required (install/build leaves untracked artifacts).
@@ -847,7 +869,7 @@ If present, parse + use for the target-rate section. If absent, OMIT target-rate
 **4.3.d — Render the HTML.** Self-contained single-page (no JS, no external assets). Dark theme matching the user's existing deck (`#0d1117` bg, `#c9d1d9` text). Single scrollable page, not a slide deck.
 
 Required sections (in order):
-1. Header — repo name, today's date+time (DD-MM-YYYY HH:mm), batch PR # + URL, batched issues list, status pill (`✅ Batch merged` / `🚧 With failures: K issues skipped` / `❌ Batch QA failed`). Footer: "Generated by /sequential-bmad-github-orion-v4 v<X.Y>".
+1. Header — repo name, today's date+time (DD-MM-YYYY HH:mm), batch PR # + URL, batched issues list, status pill (`✅ Batch merged` / `🚧 With failures: K issues skipped` / `❌ Batch QA failed`). Footer: "Generated by /sequential-bmad-github-orion-v4 v5.1".
 2. Counts at a glance — two side-by-side stat-card groups (Stories | Issues): total, closed (green), open (yellow), closed share %.
 3. Current velocity — Metric · Stories · Issues. Rows: Closed since project start (with start date footnote); Per cal day; Per work day; Per 7-day week.
 4. Predictions (linear forecast) — Scenario · Stories finish · Issues finish. Rows: Current pace · Conservative · Aggressive.
@@ -905,7 +927,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 |---|---|
 | Agent A/B/C `incomplete` | Recovery agent (§1.7 step 1) → on failure, §1.7 pause-and-converse |
 | Agent D `incomplete` (CI red / build red / test red) | Classify reason (infra flake → `gh run rerun --failed`; real red → recovery → §1.7) |
-| Agent D returns `done` but post-merge CI audit finds non-green checks on the merged PR | §1.5 backstop: revert the squash off the batch branch, log `red-ci-merge-detected`, post 🚧 status, route to §1.7. A per-issue PR must never sit in the batch with red/pending CI (Core Principle #1) |
+| Orchestrator merges a per-issue PR (§1.4 gate) but the §1.5 post-merge audit finds non-green checks on the merged PR | §1.5 backstop: revert the squash off the batch branch, log `red-ci-merge-detected`, post 🚧 status, route to §1.7. A per-issue PR must never sit in the batch with red/pending CI (Core Principle #1) |
 | `pr-author` returns green but `deferrals-filed` block absent while map was non-empty | Log `deferrals-filed-missing` + lessons-learned finding; the §4.2 pre-close check still files/links before close. Do NOT halt |
 | Missing/invalid `agent-status:` line | Terminal-line recovery (SendMessage if available; inferred-terminal-proceed if not). On failure → §1.7 |
 | Runtime crash | Crash retry up to 2. Third crash → §1.7 |
@@ -964,7 +986,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 - [ ] On success: per-merged-issue worktrees + branches + remote refs gone; batch worktree + branch + remote ref gone (Phase 4); Draft PR merged.
 - [ ] **On per-issue failure (§1.7)**: per-failed-issue worktree removed locally; per-failed-issue branch RETAINED on origin so the user can investigate; per-failed-issue PR (if opened) closed; `<session-folder>/failures/<N>-<slug>/` written with diagnosis.md + last-state.diff + agent-transcripts/.
 - [ ] On hard halt: nothing torn down beyond what completed before the halt.
-- [ ] **Every per-issue PR merged into the batch had green CI or a green local build+test at merge time** (Agent D step 8b + §1.5 post-merge audit — `pre-merge-ci-gate-pass` when CI ran, `pre-merge-local-gate-pass` when the rollup was empty); no red/pending PR and no vacuously-empty rollup contaminated the batch.
+- [ ] **Every per-issue PR merged into the batch had green CI or a green full local build+test at merge time** (§1.4 orchestrator gate + §1.5 post-merge audit — `pre-merge-ci-gate-pass` when CI ran, `pre-merge-local-gate-pass` when the rollup was genuinely empty after the settle-and-repoll); no red/pending PR and no vacuously-empty rollup contaminated the batch.
 - [ ] **Every deferral (baseline-failure, carry-forward) is tracked by a `#N`** and back-linked into the per-issue PR bodies under `## Out of scope / Follow-ups (tracked)`; no PR body carries an unlinked "out of scope" / "pre-existing baseline failures" / "follow-up" line (Phase 2 filing + §4.2 pre-close check). Tracking issues were find-or-**reused**, not duplicated per run.
 - [ ] Stale stack-lock cleared between issues and between phases.
 - [ ] `<session-folder>/run.jsonl` present.
