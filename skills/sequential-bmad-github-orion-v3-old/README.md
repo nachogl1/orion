@@ -1,4 +1,7 @@
-# sequential-bmad-github-orion-v3
+# sequential-bmad-github-orion-v3-old
+
+> [!WARNING]
+> **DEPRECATED — superseded by [`sequential-bmad-github-orion-v4`](../sequential-bmad-github-orion-v4/).** This is the former v3, renamed to `-v3-old` so it's clearly flagged as the previous version. Use v4 for new runs — it adds running from any base branch (keep `main` untouched), TODOs recorded to lessons-learned, and a neutral exhaustive QA report. Only use this `-old` copy to finalize a batch already started under v3.
 
 A Claude Code skill that takes a queue of GitHub issues, ships each through a four-agent BMAD pipeline (create-story → implement → code-review → build/PR/CI/merge into a shared batch branch), then runs a two-agent batch-QA pipeline (full tests + e2e + live-stack Junior-tester QA gate) and opens a Draft PR batch→main. **BMAD methodology + GitHub Issues as source of truth are hard requirements.** The run is fully autonomous through cheap retries + one Opus recovery attempt; on genuine failure it pauses the queue and converses with you to decide skip / retry / fix-manually / abort.
 
@@ -23,13 +26,13 @@ A Claude Code skill that takes a queue of GitHub issues, ships each through a fo
 
 ## Quick start
 
-1. Install the skill folder to `~/.claude/skills/sequential-bmad-github-orion-v3/`.
+1. Install the skill folder to `~/.claude/skills/sequential-bmad-github-orion-v3-old/`.
 2. Verify prerequisites (see [PREREQUISITES.md](./PREREQUISITES.md)).
-3. From your repo's `main` branch (clean working tree, no staged changes), invoke `/sequential-bmad-github-orion-v3` with no args (defaults to issues assigned to `@me`) or pass an explicit issue specifier:
-   - Single: `/sequential-bmad-github-orion-v3 230`
-   - Space- or comma-list: `/sequential-bmad-github-orion-v3 230 231 232`
-   - Range: `/sequential-bmad-github-orion-v3 230-235`
-   - Mixed: `/sequential-bmad-github-orion-v3 230 232-234,237`
+3. From your repo's `main` branch (clean working tree, no staged changes), invoke `/sequential-bmad-github-orion-v3-old` with no args (defaults to issues assigned to `@me`) or pass an explicit issue specifier:
+   - Single: `/sequential-bmad-github-orion-v3-old 230`
+   - Space- or comma-list: `/sequential-bmad-github-orion-v3-old 230 231 232`
+   - Range: `/sequential-bmad-github-orion-v3-old 230-235`
+   - Mixed: `/sequential-bmad-github-orion-v3-old 230 232-234,237`
 4. The skill walks you through Phase 0 (preconditions + batch-size confirmation if queue > 4), then runs autonomously. It will pause and converse if it hits a genuine failure.
 
 ## What it does

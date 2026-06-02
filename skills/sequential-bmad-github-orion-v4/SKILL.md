@@ -1,9 +1,12 @@
 ---
-name: sequential-bmad-github-orion-v3
+name: sequential-bmad-github-orion-v4
 description: |
   Fully automated sequential GitHub-issue execution against a batch feature branch.
+  Runs against a batch branch forked from whatever branch you invoke it from (the
+  **base branch** — `main` by default, or any feature/integration branch, including
+  from a separate worktree, so you can keep working on `main` while a batch runs).
   **The purpose of this skill is to produce PRODUCTION-READY code** — every batched
-  issue must ship in a state a senior dev would merge to main without follow-up work.
+  issue must ship in a state a senior dev would merge to the base branch without follow-up work.
   **Assumes BMAD methodology** (slash commands `/bmad-create-story`, `/bmad-dev-story`,
   `/bmad-code-review` available) AND **GitHub Issues as source of truth** — the
   orchestrator confirms both preconditions with the user at Phase 0 before doing
@@ -15,19 +18,21 @@ description: |
   qa-report.html, files-and-dedupes every deferred annotation (pre-existing
   baseline failures, carry-forward gaps) into find-or-create tracking issues and
   links the resulting #N back into the per-issue PR bodies (so no deferral leaks
-  unlinked), then opens a Draft PR batch→main. The skill then pauses and
+  unlinked), then opens a Draft PR batch→base branch. The skill then pauses and
   waits for the user's "merged" / "closed" signal — no polling. On "merged" it
   closes the batched issues and writes a fresh per-run stats report HTML to
   ~/Downloads/. Strict one-issue-at-a-time serialization. Build/test commands
   auto-detected from project files.
 ---
 
-# sequential-bmad-github-orion-v3
+# sequential-bmad-github-orion-v4
 
 > [!NOTE]
 > **Thinking of editing this skill?** Prefer creating a *new version* — copy it to a new skill name (e.g. bump the `-vN` suffix) — and leave this one as-is. People and automated workflows may rely on the current behaviour, so versioning beats editing in place.
 
-You are the **ORCHESTRATOR** running on `main` in the user's repo. You drive a strict one-at-a-time sequential execution of a user-supplied list of GitHub issues against a single shared **batch feature branch**. Per issue you spawn a four-agent pipeline (A=create-story Opus → B=dev-story Sonnet → C=code-review Opus → D=build/PR/CI/merge Sonnet). After the queue completes you spawn the two-agent batch-QA pipeline (2.2a `test-and-fix` Opus → 2.2b `pr-author` Sonnet) which runs full tests + e2e + live-stack QA, writes `qa-report.html`, and opens a Draft PR batch→main. You then **pause and wait for the user's free-form signal** ("merged" → run Phase 4; "closed/abandoned" → write the abandoned manifest and exit). On "merged" you close every batched issue and write a fresh `<repo-name>-stats-<DD_MM_YYYY>-<HH_MM>.html` to `~/Downloads/`. The skill never touches the user's hand-maintained `<repo-name>-status-*.html` deck.
+You are the **ORCHESTRATOR** running on the **base branch** in the user's repo — the branch the skill was invoked from, captured at Phase 0. This is `main` by default, but it can be any branch (a feature/integration branch, or a separate worktree's branch), which lets the user keep working on `main` while a batch runs against the base branch instead. You drive a strict one-at-a-time sequential execution of a user-supplied list of GitHub issues against a single shared **batch feature branch** forked from the base branch. Per issue you spawn a four-agent pipeline (A=create-story Opus → B=dev-story Sonnet → C=code-review Opus → D=build/PR/CI/merge Sonnet). After the queue completes you spawn the two-agent batch-QA pipeline (2.2a `test-and-fix` Opus → 2.2b `pr-author` Sonnet) which runs full tests + e2e + live-stack QA, writes `qa-report.html`, and opens a Draft PR batch→base branch. You then **pause and wait for the user's free-form signal** ("merged" → run Phase 4; "closed/abandoned" → write the abandoned manifest and exit). On "merged" you close every batched issue and write a fresh `<repo-name>-stats-<DD_MM_YYYY>-<HH_MM>.html` to `~/Downloads/`. The skill never touches the user's hand-maintained `<repo-name>-status-*.html` deck.
+
+Throughout this spec, **base branch** means the branch the orchestrator runs on and the batch forks from / the Draft PR targets (resolved once at Phase 0 as `<base-branch>`); it is NOT necessarily the repo's default branch. Where a step needs the repo's actual default branch (e.g. to label whether you're on it), that is called out explicitly as the *default branch*.
 
 You do not invoke any skill yourself except `/compact` checkpoints (logged but not user-blocking). You prep worktrees + GitHub state, spawn sub-agents, tear down, and move on. The sub-agents do the actual work.
 
@@ -37,9 +42,9 @@ This skill is **project-agnostic.** Agents detect the build/test toolchain from 
 
 ## Core principles
 
-1. **Production-ready code is the success bar.** Every batched issue ships in a state a senior dev would merge to main without follow-up: all tests + e2e green; live-stack QA green; zero regressions vs batch baseline; no `Closes #N` keyword leakage; no stubbed surfaces (every AC actually wired); TODO/FIXME/HACK markers surfaced (not buried); project conventions followed; Conventional-Commits clean history (one squash per issue). **A per-issue PR is merged into the batch ONLY when its CI is fully green — never with a red, errored, cancelled, or still-pending required check** (enforced by Agent D's pre-merge re-check, §1.4 / Agent D step 8b, and backstopped by an orchestrator post-merge audit in §1.5). Every other principle serves this bar.
+1. **Production-ready code is the success bar.** Every batched issue ships in a state a senior dev would merge to the base branch without follow-up: all tests + e2e green; live-stack QA green; zero regressions vs batch baseline; no `Closes #N` keyword leakage; no stubbed surfaces (every AC actually wired); TODO/FIXME/HACK markers surfaced (not buried) AND recorded as a lessons-learned finding the moment they're introduced, so a left-behind feature/gap can't be forgotten (Agent C step 5b; lessons-learned contract); project conventions followed; Conventional-Commits clean history (one squash per issue). **A per-issue PR is merged into the batch ONLY when its CI is fully green — never with a red, errored, cancelled, or still-pending required check** (enforced by Agent D's pre-merge re-check, §1.4 / Agent D step 8b, and backstopped by an orchestrator post-merge audit in §1.5). Every other principle serves this bar.
 2. **GitHub issue is the SOURCE OF TRUTH for status.** Every milestone is an issue comment. Never write to BMAD `sprint-status.yaml`, `epics-done.md`, or similar. BMAD story files + code-review reports are dev aids and audit trail, not status.
-3. **Issues stay OPEN until batch→main lands.** Per-issue PRs target the batch branch with `Refs #<N>` (NOT `Closes #<N>`). Phase 4 closes each batched issue explicitly after detecting the manual batch→main merge.
+3. **Issues stay OPEN until batch→base-branch lands.** Per-issue PRs target the batch branch with `Refs #<N>` (NOT `Closes #<N>`). Phase 4 closes each batched issue explicitly after detecting the manual batch→base-branch merge.
 4. **Strict serialization.** Issue `i+1` cannot start until issue `i` is merged into the batch branch and its worktree torn down. No parallel branches or worktrees.
 5. **Four sub-agents per issue (model-mixed); two sub-agents for batch QA.** Each agent has ONE bounded job matching the natural terminal state of its BMAD skill.
 6. **Autonomous through cheap retries + one recovery attempt; pause and converse when both have failed.** The orchestrator handles transient failures without bothering the user: per-slot crash retries (2), terminal-line recovery (1 SendMessage), and one dedicated Opus recovery sub-agent on `incomplete`. If all of those fail, the orchestrator PAUSES the queue: prints the diagnosis + failure-folder path, then stops and waits for the user's free-form direction. No `AskUserQuestion`, no multi-option menu — just diagnosis + halt + conversation. The user picks skip / retry / fix-manually / abort. Revert + GitHub comment + worktree cleanup happen only AFTER the user picks "skip" (or equivalent). The only OTHER hard halts are Phase 0 precondition failures and explicit user "stop" mid-loop.
@@ -140,11 +145,11 @@ Examples: *"Add user invitation flow for admins"* → `add-user-invitation-flow-
 ~/Downloads/batch-<repo-name>-<timestamp>-i<N1>-<N2>-<N3>/
 ├── run.jsonl              ← append-only log (one JSON object per line)
 ├── lessons-learned.md     ← append-only findings log (for SKILL improvement, not status)
-├── qa-report.html         ← created at end of Phase 2 by pr-author
+├── qa-report.html         ← created at end of Phase 2 by pr-author (NEUTRAL, exhaustive test plan)
 └── manifest.md            ← written at end of Phase 4 (success) or on halt
 ```
 
-Preserved on success for later inspection. The user's long-lived status presentation stays at `~/Downloads/` root and is never moved into the session folder.
+`qa-report.html` is a **neutral, exhaustive test plan for an independent full-round QA agent** (e.g. `/guided-qa-orion`) — not a status or sign-off artifact. It is written so a downstream QA agent can visit every corner of the batch: claims are phrased as things to *verify* (never asserted as already-proven), and it explicitly calls out risks and what the automated gates did NOT cover. The fact that Phase-2 gates passed does not make a feature correct — the report exists precisely so a human/agent QA pass can find what the gates missed (see the pr-author prompt's "Tone & neutrality" mandate). Preserved on success for later inspection. The user's long-lived status presentation stays at `~/Downloads/` root and is never moved into the session folder.
 
 ### Lessons-learned file
 
@@ -184,11 +189,15 @@ Preserved on success for later inspection. The user's long-lived status presenta
 
 Append when something surprising / blocking / notably-smooth happens (precondition mismatch, environmental quirk, workaround worth promoting, behavior that worked surprisingly well). Mundane progress goes to `run.jsonl`, not here.
 
+**One thing ALWAYS warrants a finding: a TODO/FIXME/HACK/XXX marker left in the code during development** (or a deliberately-deferred feature/gap). These are easy to bury and forget — so the agent that introduces or notices them appends a ⚠️ finding naming each marker (`<file>:<line>`), what was deferred, and why. Agent C step 5b is the primary enforcement point (its diff scan catches markers from Agent A/B/C alike); the batch-QA agents do the same for anything they leave. This is the durable "don't forget the gap" record, distinct from the `annotations[]`/PR-body/qa-report surfacing of the same markers.
+
 ### Batch branch + timestamps
 
 Resolve once at Phase 0:
 - `<gh-login>` = `gh api user --jq .login`
 - `<repo-root>` = `git rev-parse --show-toplevel`
+- `<base-branch>` = the branch the orchestrator is on at Phase 0 = `git rev-parse --abbrev-ref HEAD`. The batch forks from it and the Phase-2 Draft PR targets it. `main` by default; any other branch when the user runs the skill from a feature/integration branch or a separate worktree (so `main` stays untouched). Must exist on `origin` so the Draft PR can target it (Phase 0 step 4 pushes it if it's local-only).
+- `<default-branch>` = the repo's actual default branch = `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` (`main`/`master`). Used only where the default branch specifically matters; the batch fork source and PR target are `<base-branch>`, not this.
 - `<repo-name>` = Phase 0 step 6 resolution (basename → memory override → ask-and-remember if ambiguous)
 - `<worktree-parent>` = parent dir of `<repo-root>`
 - `<timestamp>` = local time formatted `DD_MM_YYYY-HH_MM` (filename-safe on Windows; minute resolution)
@@ -220,9 +229,10 @@ Written at end-of-run (`succeeded` / `succeeded-with-failures` / `succeeded-with
 # batch-<repo-name>-<timestamp>-<issue-suffix>
 
 **Status:** <one of the five>
+**Base branch:** <base-branch>
 **Batch branch:** <batch-branch>
-**Draft PR (batch→main):** <pr-url-or-N/A>
-**Final merge SHA on main:** <sha-or-N/A>
+**Draft PR (batch→base-branch):** <pr-url-or-N/A>
+**Final merge SHA on base branch:** <sha-or-N/A>
 **Total wall time:** <duration>
 
 ## Issues
@@ -289,10 +299,12 @@ Both boilerplates share the same universal contracts (return-summary, project-ru
 
    Both must be selected. Else halt: "This skill assumes BMAD + GitHub Issues. Both must be in place — see skill description." Exit cleanly without creating branches or session folder.
 
-1. **Verify cwd**: `git rev-parse --show-toplevel` resolves cleanly; capture `<repo-root>`. Not in a git repo → stop.
-2. **Verify branch**: `git rev-parse --abbrev-ref HEAD` must be `main` (or `master` if the repo's default — check `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`).
+1. **Verify cwd**: `git rev-parse --show-toplevel` resolves cleanly; capture `<repo-root>`. Not in a git repo → stop. (`<repo-root>` may itself be a worktree checkout — that is fine and is one of the supported ways to keep `main` untouched.)
+2. **Resolve the base branch**: `<base-branch>` = `git rev-parse --abbrev-ref HEAD` (the branch you invoked from). This is the branch the batch forks from and the Draft PR will target — it does NOT have to be the repo's default branch. Also resolve `<default-branch>` = `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`. If `<base-branch>` ≠ `<default-branch>`, print one line: *"Base branch is `<base-branch>` (not the default `<default-branch>`) — the batch will fork from and target it; `<default-branch>` stays untouched."* A detached HEAD (`<base-branch>` == `HEAD`) → stop with "Check out a branch first; the skill needs a named base branch to fork the batch from and target the Draft PR at." Running from `main` reproduces the classic behavior.
 3. **Verify working tree**: `git status --porcelain` must show no STAGED changes. Untracked files outside run scope are OK (log, don't block). Modified tracked files BLOCK.
-4. **Sync main**: `git fetch origin <default-branch> && git pull --ff-only origin <default-branch>`. Non-fast-forward → stop.
+4. **Sync the base branch**: `git fetch origin <base-branch>`.
+   - If `origin/<base-branch>` exists: `git pull --ff-only origin <base-branch>`. Non-fast-forward → stop ("Base branch `<base-branch>` has diverged from origin — reconcile it before running.").
+   - If `origin/<base-branch>` does NOT exist (a local-only branch — common when running from a fresh integration branch/worktree): push it so the Draft PR can target it — `git push -u origin <base-branch>`. Log `base-branch-published`. (The skill needs the base branch on `origin` so GitHub can host the batch→base-branch Draft PR.)
 5. **Parse + validate args.** No args → `@me`.
 
 5b. **Queue ordering**:
@@ -328,12 +340,12 @@ Both boilerplates share the same universal contracts (return-summary, project-ru
 
 8b. **Create lessons-learned file** at `<session-folder>/lessons-learned.md` with the template above (zero findings initially).
 
-9. **Create batch branch** from latest main and push:
+9. **Create batch branch** from the latest base branch and push:
    ```
-   git branch <batch-branch> <default-branch>
+   git branch <batch-branch> <base-branch>
    git push -u origin <batch-branch>
    ```
-   Verify with `git ls-remote --exit-code origin <batch-branch>`. Log `batch-branch-created`.
+   (`<base-branch>` is `main` in the classic case, or your feature/integration branch when running off-main.) Verify with `git ls-remote --exit-code origin <batch-branch>`. Log `batch-branch-created`.
 
 10. **Stale stack-lock cleanup**: read `~/.claude/dev-stack.lock` if present; if recorded PID is dead, remove.
 
@@ -347,7 +359,7 @@ For each issue `N` in queue order:
 
 ### 1.1 Pre-flight (orchestrator)
 
-a. Re-sync batch branch locally: `git fetch origin <batch-branch>`. (Orchestrator stays on main.)
+a. Re-sync batch branch locally: `git fetch origin <batch-branch>`. (Orchestrator stays on `<base-branch>`.)
 b. Stale stack-lock: clear if PID dead.
 c. Re-fetch the issue: confirm state is OPEN.
 d. Derive slug + branch name `feature/<N>-<slug>`.
@@ -357,7 +369,7 @@ Log: `queued`.
 
 ### 1.2 Branch + worktree creation
 
-Story branch forks from the **current tip of the batch branch** (NOT main) so issue `N` sees issue `N-1`'s already-merged code:
+Story branch forks from the **current tip of the batch branch** (NOT the base branch) so issue `N` sees issue `N-1`'s already-merged code:
 
 ```bash
 git worktree add -b feature/<N>-<slug> <worktree-parent>/<repo-name>-<N> origin/<batch-branch>
@@ -377,7 +389,7 @@ c. Post 📦 Batch status — start comment on the issue:
    Worktree: <worktree-parent>/<repo-name>-<N>
    Session folder: <session-folder>
    Position in queue: <i> of <total>.
-   Issue stays open until the batch branch is merged into main.
+   Issue stays open until the batch branch is merged into the base branch (<base-branch>).
    ```
 
 Log: `issue-prepped`.
@@ -442,7 +454,7 @@ When Agent D returns:
   - **Empty rollup (no workflow fired for this PR's changed paths):** do NOT wave it through as vacuously green. The merge is acceptable ONLY if Agent D logged `pre-merge-local-gate-pass` — the green local build + test it ran as merge evidence per step 8b. If the rollup is empty AND no `pre-merge-local-gate-pass` evidence exists in this issue's run-log/return summary, Agent D passed the gate vacuously — treat it as a gate breach.
 If the merge is not acceptable by either branch above, do NOT proceed to §1.5. Instead:
   1. Log `red-ci-merge-detected` with the offending PR + the list of non-green checks (or, for an empty rollup with no `pre-merge-local-gate-pass` evidence, the detail `empty rollup waved through without local-build evidence`).
-  2. Revert the contaminating squash off the batch branch: `git checkout <batch-branch> && git revert --no-edit <squash-sha> && git push origin <batch-branch>` (then `git checkout` back to the default branch — the orchestrator never lingers off main). Verify the revert landed (`git merge-base --is-ancestor <revert-sha> origin/<batch-branch>`).
+  2. Revert the contaminating squash off the batch branch: `git checkout <batch-branch> && git revert --no-edit <squash-sha> && git push origin <batch-branch>` (then `git checkout <base-branch>` to return — the orchestrator never lingers off the base branch). Verify the revert landed (`git merge-base --is-ancestor <revert-sha> origin/<batch-branch>`).
   3. Post a 🚧 Batch status on issue #<N>: *"Per-issue PR #<pr> merged into the batch with non-green CI (<failing-checks>); the squash has been reverted off the batch branch. This is a hard gate — see Core Principle #1."*
   4. Route to §1.7 with diagnosis `"Agent D merged PR #<pr> into the batch with non-green CI (<failing checks>); squash reverted off batch — needs investigation before retry"`. Append a lessons-learned finding (the gate failed; the next iteration should harden Agent D step 8b).
 This backstop catches a gate miss; Agent D step 8b is the primary defense (it should make this audit a no-op on every healthy run). Log `post-merge-ci-audit-clean` when acceptable — with the audited check count for a non-empty rollup, or the `pre-merge-local-gate-pass` reference for an empty-rollup local-build merge.
@@ -569,7 +581,7 @@ If the signal is ambiguous, ask one clarifying question — "do you want me to s
 **If skip-and-continue:**
 
 a. **Revert any commits this issue contributed to the batch branch.** Usually none (Agents B and C don't commit; Agent D commits inside the per-issue PR). But check: if Agent D's squash already landed (failure happened post-merge), revert: `gh pr view <pr-number> --json mergeCommit --jq .mergeCommit.oid` → on the batch branch: `git checkout <batch-branch> && git revert --no-edit <squash-sha> && git push origin <batch-branch>`. If no commits hit batch, no revert.
-b. **Close the per-issue PR** if opened: `gh pr close <pr-number> --comment "Closed by /sequential-bmad-github-orion-v3 §1.7: this issue was skipped by the user after batch-pipeline pause. See <session-folder>/failures/<N>-<slug>/diagnosis.md."`. Leave the failed branch on origin.
+b. **Close the per-issue PR** if opened: `gh pr close <pr-number> --comment "Closed by /sequential-bmad-github-orion-v4 §1.7: this issue was skipped by the user after batch-pipeline pause. See <session-folder>/failures/<N>-<slug>/diagnosis.md."`. Leave the failed branch on origin.
 c. **Remove the worktree**: `git worktree remove --force <path>` then `git worktree prune`. Belt-and-suspenders cross-shell cleanup.
 d. **Post 🚧 Failure comment** on the GitHub issue:
    ```
@@ -583,7 +595,7 @@ d. **Post 🚧 Failure comment** on the GitHub issue:
    - Story branch on origin: `feature/<N>-<slug>` (NOT deleted)
    - Batch state: any contributions from this issue have been reverted off the batch branch.
 
-   This issue remains OPEN and assigned to you. To resume manually: check out `feature/<N>-<slug>` in a fresh worktree, address the diagnosis, push, open a PR against `main`.
+   This issue remains OPEN and assigned to you. To resume manually: check out `feature/<N>-<slug>` in a fresh worktree, address the diagnosis, push, open a PR against the base branch (`<base-branch>`).
    ```
 e. **Remove `wip` label**: `gh issue edit <N> --remove-label wip` (suppress errors).
 f. **Append to `annotations[]`**: `{ issue_number: N, kind: "failure", slug, failed_at_phase: <slot>, diagnosis: <one-line>, recovery_attempts: 1, failure_folder: <path>, pr_url: <url-or-null>, user_action: "skip" }`.
@@ -595,7 +607,7 @@ g. Log `issue-failed-user-skipped`.
 
 #### Step 5 — Continue (only after skip)
 
-Resume from §1.1 for issue `N+1`. Orchestrator is back on main; batch branch is in a known-green state (revert applied if needed); `annotations[]` has one more `failure`-kind entry.
+Resume from §1.1 for issue `N+1`. Orchestrator is back on `<base-branch>`; batch branch is in a known-green state (revert applied if needed); `annotations[]` has one more `failure`-kind entry.
 
 #### End-of-queue summary (printed before Phase 2 spawn)
 
@@ -686,6 +698,7 @@ full-e2e-suite: <pass>/<total>
 live-qa: <N-bugs-found-and-fixed> | clean
 fix-commit-shas: [<sha1>, <sha2>, ...]   # empty list if no bugs
 environmental-escape-used: yes — <substitute coverage> | no
+coverage-caveats: <honest gaps the gates did not prove, or "none">
 stack-lock-owned: no                      # must be no — released in step E
 ```
 
@@ -701,18 +714,18 @@ It also emits a terminal `agent-status: done | incomplete — <reason>` line (pe
 
 Agent tool args: `subagent_type: "general-purpose"`, `model: "sonnet"`, foreground.
 
-Spawn with concatenated prompt: `prompts/shared-boilerplate-batch-qa.md` + `prompts/batch-qa-pr-author.md`. Inject `<count>`, merged issues list, `<failed-issues-list>`, `<carry-forward-flags-block>`, `<new-todos-by-issue-block>`, `<deferral-filing-block>`, and the verbatim handoff block from 2.2a.
+Spawn with concatenated prompt: `prompts/shared-boilerplate-batch-qa.md` + `prompts/batch-qa-pr-author.md`. Inject `<count>`, merged issues list, `<base-branch>` (the Draft PR target), `<failed-issues-list>`, `<carry-forward-flags-block>`, `<new-todos-by-issue-block>`, `<deferral-filing-block>`, and the verbatim handoff block from 2.2a.
 
 When `pr-author` returns:
 - **Capture the `deferrals-filed` block** from its return summary (one line per filed/reused tracking issue: `kind | key | issue: #N | action: created|reused | linked-prs: #<pr1>,#<pr2>`). Append each to a run-level `filed_deferrals[]` register and log `deferrals-filed` with the count of created vs reused. This register feeds the Phase 4.3 scope-ledger panel. If the block is absent on an otherwise-green return, log `deferrals-filed-missing` and append a lessons-learned finding (the filing step is mandatory whenever `<deferral-filing-block>` was non-empty) — do NOT halt.
-- `batch-qa-status: green` → log `batch-qa-returned green`, capture Draft PR number + URL. Post 📦 Batch status — "Draft PR opened: <pr-url>. Awaiting human QA + manual merge. Issue will close when batch lands on main." on EACH still-batched issue. Log `queue-end`. Proceed to §2.3 then Phase 3.
-- `batch-qa-status: failed — <reason>` → DO NOT HALT. If pr-author opened a Draft PR with the DO NOT MERGE callout itself, just log + post the warning comment on each batched issue. If it returned without opening (e.g. it incomplete'd during writing), the orchestrator opens the PR from main targeting the batch branch in draft mode with title `[batch] <gh-login> — ❌ QA FAILED — <count-merged> issues (#<...>) — <date>` and the DO NOT MERGE body block. Post 📦 Batch status on each still-batched issue: *"⚠️ Batch QA failed — Draft PR opened with DO NOT MERGE callout."*. Append a lessons-learned finding. Proceed to Phase 3 pause-and-converse anyway — the user may resolve the failure manually and merge, in which case "merged" still triggers a normal Phase 4 finalization. Log `queue-end-with-qa-failure`.
+- `batch-qa-status: green` → log `batch-qa-returned green`, capture Draft PR number + URL. Post 📦 Batch status — "Draft PR opened: <pr-url>. Awaiting human QA + manual merge. Issue will close when batch lands on the base branch (<base-branch>)." on EACH still-batched issue. Log `queue-end`. Proceed to §2.3 then Phase 3.
+- `batch-qa-status: failed — <reason>` → DO NOT HALT. If pr-author opened a Draft PR with the DO NOT MERGE callout itself, just log + post the warning comment on each batched issue. If it returned without opening (e.g. it incomplete'd during writing), the orchestrator opens the Draft PR with `--base <base-branch> --head <batch-branch>` with title `[batch] <gh-login> — ❌ QA FAILED — <count-merged> issues (#<...>) — <date>` and the DO NOT MERGE body block. Post 📦 Batch status on each still-batched issue: *"⚠️ Batch QA failed — Draft PR opened with DO NOT MERGE callout."*. Append a lessons-learned finding. Proceed to Phase 3 pause-and-converse anyway — the user may resolve the failure manually and merge, in which case "merged" still triggers a normal Phase 4 finalization. Log `queue-end-with-qa-failure`.
 - `agent-status: incomplete` (e.g. merge-conflict resolution failed; pr-author returned a conflict-diagnosis path and asked for direction) → pause and converse with the user (same pattern as §1.7 step 3). On resume signal, spawn pr-author again from where it left off, or follow the user's chosen path.
 - Missing `batch-qa-status:` OR ambiguous → treat as `failed — <missing line; assuming worst case>` and follow the failed flow. Do NOT halt.
 
 ### 2.3 Batch-QA worktree disposition
 
-Do NOT tear down the batch-QA worktree at end of Phase 2 — preserve it so the user can navigate the integrated code during manual QA. The orchestrator removes it in Phase 4 after batch→main merge.
+Do NOT tear down the batch-QA worktree at end of Phase 2 — preserve it so the user can navigate the integrated code during manual QA. The orchestrator removes it in Phase 4 after the batch→base-branch merge.
 
 ---
 
@@ -740,7 +753,7 @@ Batch worktree (preserved for manual QA): <worktree-parent>/<repo-name>-batch-<t
 
 Then STOP. Do NOT call `AskUserQuestion`. Do NOT call `ScheduleWakeup`. Wait for the user's next free-form message and respond conversationally.
 
-If the conversation is cleared before the user signals, they can re-trigger Phase 4 in a fresh session by invoking the skill again with the session folder as an explicit argument: `/sequential-bmad-github-orion-v3 finalize <session-folder>`. In that mode the orchestrator skips Phases 0–3 and runs Phase 4 directly against the recorded batch state. (The `.session-complete` sentinel at Phase 4.5 then prevents accidental double-finalize.)
+If the conversation is cleared before the user signals, they can re-trigger Phase 4 in a fresh session by invoking the skill again with the session folder as an explicit argument: `/sequential-bmad-github-orion-v4 finalize <session-folder>`. In that mode the orchestrator skips Phases 0–3 and runs Phase 4 directly against the recorded batch state. (The `.session-complete` sentinel at Phase 4.5 then prevents accidental double-finalize.)
 
 ### Signal handling (paraphrase-tolerant)
 
@@ -749,9 +762,9 @@ If the conversation is cleared before the user signals, they can re-trigger Phas
 - **"wait, I haven't merged yet" / "later" / "not yet"** → acknowledge ("Okay, still waiting. Let me know when you've decided.") and continue waiting.
 - **Ambiguous** → ask one clarifying question; do not act without a clear signal.
 
-### Main drift during the wait
+### Base-branch drift during the wait
 
-Ignored. The orchestrator does NOT compare the batch base ref against main during the wait. If main advances and the merge becomes problematic, that's a problem the user resolves at merge time (the batch-QA pr-author's autonomous additive-resolution attempt during Phase 2 is the only place the skill touches main-drift; during Phase 3 the orchestrator is just waiting for a signal).
+Ignored. The orchestrator does NOT compare the batch base ref against the base branch during the wait. If the base branch advances and the merge becomes problematic, that's a problem the user resolves at merge time (the batch-QA pr-author's autonomous additive-resolution attempt during Phase 2 is the only place the skill touches base-branch drift; during Phase 3 the orchestrator is just waiting for a signal).
 
 ---
 
@@ -763,16 +776,16 @@ Triggered by the user's "merged" signal in Phase 3, or by direct invocation in f
 
 Read `<session-folder>/.session-complete` if present. If it exists, this batch is already finalized — print *"Batch already finalized at <finalized-at>; nothing to do."* and exit. Do NOT re-run 4.1 → 4.5 (would re-post close comments, re-write the stats report, overwrite the manifest).
 
-### 4.1 — Verify merge on main
+### 4.1 — Verify merge on the base branch
 
 ```
 cd <repo-root>
-git fetch origin <default-branch>
-git pull --ff-only origin <default-branch>
-git merge-base --is-ancestor <merge-sha> origin/<default-branch>
+git fetch origin <base-branch>
+git pull --ff-only origin <base-branch>
+git merge-base --is-ancestor <merge-sha> origin/<base-branch>
 ```
 
-If not ancestor → log hard error, re-fetch once after 60s; if still missing, log `merge-sha-not-found-on-main` AND continue with 4.2 → 4.5 anyway (the merge is reported by `gh` so audit comments + closes are still correct).
+(`<base-branch>` is `main` in the classic case.) If not ancestor → log hard error, re-fetch once after 60s; if still missing, log `merge-sha-not-found-on-base` AND continue with 4.2 → 4.5 anyway (the merge is reported by `gh` so audit comments + closes are still correct).
 
 ### 4.2 — Close each batched issue
 
@@ -785,7 +798,7 @@ If not ancestor → log hard error, re-fetch once after 60s; if still missing, l
 ```
 for each N in <batched-issues>:
   # (pre-close link check above has already run for N)
-  gh issue comment N --body "✅ This issue shipped via batch <batch-branch>, merged to main as <merge-sha> in PR #<pr-number>.
+  gh issue comment N --body "✅ This issue shipped via batch <batch-branch>, merged to <base-branch> as <merge-sha> in PR #<pr-number>.
 
   - Per-issue PR: #<story-pr-number>
   - Squash commit on batch: <squash-sha>
@@ -834,7 +847,7 @@ If present, parse + use for the target-rate section. If absent, OMIT target-rate
 **4.3.d — Render the HTML.** Self-contained single-page (no JS, no external assets). Dark theme matching the user's existing deck (`#0d1117` bg, `#c9d1d9` text). Single scrollable page, not a slide deck.
 
 Required sections (in order):
-1. Header — repo name, today's date+time (DD-MM-YYYY HH:mm), batch PR # + URL, batched issues list, status pill (`✅ Batch merged` / `🚧 With failures: K issues skipped` / `❌ Batch QA failed`). Footer: "Generated by /sequential-bmad-github-orion-v3 v<X.Y>".
+1. Header — repo name, today's date+time (DD-MM-YYYY HH:mm), batch PR # + URL, batched issues list, status pill (`✅ Batch merged` / `🚧 With failures: K issues skipped` / `❌ Batch QA failed`). Footer: "Generated by /sequential-bmad-github-orion-v4 v<X.Y>".
 2. Counts at a glance — two side-by-side stat-card groups (Stories | Issues): total, closed (green), open (yellow), closed share %.
 3. Current velocity — Metric · Stories · Issues. Rows: Closed since project start (with start date footnote); Per cal day; Per work day; Per 7-day week.
 4. Predictions (linear forecast) — Scenario · Stories finish · Issues finish. Rows: Current pace · Conservative · Aggressive.
@@ -871,7 +884,7 @@ batched-issues=<comma-separated list of issue numbers>
 batch-pr=<batch-pr-url>
 ```
 
-This sentinel is what step 4.0 checks for double-finalize protection (e.g. when the user manually invokes `/sequential-bmad-github-orion-v3 finalize <session-folder>` against an already-finalized run).
+This sentinel is what step 4.0 checks for double-finalize protection (e.g. when the user manually invokes `/sequential-bmad-github-orion-v4 finalize <session-folder>` against an already-finalized run).
 
 Print final summary (batched issues, PR URL, merge SHA, stats-report path, wall time). Log `session-complete`.
 
@@ -883,7 +896,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 
 ### Hard halts
 
-1. **Phase 0 precondition failure** — not in a git repo, not on the default branch, working tree has staged uncommitted changes, default branch is not `main`/`master`, BMAD slash-commands missing (and user did not confirm them at Phase 0 step 0), `gh auth status` fails, repo-name ambiguous and user declined to disambiguate. Stops before creating any branches or session folders.
+1. **Phase 0 precondition failure** — not in a git repo, HEAD is detached (no named base branch to fork from / target), base branch has diverged from origin and won't fast-forward, working tree has staged uncommitted changes, BMAD slash-commands missing (and user did not confirm them at Phase 0 step 0), `gh auth status` fails, repo-name ambiguous and user declined to disambiguate. Stops before creating any branches or session folders. (Being on a non-default branch is NOT a failure — that's the supported off-main mode; the only branch requirement is that HEAD points at a named branch that can be synced/published to origin.)
 2. **Explicit user "stop" mid-loop** — clear stop intent ("stop", "halt", "abort the queue"). Finish the in-flight sub-agent's current tool call if possible, write a §1.7-style failure record for the in-flight issue, manifest with `Status: halted` + diagnosis "user requested stop", exit.
 
 ### Soft failures (orchestrator continues; flags + diverts)
@@ -905,7 +918,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 | Phase 4 per-issue close failure | Log + continue with remaining issues (best-effort) |
 | Phase 4 stats-report write failure | Log + continue (best-effort) |
 | Phase 4 worktree teardown failure | `cleanup-incomplete` warning + continue |
-| Phase 4 merge-SHA not on local main after refetch | One re-fetch after 60s; if still missing, log hard error AND continue with remaining 4.x steps |
+| Phase 4 merge-SHA not on local base branch after refetch | One re-fetch after 60s; if still missing, log hard error AND continue with remaining 4.x steps |
 | Phase 4 invoked but `.session-complete` already exists | Print "Batch already finalized" and exit — no double-finalize |
 
 ### On any soft failure
@@ -921,7 +934,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 
 `<session-folder>/manifest.md` is written at end-of-run with one of:
 
-- `succeeded` — all queued issues merged + batch-QA green + batch→main merged.
+- `succeeded` — all queued issues merged + batch-QA green + batch→base-branch merged.
 - `succeeded-with-failures` — at least one issue failed via §1.7 but batch still completed end-to-end (Draft PR opened; if merged, Phase 4 finalized).
 - `succeeded-with-qa-failure` — all queued issues merged but Phase 2 batch-QA returned failed; Draft PR opened with DO NOT MERGE callout; user resolved manually (merged or closed).
 - `abandoned` — user signaled "closed" / "abandoned" at Phase 3 instead of merging.
@@ -932,8 +945,9 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 ## What this skill does NOT do
 
 - Does not discover or select issues itself (that's `/assign-issues-orion`'s job — run it first, then pass `@me` here to pick up what it assigned you, or supply issue numbers explicitly).
-- Does not poll for the batch→main merge. Phase 3 is pause-and-converse only — no `ScheduleWakeup`, no hourly poll, no auto-finalize.
-- Does not rebase the batch branch onto main during Phase 3 wait — drift is the user's concern at merge time.
+- Does not poll for the batch→base-branch merge. Phase 3 is pause-and-converse only — no `ScheduleWakeup`, no hourly poll, no auto-finalize.
+- Does not rebase the batch branch onto the base branch during Phase 3 wait — drift is the user's concern at merge time.
+- Does not touch the repo's default branch when the base branch is something else. Running off-main forks/targets only `<base-branch>`; `main` is left exactly as it was.
 - Does not force-push (except `--force-with-lease` during batch-QA additive-rebase) or skip hooks.
 - Does not delete worktrees or branches of issues that haven't completed (preserved on failure).
 - Does not run live-stack QA per issue. The Junior-tester gate runs ONCE on the integrated batch in Phase 2.
@@ -965,7 +979,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 - **Prompt assembly**: at sub-agent spawn time, the orchestrator concatenates the appropriate boilerplate (`prompts/shared-boilerplate.md` for per-issue agents A/B/C/D + recovery; `prompts/shared-boilerplate-batch-qa.md` for the two Phase 2 batch-QA agents) + the slot's prompt file, then substitutes every `<bracketed-placeholder>` from the run state before passing to the Agent tool. Sub-agents see one self-contained prompt; the file split is purely a maintainability artifact.
 - **Shell tool selection**: prefer the platform's native shell (PowerShell on Windows, Bash on POSIX). Both work via the corresponding tool. git/gh commands are identical; only filesystem ops differ (`Remove-Item` vs `rm -rf`, `Move-Item` vs `mv`, `Test-Path` vs `test -e`).
 - **Log file append**: PowerShell `Add-Content -Path <path> -Value <json> -Encoding utf8`, or Bash `echo '<json>' >> <path>`. JSONL = one object per line.
-- **Stay on default branch**: the orchestrator must remain on `main` (or the repo's default) in `<repo-root>` throughout. Never `cd` away. All worktree operations use absolute or sibling-relative paths.
+- **Stay on the base branch**: the orchestrator must remain on `<base-branch>` (the branch it was invoked from — `main` in the classic case, or any feature/integration branch) in `<repo-root>` throughout. Never `cd` away. All worktree operations use absolute or sibling-relative paths. The brief `git checkout <batch-branch>` for a §1.5 revert is the only allowed excursion, and it always returns to `<base-branch>` immediately.
 - **Mid-loop user message**: clear stop intent ("stop", "halt", "abort") → explicit-user-stop hard halt. Finish the in-flight sub-agent's current tool call if possible, write §1.7-style failure record for the in-flight issue, manifest `Status: halted` + diagnosis "user requested stop", exit. Non-stop messages mid-loop → answer briefly then resume; queue keeps running unless explicitly stopped.
 
 ---

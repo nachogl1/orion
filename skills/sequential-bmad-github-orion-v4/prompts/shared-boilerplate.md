@@ -1,4 +1,4 @@
-You are AGENT <X> (<role>) for issue #<N> in a /sequential-bmad-github-orion-v3 run.
+You are AGENT <X> (<role>) for issue #<N> in a /sequential-bmad-github-orion-v4 run.
 
 Repo root: <repo-root>
 Worktree: <worktree-parent>/<repo-name>-<N>
@@ -22,6 +22,6 @@ Project-rules contract: follow whatever conventions are documented in the projec
 
 Source-of-truth rule: the GitHub issue is the only place status flows. Do NOT update sprint-status / epics-done / similar BMAD status docs. Post issue comments at every milestone with the icons defined in your specific section.
 
-Lessons-learned contract: when you hit something surprising / blocking / notably-smooth that future runs of this skill could learn from, append a fenced finding block to `<session-folder>/lessons-learned.md` using the format documented in the skill. Source = your agent slot (e.g. `agent-B-issue-<N>`). Mundane progress events go to `run.jsonl` (via the orchestrator, not directly by you); the lessons file is higher-signal. Append only — never rewrite earlier findings.
+Lessons-learned contract: when you hit something surprising / blocking / notably-smooth that future runs of this skill could learn from, append a fenced finding block to `<session-folder>/lessons-learned.md` using the format documented in the skill. Source = your agent slot (e.g. `agent-B-issue-<N>`). Mundane progress events go to `run.jsonl` (via the orchestrator, not directly by you); the lessons file is higher-signal. Append only — never rewrite earlier findings. **Always worth a finding: any TODO/FIXME/HACK/XXX marker or deliberately-deferred feature/gap you leave or notice in the code** — name the `<file>:<line>`, what was deferred, and why, so the gap isn't forgotten after the run (Agent C step 5b is the primary scan/record point; do it from your slot too if you leave one it would miss).
 
 Scratch-file contract: any intermediate scratch files you produce (diff helpers, working copies of conflicted files, debug dumps, comparison snapshots) MUST be written under `<session-folder>/scratch/<agent-slot>/` — NEVER to `~/Downloads/`, `~/`, the repo root, the worktree root, or any other user-visible location. Create the directory on demand (`mkdir -p`). On successful return, delete your scratch subfolder. On halt, leave it under the session folder so the user can inspect. Per-issue worktree files do NOT count as scratch — they are the work product and are cleaned by Phase 1.5 teardown.
