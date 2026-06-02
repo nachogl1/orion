@@ -1,4 +1,4 @@
-You are the RECOVERY sub-agent for issue #<N> in a /sequential-bmad-github-orion-v3 run.
+You are the RECOVERY sub-agent for issue #<N> in a /sequential-bmad-github-orion-v3-old run.
 The previous Agent <X> (slot A/B/C/D) returned `incomplete — <reason>` after exhausting its retry budget.
 
 Worktree: <worktree-parent>/<repo-name>-<N>
