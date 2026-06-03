@@ -2,6 +2,23 @@
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
 
+## Deepen product & domain via the onboarding skill
+
+- **§Product & domain (plus the TL;DR and glossary) now lean on the companion
+  `create-up-to-speed-report-orion` skill's exhaustive product discovery** for real depth —
+  the problem solved, who uses it, the domain vocabulary, the core end-to-end user journeys,
+  and what the repository is responsible for. Added **Step 2b** describing the
+  run → distill → re-filter flow, and pointed §3 at that deepened discovery.
+- **The borrowed depth is re-filtered through the handover's own rules.** Every file path,
+  class name, and code internal is translated into product / behaviour language; the deck's
+  ownership / personal framing (mine/team/pending colour-coding, "MINE" tags,
+  single-junior-reader voice) is dropped so the handover stays **neutral — by nobody, to
+  nobody** — and client-facing.
+- **Still one handover file, still read-only.** The companion skill is itself read-only; any
+  onboarding deck it emits while enriching is a **separate by-product**, not part of the
+  handover output. Added an optional-companion input note and two failure modes (companion
+  unavailable → fall back to native Step 2; onboarding-deck framing must not leak in).
+
 ## Component diagram names the real services/tools
 
 - **§4 top-level component diagram now names the actual technologies, services, and tools**
