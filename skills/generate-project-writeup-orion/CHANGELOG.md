@@ -4,6 +4,23 @@ This skill has **no `-vN` convention** — it is edited in place. Record notable
 
 ## Unreleased
 
+- **Neutral on completion (tone).** The skill no longer frames the output as a "closure"
+  report or implies the project is finished / production-ready — but equally never states it is
+  unfinished. New operating principle bans completion/production-readiness claims ("finished",
+  "complete", "closed out", "production-ready") *and* their inverse ("unfinished", "not done"),
+  in favour of neutral framing ("delivered to date", "current state", "the work covered by this
+  report"). Reframed the frontmatter description, intro, and "When to invoke" from
+  closure/"marks the project as delivered" to a project write-up / summary of work delivered.
+- **Always confirm project start & end dates and show the total duration.** Step 1 now
+  explicitly confirms the real start/end dates with the user (git span shown only as a hint) and
+  displays the computed total elapsed duration, which feeds the cover dates and the economic
+  model's `actual_calendar_months` (Step 5). Updated the Inputs list and the title-block /
+  financial-summary content to carry the dates + duration.
+- **Capture contributor team-origin (BU vs. central specialist team).** Step 4 now also asks
+  which contributors are embedded business-unit (BU) developers vs. members of a central/shared
+  specialist delivery team, and records the split in the cover/metrics and financial-summary
+  working. Labels adapt to whatever the user calls these groups (kept generic per the
+  distribution-safety rule — no specific team name baked into the skill).
 - **New Step 1b — ask for an RFA / supporting documents up front.** In addition to the
   existing metadata and economic questions, the skill now proactively asks the user for an
   **RFA** (Request for Approval / business-case doc) and any other source documents that carry
