@@ -1,6 +1,6 @@
 ---
 name: project-handover-orion
-description: "Generate a single self-contained dark-themed HTML PROJECT HANDOVER document for the current repository, dropped into the user's Downloads folder, written for a BRAND-NEW JUNIOR DEVELOPER who just joined and is taking the project over — assume zero knowledge of the tech stack and zero knowledge of the domain, explained in plain language, summarised and clear (every stack/domain term defined on first use, concrete examples from the actual repo). Tuned for OFFBOARDING: it captures the whole-project context plus the departing engineer's footprint (the areas they owned, their open branches/PRs, their WIP) — i.e. the in-their-head context a diff alone won't show. The doc is a scrolling reference page with a sticky table-of-contents: TL;DR, product & domain context, architecture & mental model WITH general-level ASCII diagrams of the project's components and how they interconnect plus a request/data-flow diagram (drawn from the real repo), repo & dev environment (auto-detected build/test/run), current state (live from GitHub when a remote + gh are available, else local git), git-history footprint & ownership, prioritized open threads & next steps, known issues/gotchas/traps, open questions/decisions pending, resources & contacts, and a glossary. Detects the project's stack and conventions from its own files at run time — assumes no stack; uses gh when present and degrades gracefully to local-only. STRICTLY READ-ONLY: it reads git + repo files + GitHub and writes ONE HTML file to Downloads; it never edits the repo and never commits. Use when the user says '/project-handover-orion', 'create a handover', 'I'm leaving the project / offboarding', 'hand this project over', or wants a single HTML file a successor can read to take over."
+description: "Generate a single self-contained dark-themed HTML PROJECT HANDOVER document for the current repository, dropped into the user's Downloads folder, written for a BROAD audience — clients and stakeholders as well as a brand-new joiner — assuming zero knowledge of the tech stack and zero knowledge of the domain, explained in plain language, summarised and clear (every stack/domain term defined on first use). NEUTRAL TONE: the document is addressed to nobody, by nobody — no 'I', no named author, no named successor, no departing-engineer framing or personal ownership. NO CODE INTERNALS: it describes the project at the level of general product behaviour, modules, and features — it never names classes or describes how classes/code wire together (code is often agent-generated and that detail is neither known nor stable). NO STALE-PRONE CONTENT: it deliberately omits open PRs, open branches, work-in-progress, and 'what to pick up next' — anything that flips within a day. The one status it carries is a DATED epics-and-stories snapshot: it lists every epic and every story with a short plain description and a done/not-done badge (green = done, red = not done). The doc is a scrolling reference page with a sticky table-of-contents: cover, TL;DR/overview, product & domain context, architecture & mental model WITH conceptual ASCII diagrams of the general components/modules and how they broadly interconnect plus a request/data-flow diagram for one core user action (all at product/behaviour level, no class or file names), how it's built & run (auto-detected setup/build/test/run, kept technical but module/feature-level), the full epics & stories listing with badges, and a glossary. Detects the project's stack and its backlog source (BMAD story docs / GitHub Issues / Jira — whichever it actually uses) at run time; assumes no stack. STRICTLY READ-ONLY: it reads git + repo files + the tracker and writes ONE HTML file to Downloads; it never edits the repo and never commits. Use when the user says '/project-handover-orion', 'create a handover', 'hand this project over', or wants a single shareable HTML file that explains the project and the delivery state of its epics and stories."
 user_invocable: true
 ---
 
@@ -15,188 +15,178 @@ user_invocable: true
 > project-specific.
 
 Produce a single self-contained dark-themed **HTML handover document** in the user's
-Downloads folder that gets a successor from "I've never seen this project" to "I know
-what it is, how it's built, where it stands, what the departing engineer owned, and
-exactly what I should pick up first."
+Downloads folder that takes **any reader — including clients and non-technical
+stakeholders, as well as a brand-new joiner** — from "I've never seen this project" to
+"I understand what it is, what it does, how it's broadly built, and the delivery state
+of every epic and story."
 
 The output is a **scrolling reference page with a sticky table-of-contents** (not a
-slide deck) — a successor will search it and return to it repeatedly, so anchored,
-scannable sections beat one-pass slides. It lives at
+slide deck) — readers will search it and return to it, so anchored, scannable sections
+beat one-pass slides. It lives at
 `~/Downloads/<repo-name>-handover-<YYYY-MM-DD>.html` (Windows:
 `%USERPROFILE%\Downloads\…`) so it's instantly shareable.
 
 ## When to invoke
 
-User says `/project-handover-orion`, says they're **offboarding / leaving the project**,
-asks to **hand the project over**, or wants a single HTML file a successor can read to
-take ownership.
+User says `/project-handover-orion`, asks to **create a handover** / **hand the project
+over**, or wants a single shareable HTML file that explains the project and the delivery
+state of its epics and stories.
 
 ## Operating principles (read these first)
 
-- **Audience: a brand-new junior developer who just joined the company** and is taking the
-  project over — assume **zero knowledge of this project's tech stack and zero knowledge of
-  the domain.** Write in **plain, friendly language**; define **every** stack term, library,
-  acronym, and domain word on first use; reach for a simple analogy when it helps (a recipe
-  for a template, a bouncer for auth — pick one that fits the actual code). Never assume they
-  know a framework, tool, or business concept the way a senior would.
-- **Summarised and clear — not a wall of text.** The goal is *fast comprehension*, not
-  exhaustiveness. Prefer short paragraphs, bullets, small tables, and one concrete example
-  over long prose. Each concept gets: a one-line plain definition → *why it exists here* → a
-  **concrete example pulled from this actual repo** (a real file/entity/endpoint, with its
-  path so they can go look). Cut anything that doesn't help a newcomer act.
-- **Explain intent and trade-offs, not just facts.** A junior can read the code; what they
-  can't recover is *why* it's built this way and what to be careful of — make that explicit.
-- **This is offboarding, not a branch hand-off.** Cover the **whole project** as the
-  thing being inherited — and additionally surface the **departing engineer's footprint**
-  (areas owned, WIP, open branches/PRs) so the successor knows what was "in their head."
-- **Source of truth = the repo + git history + GitHub.** Read files for architecture and
-  conventions; read **git history** for the footprint; use `gh` for live issue/PR/CI data
-  **when a GitHub remote and authenticated `gh` are present**, and **degrade gracefully to
-  local-git-only** otherwise (say which mode the doc reflects on the cover). **Do not
-  invent numbers** — mark anything not tracked as "not tracked."
-- **Strictly read-only.** The skill reads git, repo files, and GitHub, and writes exactly
-  **one HTML file to Downloads**. It **never edits the repo, never commits, never pushes.**
-- **Assume no stack.** Detect build/test/run commands, layout, and conventions from the
-  project's own manifests at run time. Never carry another project's stack or vocabulary
+- **Audience is broad and includes clients.** Write for someone with **zero knowledge of
+  this project's tech stack and zero knowledge of the domain** — a client, a stakeholder,
+  or a brand-new joiner. Plain, friendly language; define **every** stack term, library,
+  acronym, and domain word on first use; reach for a simple analogy when it helps. Never
+  assume the reader knows a framework, tool, or business concept.
+- **Neutral tone — addressed to nobody, by nobody.** This is **not** a personal hand-off
+  and **not** an offboarding note. There is **no "I"**, no named author, no named
+  successor, no "departing engineer," no "areas I owned," no "what you should pick up."
+  Write it as a standing description of the project that would read the same whoever
+  produced it and whoever reads it.
+- **No code internals — describe behaviour, modules, and features.** The codebase is
+  often agent-generated, so the exact classes and how they wire together are neither known
+  nor stable, and they're hard for a reader to follow. So: **never name classes, never
+  cite file paths, never describe how classes/code connect internally.** Speak in terms of
+  **general product behaviour**, **modules**, and **features** (these *may* be named). Turn
+  any code detail you read into product/behaviour language before it reaches the doc.
+- **No stale-prone content.** Deliberately **omit** open PRs, open branches,
+  work-in-progress, stashes, and any "next steps / what to do first" — these flip within a
+  day and would leave the document wrong by the evening. The **only** status the doc
+  carries is a **dated epics-and-stories snapshot** (done vs. not done), at epic/story
+  granularity — never drilling down into PRs or branches.
+- **Whole-project, impersonal.** The thing being described is the project itself, as it
+  stands, for a wide audience — not one person's contribution to it.
+- **Source of truth = the repo + its backlog.** Read repo files for product, domain, and
+  the general architecture; read the project's **backlog source — BMAD story docs, GitHub
+  Issues, or Jira, whichever it actually uses (detect at run time)** — for the epics, the
+  stories, and their done/not-done status. **Do not invent.** Mark anything not tracked as
+  "not tracked."
+- **Strictly read-only.** The skill reads git, repo files, and the tracker, and writes
+  exactly **one HTML file to Downloads**. It **never edits the repo, never commits, never
+  pushes.**
+- **Assume no stack.** Detect build/test/run commands, layout, and the backlog source from
+  the project's own files at run time. Never carry another project's stack or vocabulary
   over.
 - **Output is a single HTML file.** No external assets, no network-loaded CSS. All styles
   and scripts inline so the file is portable and shareable.
 - **Distribution-safety self-check** before writing (see gate). The generated report is a
-  local artifact and may name the user's repo/people; the **skill files** must stay general.
+  local artifact and may name the user's repo; the **skill files** must stay general.
 
 ## Inputs / pre-conditions
 
 - A **target repository** — default to the current working directory's repo
   (`git rev-parse --show-toplevel`).
-- **Departing-engineer identity** — default to `git config user.email`; confirm with the
-  user (they may be handing over on someone else's behalf, or use multiple emails).
-- **Optional successor name** — if the user gives one, address the doc to them on the cover.
-- **GitHub** — optional. Detect `git remote -v` + `gh auth status`; if absent, run
-  local-only and note it.
+- A **backlog source** — detected at run time (BMAD story docs / GitHub Issues / Jira).
+  If none is present, the epics-and-stories section degrades to whatever structured units
+  exist and marks the rest "not tracked."
+- **GitHub / Jira** — optional, used only to read epic/story status when present.
+- **No personal inputs.** The skill does **not** ask for or use an author identity, a
+  departing-engineer email, or a successor name — the document is impersonal.
 
 ## Workflow
 
 ### Step 1 — Confirm scope (brief)
 
 1. Resolve the repo root and name (filename + headings only — a local artifact).
-2. Confirm the **departing engineer's identity** (default `git config user.email`; the doc
-   colors the footprint section around this). Ask for a **successor name** only if not
-   already given — optional.
-3. Detect **data mode**: GitHub-available (remote + `gh auth status` OK) vs. local-only.
-   State the mode you'll use and proceed. Use `AskUserQuestion` only if something's
-   genuinely ambiguous; otherwise state the plan in one line and continue.
+2. **Detect the backlog source** the project actually uses — BMAD story docs
+   (`docs/stories/**`, `_bmad-output/**`, epic/PRD shards), GitHub Issues
+   (milestones / epic labels / parent issues + issues), or Jira. State which one the
+   epics-and-stories section will be built from and where status comes from.
+3. State the plan in one line and proceed. Use `AskUserQuestion` only if something is
+   genuinely ambiguous (e.g. two plausible backlog sources both populated).
 
-### Step 2 — Discover the project
+### Step 2 — Discover the project (product, domain, general architecture)
 
-Read these in order (some won't exist) and synthesize, citing file paths:
+Read these in order (some won't exist) and synthesize at the **module / feature /
+behaviour** level — **translate any class or file detail into product language; never
+carry class names or paths into the doc**:
 
-1. `CLAUDE.md` / `AGENTS.md` / `.claude/rules/*.md` → ground rules, must-always/never,
-   conventions.
-2. `README.md` (root + per-package) → elevator pitch, what the repo is.
-3. Architecture / spec docs: `ARCHITECTURE.md`, `architecture.md`, `prd.md`,
-   `product-brief*.md`, `docs/architecture/**`, `docs/prd/**`, `docs/design/**`,
-   `_bmad-output/**`, ADRs / decision logs.
-4. Top-level layout → the real organizing principle (`apps/`, `src/`, `packages/`,
-   `services/`, `cmd/`, modules, …).
-5. **Manifests for the exact stack & commands** (detect, don't assume): `*.sln`/`*.csproj`,
+1. `CLAUDE.md` / `AGENTS.md` / `.claude/rules/*.md` → ground rules, conventions.
+2. `README.md` (root + per-package) → elevator pitch, what the project is.
+3. Architecture / spec docs: `ARCHITECTURE.md`, `prd.md`, `product-brief*.md`,
+   `docs/architecture/**`, `docs/prd/**`, `docs/design/**`, `_bmad-output/**`, ADRs.
+4. Top-level layout → read it to understand the **modules and features** and how the
+   product is broadly organized — **not** to expose file paths in the doc.
+5. **Manifests for the stack & commands** (detect, don't assume): `*.sln`/`*.csproj`,
    `pom.xml`, `build.gradle`, `Cargo.toml`, `go.mod`, `pyproject.toml`/`requirements.txt`,
-   `package.json`+lockfile (npm/pnpm/yarn/bun; workspaces), `Makefile`, `Taskfile`. Derive
-   **build / test / run / lint** commands from what's actually present.
-6. `.claude/skills/**/SKILL.md` → team workflows in use (BMAD, sequential pipelines, etc.).
-7. CI: `.github/workflows/**`, `.gitlab-ci.yml`, `azure-pipelines.yml` → how it ships.
+   `package.json`+lockfile, `Makefile`, `Taskfile`. Derive **setup / build / test / run /
+   lint** commands from what's present, and name the **stack at a high level** (languages,
+   frameworks, major services).
+6. CI: `.github/workflows/**`, `.gitlab-ci.yml`, `azure-pipelines.yml` → how it ships, in
+   plain terms.
 
 Synthesize: **product & domain** (what problem it solves, who uses it, vocabulary), the
-**architectural mental model** (the 3–5 load-bearing patterns + data flow), the **dev
-environment** (boot/build/test/run, conventions), and the **key-files map** (where things
-live, with paths).
+**general architecture** (the major components/modules, what each does for the product,
+and how they broadly interconnect — behaviour, not code), and the **dev environment**
+(setup/build/test/run, conventions).
 
-### Step 3 — Derive the departing engineer's footprint from git history
+### Step 3 — Gather the epics & stories + their status
 
-Use the confirmed identity. **Read-only git** only:
+From the backlog source detected in Step 1. **Read-only.** For each unit capture:
+**title**, a **one-line plain-English description**, and **done / not done**.
 
-- **Contribution span & volume** — `git log --author=<email> --pretty=…` (first/last commit
-  dates, commit count). Note if they're effectively the sole author (footprint == whole
-  project) vs. one of many.
-- **Hot areas owned** — aggregate `git log --author=<email> --name-only` (or
-  `git log --author=<email> --numstat`) into the directories/files they touched most. These
-  are the areas where their context is densest — call them out by path with a one-line "why
-  this matters."
-- **Open WIP** — `git status` (uncommitted changes), `git stash list` (stashes that would be
-  lost), local branches they authored (`git for-each-ref --format=… refs/heads` + author
-  filter) with `git log <base>..<branch>` to summarize each branch's intent and whether it's
-  ahead/stale.
-- **Open PRs (if GitHub)** — `gh pr list --author @me --state open --json number,title,…`
-  (or by the resolved login). Summarize each: what it does, review state, what's blocking.
+- **BMAD story docs** — group stories under their epics (from epic/PRD shards or folder
+  structure). Status from each story's status field: a clearly-completed state
+  (Done / Completed / Approved-and-merged) → **done**; anything else → **not done**.
+- **GitHub Issues** — epics = milestones, epic-labelled issues, or parent issues; stories
+  = the issues (and sub-issues / task-list items) under them. **Closed → done; open → not
+  done.** Use `--limit 500` (or higher) so nothing is truncated.
+- **Jira** — epics + their child stories via JQL; **status category Done → done**, else
+  not done. Page through all results.
 
-Turn this into the **"My footprint & ownership"** narrative: *what the successor is
-inheriting that isn't obvious from the current code* — the half-finished branch, the area
-only this person understands, the stash worth recovering.
+Roll up a per-epic count (e.g. "3 / 5 stories done"). If an in-progress state is clearly
+distinguished by the tracker you *may* mark it separately (amber), but the default is the
+**two states the document is built around: done (green) / not done (red)**. **Never
+fabricate** — if there is no structured backlog, say so and mark units "not tracked."
 
-### Step 4 — Capture current project state
+### Step 4 — Generate the HTML (sections)
 
-- **Branch/working-tree state** — current branch, ahead/behind base, uncommitted/untracked,
-  stashes.
-- **Open work (if GitHub)** — `gh issue list --state open --limit 500 --json …`,
-  `gh pr list --state open --limit 500 --json …`; CI health via `gh run list`/`gh pr checks`.
-  Compute closed/open counts only from real data. **If local-only:** report what git can
-  show (recent activity, open branches) and clearly mark tracker/CI status as "not available
-  in local-only mode."
-- **Next-steps raw material** — pull open issues/PRs, `TODO`/`FIXME` markers
-  (`git grep -nE "TODO|FIXME"`), and any `lessons-learned.md` / backlog docs into a
-  prioritized list for §Open threads.
-
-### Step 5 — Generate the HTML (sections)
-
-One self-contained scrolling page with a **sticky left/▾top table-of-contents** linking to
-each `<section id="…">`. Adapt sections to the project (drop what doesn't apply rather than
+One self-contained scrolling page with a **sticky table-of-contents** linking to each
+`<section id="…">`. Adapt sections to the project (drop what doesn't apply rather than
 fabricate). Default sections:
 
-1. **Cover / header** — project name, "Project Handover", date, departing engineer, optional
-   successor, and a **data-mode badge** (GitHub-live vs. local-only).
-2. **TL;DR** — 3–5 sentences: what the project is, its current state, and the **top 3 things
-   the successor must pick up first** (linked to §Open threads).
-3. **Product & domain context (explain like the reader joined today)** — in plain language:
-   what the product *does*, who uses it, the problem it solves, and the handful of domain
-   words a newcomer would stumble on — each defined in one line with a real example from the
-   repo. Assume they know nothing about the business; teach the minimum that makes the rest
-   of the doc make sense. (The fuller term list lives in §12.)
+1. **Cover / header** — project name, "Project Handover", the date, and a small **status
+   note**: which backlog source the epic/story snapshot was built from and that it
+   reflects that date. **No author, no successor, no personal framing.**
+2. **TL;DR / overview** — 3–5 sentences: what the project is, what it does, who it's for,
+   and the **overall delivery state in one line** (e.g. "X of Y epics complete as of
+   <date>"). No "things to pick up."
+3. **Product & domain context** — in plain language: what the product *does*, who uses it,
+   the problem it solves, and the handful of domain words a newcomer would stumble on —
+   each defined in one line with a real, **product-level** example (a feature or behaviour,
+   never a class or file).
 4. **Architecture & mental model (lead with diagrams)** — the stack named and **each piece
-   explained in plain English** (what it is → what it does for us → a real file that uses it),
-   the 3–5 major components, and the load-bearing design decisions (the *why* + trade-offs).
-   **Include general-level diagrams** so a newcomer sees the shape before the words:
-   - a **top-level system / component diagram** — the major pieces (frontend, API, worker,
-     database, cache, queue, external services, …) drawn as **boxes with labelled arrows
-     showing how they interconnect** and which way data/calls flow;
-   - a **request / data-flow diagram** for one core user action — "user clicks X → hits
-     `<file/endpoint>` → does Y → reads/writes Z → returns" — tracing one real path end to end.
-   Draw them as **ASCII art in `<pre><code>`** (≤100 chars/line, with a tiny legend), derived
-   from the **actual** repo (real component and file names, not a generic template). Add a
-   third diagram (auth flow, deployment topology, or module boundaries) only if it genuinely
-   clarifies. Keep each diagram simple and general — orient, don't exhaustively map every
-   class. Follow each with 2–3 plain-English sentences explaining what it shows.
-5. **Repo & dev environment** — a **step-by-step "get it running" guide** a newcomer can
-   follow: auto-detected **setup / build / test / run** commands with a one-line note on what
-   each does; conventions (branching, commits, CI) in plain terms; a **key-files map**
-   (path → what lives there) so they know where to look.
-6. **Current state** — done / in flight; open PRs & branches; CI health; counts from real
-   data. Marks anything unavailable in local-only mode.
-7. **My footprint & ownership** — from Step 3: areas owned (by path), open WIP (branches,
-   stashes, uncommitted), open PRs — the "in my head" context. Visually distinguish this
-   engineer's footprint (accent color) from general project state.
-8. **Open threads & next steps** — **prioritized**: in-progress → planned → backlog, each
-   actionable enough that the successor needn't reverse-engineer intent. Lead with the top 3
-   from §TL;DR.
-9. **Known issues, gotchas & traps** — tribal knowledge: flaky tests, workarounds, sharp
-   edges, "don't touch X without Y," surprising couplings.
-10. **Open questions / decisions pending** — unresolved design/product calls the successor
-    inherits, with the options/context known so far.
-11. **Resources & contacts** — links to issues/PRs/docs/dashboards and key people/teams (in
-    the **local** report only — see safety gate). Mark anything you couldn't verify.
-12. **Glossary** — every stack term, library, acronym, and domain word a newcomer would not
-    already know, each with a one-line plain-English definition and (where possible) the code
-    artifact it maps to. Err toward including a term rather than assuming it's obvious.
+   explained in plain English** (what it is → what it does for the product), the major
+   components/modules, and the load-bearing ideas (the *why*). **Include conceptual
+   diagrams** so a reader sees the shape before the words:
+   - a **top-level component diagram** — the general building blocks (e.g. a web
+     interface, an application/service layer, a data store, background processing, external
+     integrations) drawn as **boxes with labelled arrows** showing how they broadly
+     interconnect and which way data/requests flow;
+   - a **request / data-flow diagram** for one core user action, described in **product
+     terms** — "a user submits X → the system validates and stores it → notifies Y →
+     returns a result" — tracing one path end to end.
+   Draw them as **ASCII art in `<pre><code>`** (≤100 chars/line, with a tiny legend), using
+   **only generic component/module names — never class names, file paths, or internal code
+   wiring.** Add a third diagram only if it genuinely clarifies. Follow each with 2–3
+   plain-English sentences explaining what it shows.
+5. **How it's built & run** — kept **technical but module/feature-level**: the stack named
+   at a high level and explained plainly; auto-detected **setup / build / test / run**
+   commands with a one-line note on what each does; conventions (branching, CI) in plain
+   terms. **No "where files live" map, no class names, no paths** — describe the
+   module/feature organization generally if useful.
+6. **Epics & Stories** — the heart of the document. **List every epic**, each with a short
+   description, a **done/not-done badge**, and a per-epic roll-up (e.g. "3 / 5 done"); under
+   each epic, **list its stories**, each with a short description and its own badge.
+   **Green = done, red = not done** (optional amber = in progress only if the tracker
+   clearly distinguishes it). Carry the snapshot date. This is the **only** status content
+   — keep it at epic/story granularity; never drill into PRs or branches.
+7. **Glossary** — every stack term, library, acronym, and domain word a newcomer would not
+   know, each with a one-line plain-English definition. **Product/behaviour terms only — no
+   class names.** Err toward including a term rather than assuming it's obvious.
 
-### Step 6 — Visual + technical conventions
+### Step 5 — Visual + technical conventions
 
 - **Dark theme** (match the other orion report skills):
   - `--bg: #0b1020`, `--bg-2: #121933`, radial-gradient background
@@ -205,19 +195,20 @@ fabricate). Default sections:
   - Font: system sans-serif; code: JetBrains Mono / `ui-monospace` fallback
 - **Layout: scrolling page, not a deck.** A **sticky table-of-contents** (sidebar on wide
   screens, collapsing to a top bar on narrow) with anchor links to each `<section id>`.
-  Implement **scroll-spy** in inline JS to highlight the current section in the TOC. Smooth
-  in-page anchor scrolling. No keyboard slide navigation — it's a document.
-- **Footprint accent** — the departing engineer's footprint/ownership content uses
-  `--accent-2` so it's visually separable from general project state.
-- **Priority pills** for §Open threads — e.g. `.pri-now` / `.pri-next` / `.pri-later`
-  using `--danger`/`--warn`/`--good`.
-- **ASCII diagrams** in `<pre><code>` blocks; ≤100 chars/line, each with a tiny legend and a
-  2–3 sentence plain-English caption. §4 must carry at least a **top-level interconnection
-  diagram** and a **request/data-flow diagram**, drawn from the real repo (real names).
+  Implement **scroll-spy** in inline JS to highlight the current section. Smooth in-page
+  anchor scrolling. No keyboard slide navigation — it's a document.
+- **Status badges** for §Epics & Stories — `.badge-done` (`--good`, green) and
+  `.badge-todo` (`--danger`, red); optional `.badge-wip` (`--warn`, amber) only when the
+  tracker distinguishes in-progress. Small, pill-shaped, with a text label
+  ("Done" / "Not done") so they're legible without relying on colour alone.
+- **ASCII diagrams** in `<pre><code>` blocks; ≤100 chars/line, each with a tiny legend and
+  a 2–3 sentence plain-English caption. §4 must carry at least a **top-level component
+  diagram** and a **request/data-flow diagram**, using **generic component/module names
+  only** (no classes, no paths).
 - **Language = English** regardless of the project's doc language; gloss native terms on
   first use as `<native term> (English gloss)`.
 
-### Step 7 — Write the file
+### Step 6 — Write the file
 
 Output path:
 - Linux/macOS: `~/Downloads/<repo-name>-handover-<YYYY-MM-DD>.html`
@@ -226,28 +217,37 @@ Output path:
 `<repo-name>` = repo name (lowercase, hyphenated), from `gh repo view --json name -q .name`
 when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 
-### Step 8 — Verify, then report
+### Step 7 — Verify, then report
 
 - Read the file back briefly: valid HTML, every TOC link resolves to a real `<section id>`,
-  scroll-spy script present.
+  scroll-spy script present, every epic/story carries a badge.
 - Confirm no markdown escapes leaked into HTML (no raw `**bold**`, `# headings`).
+- Confirm no class names, file paths, open-PR/branch references, or personal "I/you"
+  framing slipped in — the doc must read neutrally and at product level.
 - Confirm UTF-8 survived — accents, em dashes, arrows render when read back.
 - On Windows, if a PowerShell write added a BOM / double-encoded, re-encode without BOM:
   ```powershell
   $utf8NoBom = New-Object System.Text.UTF8Encoding $false
   [System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
   ```
-- **Report in chat:** absolute file path, the **data mode** used (GitHub-live / local-only),
-  the section count, and a 3-bullet summary — what the doc covers, what the top-3 pick-up
-  items are, and what date/snapshot it reflects. The skill ends here — it does **not** edit
-  the repo, commit, or offer to.
+- **Report in chat:** absolute file path, the **backlog source** used and the snapshot
+  date, the section count, and the **epic/story roll-up** (e.g. "X of Y epics, M of N
+  stories done"). The skill ends here — it does **not** edit the repo, commit, or offer to.
 
 ## What to NOT include
 
-- **No fabricated numbers / status.** Not in `gh`/git/manifests → mark "not tracked" or "not
-  available (local-only)." Never guess velocity, counts, or CI state.
+- **No personal / ownership framing.** No "I", no named author, no successor, no departing
+  engineer, no "areas owned," no "what to pick up next." The document is addressed to
+  nobody, by nobody.
+- **No stale-prone pointers.** No open PRs, open branches, work-in-progress, stashes, or
+  next-steps lists. The dated epic/story done-vs-not snapshot is the only status content.
+- **No code internals.** No class names, no file paths, no description of how classes/code
+  wire together. Module/feature names and general product behaviour only.
+- **No fabricated numbers / status.** Not in the tracker/manifests → mark "not tracked."
+  Never guess counts or completion.
 - **No credentials, secrets, internal IPs, tokens, VPN configs, or production hostnames** —
   even if read from config. Replace with `<placeholder>` or omit.
+- **No contacts / people lists** — the document is neutral and impersonal.
 - **No verbatim CLAUDE.md / CONTRIBUTING content** — summarize.
 - **No repo edits, commits, or "I'll fix it" offers** — the doc is the deliverable.
 
@@ -255,19 +255,20 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 
 - **PowerShell `Set-Content -Encoding utf8` adds a BOM / may double-encode.** Use
   `[System.IO.File]::WriteAllText` with `New-Object System.Text.UTF8Encoding $false`.
-- **No GitHub remote or `gh` not authed** — run local-only; clearly badge it on the cover and
-  mark tracker/CI sections unavailable. Don't fabricate a tracker.
-- **`gh` lists truncated** — always pass `--limit 500` (or higher).
-- **Departing engineer is the sole/dominant author** — §My footprint effectively *is* the
-  whole project; say so and lean the doc toward exhaustive whole-project coverage.
-- **Multiple author emails** — confirm the set with the user; union them in the
-  `--author` filters so the footprint isn't undercounted.
-- **Shallow clone / squashed history** — git-history footprint is degraded; note the limit
-  and lean on file-ownership + current state instead of commit counts.
-- **No architecture/PRD docs** — build §Architecture by reading entry points and tracing
-  dependencies; cite file paths so the successor can verify.
+- **No structured backlog detected** — say so plainly; build §Epics & Stories from whatever
+  structured units exist (milestones, top-level spec docs) and mark the rest "not tracked."
+  Do not fabricate epics or stories.
+- **Tracker lists truncated** — always pass `--limit 500` (or higher) / page through all
+  Jira results.
+- **Ambiguous story status** — map conservatively: mark **done** only when the source
+  clearly says done; everything else is **not done**. Don't guess.
+- **Tempted to name a class or file** — translate it into module / feature / behaviour
+  language instead; the reader can't use class names and they go stale.
+- **No architecture/PRD docs** — describe the architecture from entry points at the
+  **module / feature / behaviour** level (still no class names, still no paths); keep the
+  diagrams conceptual.
 - **Multi-language docs** — translate to English on first use, keep the original term in
-  parentheses so the successor can grep later.
+  parentheses so it can be grepped later.
 
 ---
 
@@ -275,7 +276,8 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 
 This skill ships publicly. Before writing the report, confirm **nothing project-specific
 leaked into the skill files** — no person/org/product/repo/stack/locale/path specifics in
-prose or examples. The **generated report** about a user's repo is a **local artifact** (in
-their Downloads) and may name their repo, people, and dashboards — that's fine; it is never
-committed back into this repo. What must stay general is everything under
-`skills/project-handover-orion/` itself.
+prose or examples, and every diagram/example here uses **generic component/module
+placeholders, never real class or file names**. The **generated report** about a user's
+repo is a **local artifact** (in their Downloads) and may name their repo and its
+modules/features — that's fine; it is never committed back into this repo. What must stay
+general is everything under `skills/project-handover-orion/` itself.
