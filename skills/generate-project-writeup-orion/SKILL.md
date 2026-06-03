@@ -1,6 +1,6 @@
 ---
 name: generate-project-writeup-orion
-description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to summarise the work delivered to date. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user (git author lists over/under-count bots, AI-agent commits, and part-timers), including which contributors are embedded business-unit (BU) developers vs. members of a central/shared specialist delivery team. It also ALWAYS confirms the project's start and end dates with the user and shows the total elapsed duration. NEUTRAL ON COMPLETION: it describes what has been delivered without claiming the project is finished to completion or production-ready, and equally without stating it is unfinished. Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads; it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project summary report', 'project summary / status report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document summarising a project for leadership."
+description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to summarise the work delivered to date. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user by NAMING the real contributors — both the embedded business-unit (BU) developers/owners and the central/shared specialist delivery-team developers — with the headcount and team-origin split derived from those named lists (git author lists over/under-count bots, AI-agent commits, and part-timers). It also ALWAYS confirms the project's start and end dates with the user and shows the total elapsed duration. NEUTRAL ON COMPLETION: it describes what has been delivered without claiming the project is finished to completion or production-ready, and equally without stating it is unfinished. Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads (deleting any sidecar/temporary files it creates once the .docx is rendered); it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project summary report', 'project summary / status report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document summarising a project for leadership."
 user_invocable: true
 ---
 
@@ -60,16 +60,21 @@ so far**.
 - **Invent no numbers.** Every metric is **measured from the real repo** (git, file counts,
   test counts) or marked **"not measured."** Never guess LOC, test counts, velocity, commit
   counts, or revenue. If a section can't be substantiated, shrink or drop it — do not pad.
-- **Contributors are always confirmed with the user.** The cost math hinges on headcount and
-  the full-time/part-time FTE split. Git author lists mislead (bots, AI-agent commits,
-  renamed emails, drive-by contributors). **Always** show the git author list as a hint and
-  **ask** the user to confirm the real contributor count and FTE — never silently trust git.
+- **Contributors are always confirmed with the user — by name.** The cost math hinges on
+  headcount and the full-time/part-time FTE split. Git author lists mislead (bots, AI-agent
+  commits, renamed emails, drive-by contributors). **Always** show the git author list as a
+  hint and **ask the user to name the real contributors** — both the embedded business-unit
+  (BU) developers/owners and the central specialist-team developers — then **derive the
+  headcount from those names** and ask the FTE (full-time/part-time) per person. Never let
+  `git shortlog` set the count.
 - **Assume no stack.** Detect build/test/run, layout, modules, models, endpoints, and test
   conventions from the project's own manifests and source at run time. Never carry another
   project's stack or vocabulary over.
-- **Strictly read-only.** The skill reads git + repo files and writes exactly **one `.docx`
-  to Downloads** (plus a sidecar JSON it can clean up). It **never edits the repo, never
-  commits, never pushes.**
+- **Strictly read-only, and tidy.** The skill reads git + repo files and writes exactly
+  **one `.docx` to Downloads**. Any side file it creates along the way (the report-data JSON
+  sidecar, and any scratch/temporary file) is **deleted once the `.docx` is rendered and
+  verified** — the run leaves behind the single Word document and nothing else. It **never
+  edits the repo, never commits, never pushes.**
 - **Single self-contained Word file.** No linked images, no external template the recipient
   needs. The bundled generator emits a portable `.docx`.
 - **Distribution-safety self-check** before writing (see gate). The generated report is a
@@ -116,7 +121,9 @@ State in chat which path was used. **Do not install anything** without asking th
   *"AI-Assisted Development — Project Summary Report"*; offer a neutral
   *"Project Delivery Summary"* if the build wasn't AI-assisted).
 - **Economic inputs** (prompted — see methodology):
-  - **Contributors & FTE** — confirmed with the user (always).
+  - **Contributors & FTE** — the user **names** the real contributors (BU developers/owners
+    and central specialist-team developers); the headcount and FTE are derived from those
+    names (always — see Step 4).
   - **Blended day rate + currency** — the org's internal blended cost per person-day (e.g.
     `650` + `GBP/£`). No default invented; ask.
   - **Working days per month** — default `20` (offer to change).
@@ -244,20 +251,26 @@ column is a neutral one-line characterisation, **not** a fabricated benchmark.
 1. Show the user the git author list: `git shortlog -sne <range>` (counts + names/emails).
 2. Flag obvious non-humans (bot accounts, `*-bot`, CI users, AI-agent commit signatures /
    `Co-Authored-By` agent trailers) as candidates to **exclude** from headcount.
-3. **Ask the user to confirm**, via `AskUserQuestion` or a short prompt:
-   - the real **number of human contributors**;
-   - the **full-time vs part-time split** (e.g. *2 full-time + 2 part-time occasional*);
-   - how to translate part-timers into **FTE** (default: each part-timer ≈ 0.25 FTE unless
-     told otherwise) → compute total **FTE** (e.g. `2 + 2×0.25 = 2.5 FTE`).
-   - **where each contributor comes from** — which are **embedded business-unit (BU)
-     developers** vs. which are members of a **central / shared specialist delivery team**
-     (e.g. a dedicated AI or platform team). Capture this team-origin split so the report can
-     show the team composition; adapt the labels to whatever the user calls these groups.
-   - whether to **exclude AI-agent/bot commits** from the human contributor count (default:
-     yes — they are the tooling, not headcount).
-4. Carry the confirmed **FTE**, **contributor count**, and **team-origin split** into the
-   economic model and the cover/metrics. Record the assumptions explicitly in the report (e.g. a
-   footnote: "2.5 FTE = 2 full-time + 2 part-time at 0.25 FTE each; 3 BU developers + 1 central
+3. **Ask the user to name the real contributors** (don't ask for a bare count — derive the
+   count from the names), via `AskUserQuestion` or a short prompt. Ask for two named lists:
+   - the **names of the embedded business-unit (BU) developers / owners**; and
+   - the **names of the central / shared specialist delivery-team developers** (the dedicated
+     AI or platform team some orgs run centrally — use whatever label the user gives this
+     group).
+   The **number of human contributors is whatever these two named lists add up to**, and the
+   **BU-vs-specialist-team split** falls straight out of which list each name sits in — so you
+   get the team-origin split for free, without a separate question.
+4. **For each named person, ask whether they are full-time or part-time** on the project, and
+   how to translate part-timers into **FTE** (default: each part-timer ≈ 0.25 FTE unless told
+   otherwise) → compute total **FTE** from the named people (e.g. `3 full-time + 1 part-time =
+   3 + 0.25 = 3.25 FTE`).
+5. Confirm whether to **exclude AI-agent/bot commits** from the human contributor count
+   (default: yes — they are the tooling, not headcount). The **named** contributors set the
+   headcount, not the git author list.
+6. Carry the confirmed **FTE**, **contributor count** (= number of named people), and
+   **team-origin split** (BU vs. central specialist team, from the two lists) into the economic
+   model and the cover/metrics. Record the assumptions explicitly in the report (e.g. a
+   footnote: "3.25 FTE = 3 full-time + 1 part-time at 0.25 FTE; 3 BU developers + 1 central
    specialist-team developer").
 
 ### Step 5 — Build the economic model (centerpiece — transparent & conservative)
@@ -363,7 +376,11 @@ python "<skill-dir>/assets/build_docx.py" "<data.json>" \
   pandoc / HTML), the **economic headline** (traditional vs actual vs saving, with the FTE and
   rate assumptions named), the section count, and a one-line note of anything marked
   "not measured" or "not provided." The skill ends here — it does **not** edit the repo,
-  commit, or offer to. Optionally offer to delete the sidecar JSON.
+  commit, or offer to.
+- **Clean up side files (always).** Once the `.docx` is written and verified, **delete every
+  side file the run created** — the report-data JSON sidecar and any scratch/temporary files —
+  so the only artifact left behind is the single Word document. (Do this only after the `.docx`
+  verifies; if generation failed, keep the JSON so the user can retry/inspect, and say so.)
 
 ## What to NOT include
 
