@@ -2,6 +2,15 @@
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
 
+## Diagrams are HTML/CSS, not ASCII
+
+- **§4's conceptual diagrams are now built as styled HTML/CSS** — boxes (flexbox/grid
+  `<div>`s themed with the document palette) connected by labelled arrows (CSS connectors or
+  small inline SVG) — **never as ASCII art in `<pre><code>` blocks**. ASCII breaks at narrow
+  widths, looks unpolished to a client audience, and can't use the theme. Everything stays
+  inline so the file remains self-contained. Updated Step 4, the Step 5 visual conventions,
+  the frontmatter description, and added a failure mode.
+
 ## Deepen product & domain via the onboarding skill
 
 - **§Product & domain (plus the TL;DR and glossary) now lean on the companion

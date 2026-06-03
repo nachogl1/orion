@@ -1,6 +1,6 @@
 ---
 name: project-handover-orion
-description: "Generate a single self-contained dark-themed HTML PROJECT HANDOVER document for the current repository, dropped into the user's Downloads folder, written for a BROAD audience — clients and stakeholders as well as a brand-new joiner — assuming zero knowledge of the tech stack and zero knowledge of the domain, explained in plain language, summarised and clear (every stack/domain term defined on first use). NEUTRAL TONE: the document is addressed to nobody, by nobody — no 'I', no named author, no named successor, no departing-engineer framing or personal ownership. NO CODE INTERNALS: it describes the project at the level of general product behaviour, modules, and features — it never names classes or describes how classes/code wire together (code is often agent-generated and that detail is neither known nor stable). NO STALE-PRONE CONTENT: it deliberately omits open PRs, open branches, work-in-progress, and 'what to pick up next' — anything that flips within a day. The one status it carries is a DATED epics-and-stories snapshot: it lists every epic and every story with a short plain description and a done/not-done badge (green = done, red = not done). The doc is a scrolling reference page with a sticky table-of-contents: cover, TL;DR/overview, product & domain context, architecture & mental model WITH conceptual ASCII diagrams of the general components/modules and how they broadly interconnect plus a request/data-flow diagram for one core user action (all at product/behaviour level, no class or file names), how it's built & run (auto-detected setup/build/test/run, kept technical but module/feature-level), the full epics & stories listing with badges, and a glossary. Detects the project's stack and its backlog source (BMAD story docs / GitHub Issues / Jira — whichever it actually uses) at run time; assumes no stack. PRODUCT DEPTH: to make the product & domain section genuinely rich it can lean on the companion create-up-to-speed-report-orion skill's exhaustive product discovery, distilling that material back into plain, neutral, product-level language (stripping the file paths, code internals, and ownership framing that onboarding deck allows). STRICTLY READ-ONLY: it reads git + repo files + the tracker and writes its handover HTML file to Downloads (any onboarding deck produced while enriching is a separate by-product, also read-only); it never edits the repo and never commits. Use when the user says '/project-handover-orion', 'create a handover', 'hand this project over', or wants a single shareable HTML file that explains the project and the delivery state of its epics and stories."
+description: "Generate a single self-contained dark-themed HTML PROJECT HANDOVER document for the current repository, dropped into the user's Downloads folder, written for a BROAD audience — clients and stakeholders as well as a brand-new joiner — assuming zero knowledge of the tech stack and zero knowledge of the domain, explained in plain language, summarised and clear (every stack/domain term defined on first use). NEUTRAL TONE: the document is addressed to nobody, by nobody — no 'I', no named author, no named successor, no departing-engineer framing or personal ownership. NO CODE INTERNALS: it describes the project at the level of general product behaviour, modules, and features — it never names classes or describes how classes/code wire together (code is often agent-generated and that detail is neither known nor stable). NO STALE-PRONE CONTENT: it deliberately omits open PRs, open branches, work-in-progress, and 'what to pick up next' — anything that flips within a day. The one status it carries is a DATED epics-and-stories snapshot: it lists every epic and every story with a short plain description and a done/not-done badge (green = done, red = not done). The doc is a scrolling reference page with a sticky table-of-contents: cover, TL;DR/overview, product & domain context, architecture & mental model WITH conceptual diagrams built as styled HTML/CSS (boxes + labelled arrows — never ASCII art) of the general components/modules and how they broadly interconnect plus a request/data-flow diagram for one core user action (all at product/behaviour level, no class or file names), how it's built & run (auto-detected setup/build/test/run, kept technical but module/feature-level), the full epics & stories listing with badges, and a glossary. Detects the project's stack and its backlog source (BMAD story docs / GitHub Issues / Jira — whichever it actually uses) at run time; assumes no stack. PRODUCT DEPTH: to make the product & domain section genuinely rich it can lean on the companion create-up-to-speed-report-orion skill's exhaustive product discovery, distilling that material back into plain, neutral, product-level language (stripping the file paths, code internals, and ownership framing that onboarding deck allows). STRICTLY READ-ONLY: it reads git + repo files + the tracker and writes its handover HTML file to Downloads (any onboarding deck produced while enriching is a separate by-product, also read-only); it never edits the repo and never commits. Use when the user says '/project-handover-orion', 'create a handover', 'hand this project over', or wants a single shareable HTML file that explains the project and the delivery state of its epics and stories."
 user_invocable: true
 ---
 
@@ -226,9 +226,12 @@ fabricate). Default sections:
    - a **request / data-flow diagram** for one core user action, described in **product
      terms** — "a user submits X → the system validates and stores it → notifies Y →
      returns a result" — tracing one path end to end.
-   Draw them as **ASCII art in `<pre><code>`** (≤100 chars/line, with a tiny legend). The
-   **component diagram names the real services/tools** (as above); the **data-flow diagram
-   stays in product terms**. In **either** diagram, **never name the project's own classes,
+   Build them as **HTML/CSS diagrams — never ASCII art in `<pre><code>` blocks**: styled
+   boxes (flexbox/grid `<div>`s using the document's theme) connected by labelled arrows
+   (CSS connectors or small inline SVG), with a tiny legend. Everything stays inline so the
+   file remains self-contained, and the diagram renders crisply for a client-facing
+   document at any width. The **component diagram names the real services/tools** (as
+   above); the **data-flow diagram stays in product terms**. In **either** diagram, **never name the project's own classes,
    file paths, or internal code wiring** — naming a third-party service or framework is
    fine; exposing internal code is not. Add a third diagram only if it genuinely clarifies.
    Follow each with 2–3 plain-English sentences explaining what it shows.
@@ -262,9 +265,12 @@ fabricate). Default sections:
   `.badge-todo` (`--danger`, red); optional `.badge-wip` (`--warn`, amber) only when the
   tracker distinguishes in-progress. Small, pill-shaped, with a text label
   ("Done" / "Not done") so they're legible without relying on colour alone.
-- **ASCII diagrams** in `<pre><code>` blocks; ≤100 chars/line, each with a tiny legend and
-  a 2–3 sentence plain-English caption. §4 must carry at least a **top-level component
-  diagram** and a **request/data-flow diagram**. The **component diagram names the real
+- **HTML diagrams, not ASCII.** Diagrams are built from **inline HTML/CSS** — styled boxes
+  (flexbox/grid `<div>`s themed with the palette above) plus labelled arrow connectors (CSS
+  or small inline SVG) — **never ASCII art in `<pre><code>` blocks**. Each carries a tiny
+  legend and a 2–3 sentence plain-English caption; all styles inline so the file stays
+  self-contained. §4 must carry at least a **top-level component diagram** and a
+  **request/data-flow diagram**. The **component diagram names the real
   technologies/services/tools** beside each block (e.g. sign-in → Keycloak, data store →
   PostgreSQL) so blocks are concrete and recognisable, detected from the repo at run time;
   the **data-flow diagram stays in product terms**. In both, **never name the project's own
@@ -332,6 +338,10 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
   clearly says done; everything else is **not done**. Don't guess.
 - **Tempted to name a class or file** — translate it into module / feature / behaviour
   language instead; the reader can't use class names and they go stale.
+- **Tempted to draw diagrams as ASCII art** — don't. ASCII in `<pre>` blocks breaks at
+  narrow widths, looks unpolished to a client audience, and can't use the theme. Build
+  diagrams as **styled HTML/CSS boxes with labelled arrow connectors** (or small inline
+  SVG), keeping everything inline so the file stays self-contained.
 - **Super-generic component diagram** — a bare "Frontend → Backend → Database" with no
   named tools gives the reader nothing to associate. Name the **real services/tools** beside
   each block (sign-in → Keycloak, data store → PostgreSQL, cache → Redis), detected from the
