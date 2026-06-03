@@ -1,6 +1,6 @@
 ---
 name: generate-project-writeup-orion
-description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / CLOSURE SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to mark a project as delivered/closed. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user (git author lists over/under-count bots, AI-agent commits, and part-timers). Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads; it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project closure / summary report', 'closing report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document that closes the project out."
+description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to summarise the work delivered to date. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user (git author lists over/under-count bots, AI-agent commits, and part-timers), including which contributors are embedded business-unit (BU) developers vs. members of a central/shared specialist delivery team. It also ALWAYS confirms the project's start and end dates with the user and shows the total elapsed duration. NEUTRAL ON COMPLETION: it describes what has been delivered without claiming the project is finished to completion or production-ready, and equally without stating it is unfinished. Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads; it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project summary report', 'project summary / status report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document summarising a project for leadership."
 user_invocable: true
 ---
 
@@ -15,8 +15,8 @@ user_invocable: true
 > **skill files must never hard-code anything project-specific** (no product/codename,
 > no company, no real rates, no person names).
 
-Produce a single polished **Microsoft Word (`.docx`) project-closure summary report**
-in the user's Downloads folder that lets a delivery lead hand a finished project to
+Produce a single polished **Microsoft Word (`.docx`) project write-up / summary report**
+in the user's Downloads folder that lets a delivery lead present the work delivered so far to
 **leadership / commercial stakeholders** — leading with the **economic case** (what it
 would traditionally have cost vs. what it actually took) and backing it with measured
 scale-of-work, technical depth, and business value.
@@ -27,14 +27,14 @@ The output lives at
 
 ## When to invoke
 
-User says `/generate-project-writeup-orion`, asks to **write up / close out a project**,
+User says `/generate-project-writeup-orion`, asks to **write up / summarise a project**,
 wants a **delivery or project-summary report for leadership**, an **AI-assisted
-development summary**, or a single shareable **Word document that marks the project as
-delivered**.
+development summary**, or a single shareable **Word document summarising the work delivered
+so far**.
 
 > Not to be confused with `project-handover-orion` (a *technical* handover to a
 > successor developer, HTML, dark theme) — **this** skill is an *executive/commercial
-> closure write-up*, Word format, economics-first.
+> project write-up*, Word format, economics-first.
 
 ## Operating principles (read these first)
 
@@ -43,6 +43,15 @@ delivered**.
   term the first time it appears, in one phrase, then move on. Lead with outcomes, cost,
   risk, and value; keep the deep technical detail in its own clearly-labelled sections so a
   non-technical reader can skim past it.
+- **Neutral on completion — never overclaim, never underclaim.** This is a write-up of the
+  work **delivered to date**, not a certificate of completion. Delivery and production-readiness
+  are different things: a build can be substantively delivered yet not production-ready. So
+  **do not** describe the project as "finished", "complete", "completed to completion", "closed
+  out", "production-ready", or "shipped to production" — and equally **do not** state it is
+  "unfinished", "incomplete", or "not done". Use neutral, factual framing: *delivered to date*,
+  *built so far*, *the work covered by this report*, *current state*. Describe what exists and
+  what it does; let the reader draw their own conclusion about readiness. (This wording rule
+  applies to the report's title/labels, the financial summary, and every narrative section.)
 - **Economics first, and HONEST.** The headline is a cost/time comparison. Every figure must
   be **defensible and its assumptions shown** — the report states the method, the rate, the
   team assumption, and the source of each number. **Never inflate.** A reader who disagrees
@@ -112,8 +121,13 @@ State in chat which path was used. **Do not install anything** without asking th
     `650` + `GBP/£`). No default invented; ask.
   - **Working days per month** — default `20` (offer to change).
   - **Assumed traditional team composition** — e.g. *2 developers + 1 QA*; confirm.
-  - **Actual calendar duration** — derived from git (first→last commit on the delivery
-    branch); user may override (e.g. real elapsed wall-clock differs from commit span).
+  - **Project start & end dates (ALWAYS confirm)** — propose the git-derived span (first→last
+    commit on the delivery branch) as a hint, then **explicitly ask the user to confirm the
+    real start and end dates** (real elapsed wall-clock often differs from the commit span —
+    kick-off and discovery predate the first commit; the "end" may be today / the report date).
+    **Compute and show the user the total elapsed duration** (e.g. "2026-01-06 → 2026-06-03 =
+    ~4.9 months / ~21 weeks") so they can see and correct it. The confirmed duration feeds the
+    cover dates and the economic model's `actual_calendar_months`.
 - **Supporting source documents (always offered — see Step 1b)** — proactively ask the user
   for an **RFA** (Request for Approval / funding-approval or business-case document) and **any
   other documents that carry real data** the report can use instead of being left blank:
@@ -135,7 +149,11 @@ State in chat which path was used. **Do not install anything** without asking th
 2. Collect cover metadata (business unit/programme, date, owner, confidentiality, report-type
    label). Use `AskUserQuestion` to batch the genuine unknowns; accept sensible defaults for
    the rest and state them.
-3. Decide the **delivery branch / commit range** the report measures (default: the repo's
+3. **Confirm the project start & end dates with the user (always).** Propose the git-derived
+   span (first→last commit) as a hint, ask the user to confirm the real start and end dates,
+   and **show them the computed total duration** (e.g. "2026-01-06 → 2026-06-03 ≈ 4.9 months").
+   These drive the cover dates and `actual_calendar_months` in the economic model (see Step 5).
+4. Decide the **delivery branch / commit range** the report measures (default: the repo's
    default branch full history; allow a date range or a base..head range if the user scopes
    the project to a window).
 
@@ -231,17 +249,23 @@ column is a neutral one-line characterisation, **not** a fabricated benchmark.
    - the **full-time vs part-time split** (e.g. *2 full-time + 2 part-time occasional*);
    - how to translate part-timers into **FTE** (default: each part-timer ≈ 0.25 FTE unless
      told otherwise) → compute total **FTE** (e.g. `2 + 2×0.25 = 2.5 FTE`).
+   - **where each contributor comes from** — which are **embedded business-unit (BU)
+     developers** vs. which are members of a **central / shared specialist delivery team**
+     (e.g. a dedicated AI or platform team). Capture this team-origin split so the report can
+     show the team composition; adapt the labels to whatever the user calls these groups.
    - whether to **exclude AI-agent/bot commits** from the human contributor count (default:
      yes — they are the tooling, not headcount).
-4. Carry the confirmed **FTE** and **contributor count** into the economic model and the
-   cover/metrics. Record the assumption explicitly in the report (e.g. a footnote:
-   "2.5 FTE = 2 full-time + 2 part-time at 0.25 FTE each").
+4. Carry the confirmed **FTE**, **contributor count**, and **team-origin split** into the
+   economic model and the cover/metrics. Record the assumptions explicitly in the report (e.g. a
+   footnote: "2.5 FTE = 2 full-time + 2 part-time at 0.25 FTE each; 3 BU developers + 1 central
+   specialist-team developer").
 
 ### Step 5 — Build the economic model (centerpiece — transparent & conservative)
 
 Gather the remaining economic inputs (Step "Inputs"): **blended day rate + currency**,
 **working days/month** (default 20), **assumed traditional team**, **actual calendar months**
-(from git, user may override).
+(from the **user-confirmed start & end dates** in Step 1 — not raw git span unless the user
+accepted it).
 
 **Economic methodology (state this method, and its assumptions, in the report).**
 
@@ -278,11 +302,14 @@ Build the JSON `blocks` array (see `build_docx.py` header for the schema). Adapt
 sections the project can't substantiate rather than padding. Default structure:
 
 1. **Title block** — banner (org / programme), project name (+ codename), subtitle, fields
-   (business unit, date, owner), report-type label, confidentiality line.
+   (business unit, **project start → end dates with total duration**, owner), report-type
+   label, confidentiality line.
 2. **Table of contents** (`toc` block) + a page break.
 3. **Financial Summary** — a one-line method note; **Table 1 — Cost Comparison**; a
-   "showing the working" paragraph (production SLOC measured, team & rate assumptions, the
-   arithmetic); **Table 2 — Time Investment by Phase** with the Boehm-distribution note.
+   "showing the working" paragraph (production SLOC measured, **the confirmed start→end dates
+   and total duration**, team & rate assumptions including the **BU vs. central-specialist-team
+   composition**, the arithmetic); **Table 2 — Time Investment by Phase** with the
+   Boehm-distribution note.
 4. **Part 1 — Project Overview** — *What is `<project>`?* (plain-language description +
    architecture in a sentence or two); *The problem we solved* (the gap/market/compliance
    need, drawn from README/RFA — only what's documented); *Our solution* (bulleted highlights).
