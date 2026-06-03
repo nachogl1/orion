@@ -2,6 +2,19 @@
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
 
+## Component diagram names the real services/tools
+
+- **§4 top-level component diagram now names the actual technologies, services, and tools**
+  the project uses beside each block (detected from manifests/config/compose/CI at run time)
+  — e.g. "Sign-in / identity (Keycloak)", "Data store (PostgreSQL)", "Cache (Redis)" — so a
+  reader can attach each abstract role to something concrete and recognisable. **Avoids
+  super-generic, association-free diagrams** (bare "Frontend → Backend → Database").
+- **Clarified the boundary:** naming **real third-party services, infrastructure, and
+  frameworks** is wanted; it is *not* a code internal. The prohibition still stands on the
+  project's **own class names, file paths, and internal code wiring**. The **data-flow
+  diagram stays in product terms**. Updated Step 4, the Step 5 visual conventions, the
+  "What to NOT include" code-internals note, and added a failure mode for generic diagrams.
+
 ## Reframe — neutral public/client handover, badged epics & stories
 
 - **Audience widened to a broad public including clients and stakeholders** (not just a new
