@@ -4,6 +4,7 @@
 # Usage:
 #   ./install.sh                       # interactive install
 #   ./install.sh --target claude --schedule daily
+#   ./install.sh --statusline          # also configure the orion status line
 #   ./install.sh --update              # called by cron; pull + link new skills
 #   ./install.sh --help
 
@@ -13,19 +14,21 @@ TARGET="claude"
 SCHEDULE="none"
 FORCE=0
 UPDATE=0
+STATUSLINE=0
 
 usage() {
-    sed -n '2,8p' "$0"
+    sed -n '2,9p' "$0"
     exit 0
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --target)   TARGET="$2"; shift 2 ;;
-        --schedule) SCHEDULE="$2"; shift 2 ;;
-        --force)    FORCE=1; shift ;;
-        --update)   UPDATE=1; SCHEDULE="none"; shift ;;
-        --help|-h)  usage ;;
+        --target)     TARGET="$2"; shift 2 ;;
+        --schedule)   SCHEDULE="$2"; shift 2 ;;
+        --force)      FORCE=1; shift ;;
+        --statusline) STATUSLINE=1; shift ;;
+        --update)     UPDATE=1; SCHEDULE="none"; shift ;;
+        --help|-h)    usage ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
@@ -102,11 +105,69 @@ done
 echo ""
 echo "[$added added, $existing already linked, $pruned pruned, $skipped skipped] -> $TARGET_DIR"
 
+# ---------------------------------------------------------------------------
+# Status line - link ./statusline to ~/.claude/statusline-orion (same symlink
+# pattern as skills, so git pull updates it), then optionally point the
+# statusLine setting in ~/.claude/settings.json at it (opt-in; never in --update).
+# ---------------------------------------------------------------------------
+STATUS_SOURCE="$REPO_ROOT/statusline"
+STATUS_LINK="$HOME/.claude/statusline-orion"
+
+if [ -d "$STATUS_SOURCE" ]; then
+    link_ok=0
+    if [ -L "$STATUS_LINK" ] && [ "$(readlink "$STATUS_LINK")" = "$STATUS_SOURCE" ]; then
+        echo "  ok   statusline-orion"
+        link_ok=1
+    elif [ -e "$STATUS_LINK" ] || [ -L "$STATUS_LINK" ]; then
+        if [ "$UPDATE" = "1" ]; then
+            echo "  skip statusline-orion (exists, not our link)"
+        else
+            do_replace="$FORCE"
+            if [ "$do_replace" != "1" ]; then
+                read -r -p "  !  statusline-orion exists and is not our link. Overwrite? [y/N] " resp
+                [[ "$resp" =~ ^[Yy]$ ]] && do_replace=1
+            fi
+            if [ "$do_replace" = "1" ]; then
+                rm -rf "$STATUS_LINK"
+                ln -s "$STATUS_SOURCE" "$STATUS_LINK"
+                echo "  +    statusline-orion"
+                link_ok=1
+            else
+                echo "  skip statusline-orion"
+            fi
+        fi
+    else
+        ln -s "$STATUS_SOURCE" "$STATUS_LINK"
+        echo "  +    statusline-orion"
+        link_ok=1
+    fi
+
+    if [ "$link_ok" = "1" ] && [ "$UPDATE" != "1" ]; then
+        configure="$STATUSLINE"
+        if [ "$configure" != "1" ] && [ "$FORCE" != "1" ]; then
+            read -r -p "Configure the orion status line in ~/.claude/settings.json? [y/N] " resp
+            [[ "$resp" =~ ^[Yy]$ ]] && configure=1
+        fi
+        if [ "$configure" = "1" ]; then
+            settings="$HOME/.claude/settings.json"
+            sl_cmd="bash \"$STATUS_LINK/statusline.sh\""
+            mkdir -p "$HOME/.claude"
+            if [ -f "$settings" ]; then
+                tmp=$(mktemp)
+                jq --arg cmd "$sl_cmd" '.statusLine = {type: "command", command: $cmd}' "$settings" > "$tmp" && mv "$tmp" "$settings"
+            else
+                jq -n --arg cmd "$sl_cmd" '{statusLine: {type: "command", command: $cmd}}' > "$settings"
+            fi
+            echo "statusLine configured in $settings"
+        fi
+    fi
+fi
+
 if [ "$UPDATE" = "1" ]; then exit 0; fi
 
 if [ "$SCHEDULE" = "prompt" ]; then
     echo ""
-    echo "Updates are manual by default — run './install.sh --update' (or ask Claude to)"
+    echo "Updates are manual by default - run './install.sh --update' (or ask Claude to)"
     echo "when you want to pull the latest skills."
     read -r -p "Register a scheduled auto-pull anyway? (daily/hourly/none) [none] " resp
     SCHEDULE="${resp:-none}"
