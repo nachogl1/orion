@@ -32,6 +32,7 @@ This applies even when a task's source material (a handoff note, a report, a tra
 ## How the repo is wired
 
 - Each `skills/<name>/` folder is linked into the user's skills dir (`~/.claude/skills/`) via a junction (Windows) / symlink (macOS/Linux). The link points back at the clone, so the user-level skill **is** the repo file — no copy step.
+- The `statusline/` folder is linked the same way to `~/.claude/statusline-orion`; activating it (the `statusLine` entry in `~/.claude/settings.json`, written with a per-user absolute path at install time) is opt-in via the installer's `-StatusLine` / `--statusline` flag or interactive prompt. The status line has no `-vN` convention — it's edited in place.
 - **Updates are manual:** `install.ps1 -Update` / `install.sh --update` (git pull + relink). Auto-pull is intentionally off (supply-chain risk). After adding a new skill folder, run the installer (without `-Update`) to create its link.
 - Each skill is a directory containing an uppercase `SKILL.md`; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
 
