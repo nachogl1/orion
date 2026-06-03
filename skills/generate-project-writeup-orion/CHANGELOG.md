@@ -4,6 +4,19 @@ This skill has **no `-vN` convention** — it is edited in place. Record notable
 
 ## Unreleased
 
+- **Name the contributors, derive the count (Step 4).** Instead of asking for a bare contributor
+  count, the skill now asks the user to **name** the real contributors as two lists — the
+  embedded business-unit (BU) developers/owners and the central/shared specialist delivery-team
+  developers — and derives the headcount and the BU-vs-specialist team-origin split from those
+  lists. It then asks **per named person** whether they are full-time or part-time to compute
+  FTE. Updated the contributors operating principle, the Inputs list, Step 4, and the frontmatter
+  description. (Group labels stay generic per the distribution-safety rule — no specific team
+  name baked into the skill.)
+- **Always clean up side files.** The skill now **deletes** every side file it creates (the
+  report-data JSON sidecar and any scratch/temporary files) once the `.docx` is rendered and
+  verified, leaving only the single Word document — previously it merely *offered* to delete the
+  sidecar. If generation fails, the JSON is kept for retry/inspection. Updated the read-only
+  operating principle, Step 8, and the frontmatter description.
 - **Neutral on completion (tone).** The skill no longer frames the output as a "closure"
   report or implies the project is finished / production-ready — but equally never states it is
   unfinished. New operating principle bans completion/production-readiness claims ("finished",
