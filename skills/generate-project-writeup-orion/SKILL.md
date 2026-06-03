@@ -1,6 +1,6 @@
 ---
 name: generate-project-writeup-orion
-description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / CLOSURE SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to mark a project as delivered/closed. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user (git author lists over/under-count bots, AI-agent commits, and part-timers). After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads; it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project closure / summary report', 'closing report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document that closes the project out."
+description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / CLOSURE SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to mark a project as delivered/closed. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user (git author lists over/under-count bots, AI-agent commits, and part-timers). Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads; it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project closure / summary report', 'closing report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document that closes the project out."
 user_invocable: true
 ---
 
@@ -114,9 +114,17 @@ State in chat which path was used. **Do not install anything** without asking th
   - **Assumed traditional team composition** — e.g. *2 developers + 1 QA*; confirm.
   - **Actual calendar duration** — derived from git (first→last commit on the delivery
     branch); user may override (e.g. real elapsed wall-clock differs from commit span).
-- **Optional business case** — if the user supplies revenue/RFA figures (a file or pasted
-  numbers), populate §Value Delivered → Revenue. **Otherwise mark revenue "not provided"** —
-  never fabricate commercial projections.
+- **Supporting source documents (always offered — see Step 1b)** — proactively ask the user
+  for an **RFA** (Request for Approval / funding-approval or business-case document) and **any
+  other documents that carry real data** the report can use instead of being left blank:
+  the original proposal / statement of work, the org's own pre-build effort/cost **estimate**
+  (assumed team & duration), a **rate card**, revenue / forecast figures, security or
+  compliance requirements, design specs. The user may give file paths or paste content. These
+  feed the economic baseline (traditional team & duration, day rate), §Value Delivered →
+  Revenue, and the problem-solved narrative — every figure still has its **source shown** and
+  nothing is invented. **Optional:** if the user supplies none, proceed on detected/measured
+  data and mark the affected sections **"not provided"** (revenue especially) — never
+  fabricate commercial projections or estimates.
 
 ## Workflow
 
@@ -130,6 +138,40 @@ State in chat which path was used. **Do not install anything** without asking th
 3. Decide the **delivery branch / commit range** the report measures (default: the repo's
    default branch full history; allow a date range or a base..head range if the user scopes
    the project to a window).
+
+### Step 1b — Ask for supporting documents (RFA / business case / estimates)
+
+The repo measures *what was built*; it rarely carries the **commercial and pre-build context**
+the economic case and value sections need. So — **in addition to the other questions** — always
+ask the user up front whether they can supply supporting documents, and read whatever they give
+before building the economic model and the narrative:
+
+1. **Ask explicitly** (a short prompt, or batch it with the Step 1 metadata via
+   `AskUserQuestion`): *"Do you have an RFA or any other documents I can pull real data from
+   for the write-up?"* Name the kinds that help most, with what each unlocks:
+   - **RFA** (Request for Approval / funding-approval or business-case document) → the problem
+     solved, the commercial justification, expected revenue/value.
+   - **Original proposal / statement of work / pitch** → scope and the "problem we solved".
+   - **The org's own pre-build estimate** (assumed team size & duration) → the **traditional
+     baseline** in the cost model, so it's *their* figure, not a derived guess.
+   - **Rate card / blended day rate** → the cost-per-person-day input.
+   - **Revenue / forecast / pricing figures** → §Value Delivered → Revenue (only with a real
+     source).
+   - **Security / compliance requirements, design specs** → §Security and the solution
+     narrative.
+2. **Accept paths or pasted content.** If the user gives a path, read it (read-only); if they
+   paste, use that. If a doc lives in the repo already (Step 2 scans for RFAs/business-case
+   docs), point at it and confirm rather than re-asking.
+3. **Extract data, cite the source, invent nothing.** Pull only figures/claims the document
+   actually states; record each one's source (which doc) so the report stays reproducible and
+   defensible. Apply the **Distribution-safety / secrets** rules — strip credentials, customer
+   names, internal hostnames, etc. before they reach the report.
+4. **Optional, never blocking.** If the user has nothing to share, say so and continue on
+   detected/measured data, marking the affected sections **"not provided"** (revenue, the
+   traditional estimate if you must derive it) rather than fabricating them.
+
+Carry the supplied documents into Step 2 (narrative), Step 5 (economic baseline & rate), and
+Step 6 §Value Delivered.
 
 ### Step 2 — Discover the project (for the narrative sections)
 
@@ -208,9 +250,10 @@ Gather the remaining economic inputs (Step "Inputs"): **blended day rate + curre
 - **Actual (delivered) effort & cost** = `FTE × actual_calendar_months` PM × PM-cost.
   This is observed delivery — the FTE from Step 4, the months from git.
 - **Traditional baseline effort & cost** = `assumed_team_size × assumed_calendar_months` PM
-  × PM-cost. The assumed team and duration are the **org's own pre-AI estimate** (ask the
-  user; if they have no figure, derive a *defensible* duration from a stated productivity
-  assumption and show it). This is the headline "what it would have cost."
+  × PM-cost. The assumed team and duration are the **org's own pre-AI estimate** — prefer the
+  figure from a document the user supplied in **Step 1b** (RFA / original estimate / proposal);
+  else ask the user; if they have no figure, derive a *defensible* duration from a stated
+  productivity assumption and show it. This is the headline "what it would have cost."
 - **Savings** = traditional − actual, in money, in calendar time, and as a %.
 
 **COCOMO II — use as a cross-check and for the phase split, with a caveat.** The COCOMO II
@@ -313,7 +356,9 @@ python "<skill-dir>/assets/build_docx.py" "<data.json>" \
   and lean on file-based metrics. Don't present a squashed history as the real cadence.
 - **Bot / AI-agent commits inflate authors** — this is exactly why Step 4 always asks. Never
   let `git shortlog` alone set headcount.
-- **No business case** — leave Revenue as "not provided"; never invent projections.
+- **No business case / no supporting docs** — Step 1b always asks for an RFA or other source
+  documents; if the user supplies none, leave Revenue (and any unsubstantiated baseline) as
+  "not provided" and continue on measured data. Never invent projections to fill the gap.
 - **Monorepo / multiple stacks** — scope LOC and module counts per package and say so; don't
   blend a backend and an unrelated tool into one SLOC figure used for cost.
 - **Generated/vendored code dwarfs hand-written** — exclude it from production SLOC or the

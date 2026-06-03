@@ -2,6 +2,20 @@
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
 
+## Unreleased
+
+- **New Step 1b — ask for an RFA / supporting documents up front.** In addition to the
+  existing metadata and economic questions, the skill now proactively asks the user for an
+  **RFA** (Request for Approval / business-case doc) and any other source documents that carry
+  real data — original proposal / statement of work, the org's own pre-build estimate (assumed
+  team & duration), a rate card, revenue/forecast figures, security/compliance requirements,
+  design specs. Supplied docs (path or pasted) feed the economic baseline (traditional team &
+  rate), the problem-solved narrative, and §Value Delivered → Revenue. Data is **extracted and
+  cited, never invented**; secrets/customer names are stripped; the ask is **optional and
+  non-blocking** — with nothing supplied the affected sections stay "not provided." Updated the
+  Inputs list, Step 5 (traditional baseline prefers a supplied estimate), the "no business
+  case" failure mode, and the frontmatter description to match.
+
 ## Initial
 
 - New skill: generate a single polished **Microsoft Word (`.docx`) project write-up / closure
