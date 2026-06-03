@@ -96,6 +96,25 @@ If you still want it, register the scheduled task explicitly:
 | **generate-project-writeup-orion** | Generates a single polished **Microsoft Word (`.docx`) project write-up / closure summary report** into your Downloads folder (`~/Downloads/<repo>-project-writeup-<date>.docx`), written for **leadership / commercial stakeholders** to mark a project delivered. **Economics-first:** it leads with a transparent cost comparison — a defensible *traditional team × duration × blended-rate* baseline (cross-referenced to the COCOMO II Post-Architecture phase split, with an honest over-estimation caveat) against the **actual observed delivery**, headlining the money and time-to-market saved by an AI-assisted build. The **contributor count and full-time/part-time FTE split** that drive the math are **always confirmed with you** (git author lists miscount bots, AI-agent commits, and part-timers). It then assembles project overview, **scale-of-work metrics measured from the real repo** (LOC split prod-vs-test, commits, duration, modules, models, endpoints, tests, docs), backend/frontend/infra stack tables, architecture patterns, security, core features, an "invisible excellence" section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk + OPEX; revenue only if you supply a business case), and a documentation inventory. Renders via a **bundled zero-dependency Python generator** (no pandoc / `python-docx` / Word install needed), with pandoc and HTML fallbacks. **Invents no numbers** — every metric is measured or marked "not measured." Detects stack/conventions from the repo itself. **Strictly read-only** — reads git + files, writes one `.docx`, never edits the repo or commits. |
 | **assess-project-docs-orion** | Grades a repo's project documentation against a **two-layer benchmark** — an independent *consensus* layer (widely-cited best-practice resources, re-validated at runtime) and an opinionated *orion* layer (guidelines collected from real projects and generalized). A per-doc assessor pipeline covers the **agent instruction file** (`CLAUDE.md` / `AGENTS.md` / `.claude/rules`), the **README**, **contributing & governance** docs, and the **PR template**; each gets 0–5 dimension scores, a cited consensus checklist, an orion checklist, concrete gap fixes, and paste-ready rewrite snippets, plus a cross-doc pass for duplication/drift and missing high-value docs. Before assessing, it shows you the exact list of consensus resources it'll benchmark against and asks if you want to add more. Detects stack, tracker vocabulary, and conventions from the repo itself; emits a single self-contained dark-theme HTML report into your Downloads folder. **Strictly read-only** — it reports and recommends only (every fix lives in the report), never edits any file and never commits. |
 
+## Status line (optional)
+
+Besides skills, the repo ships a shared **Claude Code status line** (`statusline/`) you can opt into. One line, live in every session:
+
+> `1h23m` | `ctx: 42.5%` | `[branch] ◆0 ◯1 ●2 ▲1` | `#12 ok` | **`$1.23`** `$345.67`
+
+- session alive time, context-usage % (color-coded), git branch + state indicators, PR status for the current branch (cached, background-refreshed), and **cost**: API-equivalent USD for the **open session** (green) plus the **rolling last 30 days across all projects** (blue, computed from local transcripts via [ccusage](https://github.com/ryoppippi/ccusage)).
+- installed with the same link-back-to-the-repo mechanism as skills (`~/.claude/statusline-orion`), so `-Update` / `--update` pulls status-line improvements too.
+- activating it (writing the `statusLine` entry into `~/.claude/settings.json`) is **opt-in**: pass `-StatusLine` / `--statusline` to the installer, or answer the y/N prompt during an interactive install.
+
+```powershell
+.\install.ps1 -StatusLine            # Windows
+```
+```sh
+./install.sh --statusline             # macOS / Linux
+```
+
+Requirements and details (jq required; gh and node optional): see [`statusline/README.md`](statusline/README.md).
+
 ## Add a new skill
 
 1. Drop the skill folder under `skills/`. Each skill is a directory containing `SKILL.md` (uppercase — case-sensitive filesystems matter).
@@ -111,4 +130,13 @@ If you still want it, register the scheduled task explicitly:
 ./uninstall.sh                    # macOS / Linux
 ```
 
-Removes the junctions / symlinks pointing into this repo and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
+Removes the junctions / symlinks pointing into this repo (skills and status line), removes the `statusLine` entry from `~/.claude/settings.json` if it points at our link, and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
+
+## Contributing
+
+The working rules for changes to this repo live in [`CLAUDE.md`](CLAUDE.md) — read it before contributing (it's written for AI agents working in the repo, but the rules bind humans equally). The short version:
+
+- **Distribution safety (highest-priority rule).** Everything here is publicly distributable. Never introduce anything that identifies a specific person, team, company, product, private repo, or machine — in prose, code, examples, placeholders, **and git metadata (commit messages, PR titles, PR bodies)**. Use runtime-resolved placeholders (`<repo-name>`, `<gh-login>`, `#<N>`, `~/.claude`) instead; skills detect everything project-specific from the target repo at run time. Self-check your diff *and* your commit/PR text before pushing.
+- **Versioning.** `sequential-bmad-github-orion-vN` skills are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README. Other skills (and the status line) are edited in place.
+- **Issues.** Before filing one, dedupe first — search open issues *and* the code; never point at a **closed** issue as the reason to skip work.
+- **PR/commit hygiene.** Branch off `main`; keep installer scripts pure-ASCII and Windows-PowerShell-5.1-compatible; keep PR bodies as generic as the code they describe.

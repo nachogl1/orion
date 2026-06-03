@@ -24,6 +24,11 @@
   Non-interactive mode used by the scheduled task: git pull, then link any new
   skills. Skips schedule registration and never overwrites existing entries.
 
+.PARAMETER StatusLine
+  Also configure the orion status line in ~/.claude/settings.json (points the
+  statusLine setting at the linked statusline script). Without this switch the
+  interactive install offers it as a y/N prompt; -Update never touches settings.
+
 .PARAMETER Help
   Show this usage and exit.
 
@@ -43,6 +48,7 @@ param(
 
     [switch]$Force,
     [switch]$Update,
+    [switch]$StatusLine,
     [switch]$Help
 )
 
@@ -123,6 +129,73 @@ foreach ($skill in $skillDirs) {
 
 Write-Host ""
 Write-Host "[$added added, $existing already linked, $pruned pruned, $skipped skipped] -> $targetDir"
+
+# ---------------------------------------------------------------------------
+# Status line - link ./statusline to ~/.claude/statusline-orion (same junction
+# pattern as skills, so git pull updates it), then optionally point the
+# statusLine setting in ~/.claude/settings.json at it (opt-in; never in -Update).
+# ---------------------------------------------------------------------------
+$statusSource = Join-Path $repoRoot 'statusline'
+$statusLink   = Join-Path $HOME '.claude\statusline-orion'
+
+if (Test-Path $statusSource) {
+    $linkOk = $false
+    if (Test-Path $statusLink) {
+        $item = Get-Item $statusLink -Force
+        $isOurLink = $item.LinkType -in 'Junction','SymbolicLink' -and `
+                     ($item.Target -contains $statusSource -or $item.Target -contains "$statusSource\")
+        if ($isOurLink) {
+            Write-Host "  ok   statusline-orion"
+            $linkOk = $true
+        } elseif ($Update) {
+            Write-Host "  skip statusline-orion (exists, not our link)"
+        } else {
+            $doReplace = $Force
+            if (-not $doReplace) {
+                $resp = Read-Host "  !  statusline-orion exists and is not our link. Overwrite? [y/N]"
+                $doReplace = $resp -match '^[Yy]'
+            }
+            if ($doReplace) {
+                Remove-Item $statusLink -Recurse -Force
+                New-Item -ItemType Junction -Path $statusLink -Target $statusSource | Out-Null
+                Write-Host "  +    statusline-orion"
+                $linkOk = $true
+            } else {
+                Write-Host "  skip statusline-orion"
+            }
+        }
+    } else {
+        New-Item -ItemType Junction -Path $statusLink -Target $statusSource | Out-Null
+        Write-Host "  +    statusline-orion"
+        $linkOk = $true
+    }
+
+    if ($linkOk -and -not $Update) {
+        $configure = $StatusLine
+        if (-not $configure -and -not $Force) {
+            $resp = Read-Host "Configure the orion status line in ~/.claude/settings.json? [y/N]"
+            $configure = $resp -match '^[Yy]'
+        }
+        if ($configure) {
+            $settingsPath = Join-Path $HOME '.claude\settings.json'
+            $slScript = (Join-Path $statusLink 'statusline.sh') -replace '\\','/'
+            if (Test-Path $settingsPath) {
+                $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+            } else {
+                $settings = New-Object PSCustomObject
+            }
+            $slValue = [PSCustomObject]@{ type = 'command'; command = "bash `"$slScript`"" }
+            if ($settings.PSObject.Properties['statusLine']) {
+                $settings.statusLine = $slValue
+            } else {
+                $settings | Add-Member -NotePropertyName statusLine -NotePropertyValue $slValue
+            }
+            # WriteAllText -> UTF-8 without BOM (a BOM breaks Claude Code's JSON parse)
+            [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 32))
+            Write-Host "statusLine configured in $settingsPath"
+        }
+    }
+}
 
 if ($Update) { return }
 
