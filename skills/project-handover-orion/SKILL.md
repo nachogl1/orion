@@ -160,17 +160,29 @@ fabricate). Default sections:
    explained in plain English** (what it is → what it does for the product), the major
    components/modules, and the load-bearing ideas (the *why*). **Include conceptual
    diagrams** so a reader sees the shape before the words:
-   - a **top-level component diagram** — the general building blocks (e.g. a web
-     interface, an application/service layer, a data store, background processing, external
-     integrations) drawn as **boxes with labelled arrows** showing how they broadly
-     interconnect and which way data/requests flow;
+   - a **top-level component diagram** — the major building blocks drawn as **boxes with
+     labelled arrows** showing how they broadly interconnect and which way data/requests
+     flow. **Name the actual technologies, services, and tools the project uses** beside
+     each block, so a reader can attach the abstract role to something concrete and
+     recognisable — detect them from the manifests, config, compose/IaC, and CI at run
+     time. Give each box its **role *and* the real tool**, e.g. "Sign-in / identity
+     (Keycloak)", "Web UI (React)", "API service (ASP.NET)", "Data store (PostgreSQL)",
+     "Cache (Redis)", "Background jobs (the project's queue/runner)", "Object storage
+     (S3)". This naming of **real third-party services, infrastructure, and frameworks** is
+     wanted here — it is *not* the same as exposing internal code: **still never name the
+     project's own classes, file paths, or how its code wires together.** If a block's tool
+     genuinely can't be determined, label the role alone rather than guess. **Avoid
+     super-generic, association-free diagrams** (bare "Frontend → Backend → Database" with
+     no named tools);
    - a **request / data-flow diagram** for one core user action, described in **product
      terms** — "a user submits X → the system validates and stores it → notifies Y →
      returns a result" — tracing one path end to end.
-   Draw them as **ASCII art in `<pre><code>`** (≤100 chars/line, with a tiny legend), using
-   **only generic component/module names — never class names, file paths, or internal code
-   wiring.** Add a third diagram only if it genuinely clarifies. Follow each with 2–3
-   plain-English sentences explaining what it shows.
+   Draw them as **ASCII art in `<pre><code>`** (≤100 chars/line, with a tiny legend). The
+   **component diagram names the real services/tools** (as above); the **data-flow diagram
+   stays in product terms**. In **either** diagram, **never name the project's own classes,
+   file paths, or internal code wiring** — naming a third-party service or framework is
+   fine; exposing internal code is not. Add a third diagram only if it genuinely clarifies.
+   Follow each with 2–3 plain-English sentences explaining what it shows.
 5. **How it's built & run** — kept **technical but module/feature-level**: the stack named
    at a high level and explained plainly; auto-detected **setup / build / test / run**
    commands with a one-line note on what each does; conventions (branching, CI) in plain
@@ -203,8 +215,12 @@ fabricate). Default sections:
   ("Done" / "Not done") so they're legible without relying on colour alone.
 - **ASCII diagrams** in `<pre><code>` blocks; ≤100 chars/line, each with a tiny legend and
   a 2–3 sentence plain-English caption. §4 must carry at least a **top-level component
-  diagram** and a **request/data-flow diagram**, using **generic component/module names
-  only** (no classes, no paths).
+  diagram** and a **request/data-flow diagram**. The **component diagram names the real
+  technologies/services/tools** beside each block (e.g. sign-in → Keycloak, data store →
+  PostgreSQL) so blocks are concrete and recognisable, detected from the repo at run time;
+  the **data-flow diagram stays in product terms**. In both, **never name the project's own
+  classes, file paths, or internal code wiring** — naming third-party services/frameworks
+  is wanted, exposing internal code is not.
 - **Language = English** regardless of the project's doc language; gloss native terms on
   first use as `<native term> (English gloss)`.
 
@@ -242,7 +258,10 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 - **No stale-prone pointers.** No open PRs, open branches, work-in-progress, stashes, or
   next-steps lists. The dated epic/story done-vs-not snapshot is the only status content.
 - **No code internals.** No class names, no file paths, no description of how classes/code
-  wire together. Module/feature names and general product behaviour only.
+  wire together. Module/feature names and general product behaviour only. (Naming the
+  **real third-party services, frameworks, and tools** in the stack — e.g. Keycloak,
+  PostgreSQL, Redis — in the §4 component diagram is *encouraged*; that is not a code
+  internal.)
 - **No fabricated numbers / status.** Not in the tracker/manifests → mark "not tracked."
   Never guess counts or completion.
 - **No credentials, secrets, internal IPs, tokens, VPN configs, or production hostnames** —
@@ -264,6 +283,11 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
   clearly says done; everything else is **not done**. Don't guess.
 - **Tempted to name a class or file** — translate it into module / feature / behaviour
   language instead; the reader can't use class names and they go stale.
+- **Super-generic component diagram** — a bare "Frontend → Backend → Database" with no
+  named tools gives the reader nothing to associate. Name the **real services/tools** beside
+  each block (sign-in → Keycloak, data store → PostgreSQL, cache → Redis), detected from the
+  manifests/config/compose/CI. Only fall back to a role-only label when the tool truly can't
+  be determined — never guess one.
 - **No architecture/PRD docs** — describe the architecture from entry points at the
   **module / feature / behaviour** level (still no class names, still no paths); keep the
   diagrams conceptual.
