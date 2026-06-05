@@ -1,0 +1,37 @@
+name: New skill / enhancement
+description: Propose a new skill, improve an existing one, or improve docs/installer/status line.
+title: "[enhancement] <short description>"
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [new skill, existing skill improvement, "installer", status line, docs / README, other]
+    validations: {required: true}
+  - type: dropdown
+    id: agent_posture
+    attributes:
+      label: Agent posture
+      options:
+        - "agent-ready — agent can implement this autonomously"
+        - "needs-human-decision — a human must decide or act first"
+    validations: {required: true}
+  - type: textarea
+    id: decision_needed
+    attributes: {label: "If needs-human-decision: what is the open question?"}
+  - type: textarea
+    id: problem
+    attributes: {label: Problem / motivation}
+    validations: {required: true}
+  - type: textarea
+    id: outcome
+    attributes: {label: Desired outcome, description: "The end state, not the implementation."}
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Acceptance criteria, description: "Concrete, verifiable. The closing PR verifies against these."}
+    validations: {required: true}
+  - type: textarea
+    id: out_of_scope
+    attributes: {label: Out of scope / non-goals}
