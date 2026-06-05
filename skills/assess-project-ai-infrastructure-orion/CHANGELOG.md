@@ -3,6 +3,23 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## Recommendation scope tags + "Level up to user scope" report section
+
+- **Scope tagging.** Every recommendation is now tagged with the lowest scope it can
+  live at — `repo`, `user (~/.claude)`, or `account (.github)` — so commonalities that
+  recur across all the user's repos (generic CLAUDE.md rules, PR/issue templates,
+  CONTRIBUTING/CODE_OF_CONDUCT/SECURITY) can be applied **once** at user level instead of
+  per repo. New "Recommendation scope — repo vs user-level (hoisting)" section defines
+  the three scopes, the per-area mapping, and a **universality guard** (only hoist what's
+  truly common across the user's repos).
+- **New report section — "Level up to user scope":** the consolidated, deduped set of
+  user-/account-scope recommendations, grouped by destination (`~/.claude/CLAUDE.md`,
+  `~/.claude/settings.json` / `~/.claude.json`, and a public `<owner>/.github` repo),
+  each with paste-ready snippet, exact path, the one-time `gh repo create <owner>/.github
+  --public` note, and a per-repo-override caveat. Per-area sections carry a scope badge.
+- **Still strictly read-only:** hoisting is a recommendation only — the skill never
+  creates a `.github` repo, edits `~/.claude/`, or commits.
+
 ## Renamed + scope expanded → AI-development infrastructure
 
 - **Renamed** `assess-project-docs-orion` → `assess-project-ai-infrastructure-orion`
