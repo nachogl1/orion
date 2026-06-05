@@ -19,6 +19,12 @@ report:
 
 ## Files
 
+The assessors group into **three pillars** of a project's AI infrastructure:
+**(1) Agent instructions & docs** — `claude-md.md`, `project-readme.md`;
+**(2) Process & governance** — `contributing-and-governance.md`, `pr-template.md`,
+`issue-template.md`; **(3) Tooling & environment** — `tooling-mcps-plugins.md`,
+`claude-setup-audit.md`. (`consensus-resources.md` is the shared external benchmark.)
+
 | File | Assesses | Consensus §s |
 |---|---|---|
 | [`consensus-resources.md`](consensus-resources.md) | (the external benchmark + runtime re-validation rules) | — |

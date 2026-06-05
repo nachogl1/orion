@@ -33,6 +33,10 @@ changes here.
   (care personally *and* challenge directly; ruinous empathy as the failure mode).
 - Consensus layer extended with §6 (MCP / plugins / tooling) and §7 (Claude Code
   settings / hooks / memory) sources, plus distilled issue-template criteria.
+- **Three-pillar framing** of the report and assessor set — *(1) Agent instructions &
+  docs, (2) Process & governance, (3) Tooling & environment* — so the expanded scope
+  reads as one coherent assessment (Phase 0 list, report header + scorecard grouped by
+  pillar; individual guideline files unchanged).
 - Still **strictly read-only** across all assessors — including the new user-scope
   reads; nothing is installed, edited, or committed.
 
