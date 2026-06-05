@@ -1,6 +1,6 @@
 # Consensus resources — the external benchmark layer
 
-This file is the **first of two benchmark layers** the `assess-project-docs-orion`
+This file is the **first of two benchmark layers** the `assess-project-ai-infrastructure-orion`
 skill scores a repository's docs against:
 
 1. **Consensus layer (this file)** — widely-cited, vendor- or community-authoritative
@@ -115,6 +115,8 @@ the two scored separately so the reader can see "industry-baseline" vs
   <https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/about-issue-and-pull-request-templates>
 - **GitHub Docs: Creating a PR template** —
   <https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository>
+- **GitHub Docs: Configuring issue templates / issue forms** —
+  <https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository>
 - **The GitHub Blog: Issue and PR templates** —
   <https://github.blog/developer-skills/github/issue-and-pull-request-templates/>
 
@@ -129,6 +131,16 @@ the two scored separately so the reader can see "industry-baseline" vs
 - Lives in the repo root, `docs/`, or `.github/` (a `PULL_REQUEST_TEMPLATE/`
   subdirectory supports multiple templates).
 
+**Distilled consensus criteria for an issue template:**
+
+- **Short and per-type** — separate bug / feature / chore templates (or issue forms)
+  where the tracker supports it; not one giant catch-all.
+- A clear **what / why** (problem or goal), and for bugs **steps to reproduce +
+  expected vs actual + environment.**
+- **Acceptance criteria / definition of done** for feature work.
+- Labels / type / area so the issue routes and can be filtered for triage.
+- Enough structure to be actionable, little enough that people actually fill it in.
+
 ---
 
 ## 5. Cross-cutting standards (commits, changelog, versioning, decisions)
@@ -142,6 +154,57 @@ the two scored separately so the reader can see "industry-baseline" vs
 
 These inform the *governance* and *PR-template* assessors (commit format checkbox,
 changelog/ADR maintenance, "is there a decision log").
+
+---
+
+## 6. MCP servers, plugins & agent tooling
+
+- **Model Context Protocol (spec & intro)** — <https://modelcontextprotocol.io/> — what
+  an MCP server is, the client/server model, and the trust boundary (servers run with
+  the client's privileges).
+- **Claude Code — MCP** — <https://code.claude.com/docs/en/mcp> — configuring MCP
+  servers at project (`.mcp.json`) vs user scope, and how secrets/env are passed.
+- **Claude Code — plugins** — <https://code.claude.com/docs/en/plugins> — installing,
+  scoping, and trusting plugins.
+
+**Distilled consensus criteria for agent tooling:**
+
+- Wire MCP servers at the **right scope** — project-shared in `.mcp.json`, personal at
+  user scope; don't pin a personal preference into a shared repo file.
+- **Trust boundary matters** — third-party servers/plugins run with the agent's
+  privileges; use named/trusted sources, deliberate versions, and least scope.
+- **No secrets in committed config** — credentials go in env / local (gitignored)
+  settings, never a committed `.mcp.json`.
+- Tooling should be **used**, not just installed — configuration nothing references is
+  dead weight.
+
+These inform the *tooling-mcps-plugins* assessor. (The specific tools an orion setup
+recommends are illustrative and re-validated at run time — see
+[`tooling-mcps-plugins.md`](tooling-mcps-plugins.md).)
+
+---
+
+## 7. Claude Code setup (settings, hooks, memory) — for the self-audit
+
+- **Claude Code — settings** — <https://code.claude.com/docs/en/settings> — the
+  `settings.json` schema, scopes (user / project / local), permissions, and env.
+- **Claude Code — hooks** — <https://code.claude.com/docs/en/hooks> — hook events,
+  when each fires, and that hooks run as the user (the safety + cost surface).
+- **Claude Code — memory** — <https://code.claude.com/docs/en/memory> — user vs project
+  `CLAUDE.md`, load order, and the keep-it-lean guidance (applies to the user file too).
+
+**Distilled consensus criteria for a healthy setup:**
+
+- Everything referenced **resolves and parses** — a dangling hook/skill/statusLine path
+  or an unparseable `settings.json` fails silently every session.
+- The user-level `CLAUDE.md` is **lean** (it loads on every prompt, every project).
+- Hooks use the **right event**, exit cleanly, and don't do heavy work on a hot path.
+- **No secrets** hardcoded in `settings.json` / `~/.claude.json`.
+- Permissions match **real usage**; dead links and unused skills/plugins are prune
+  candidates.
+
+These inform the *claude-setup-audit* assessor (see
+[`claude-setup-audit.md`](claude-setup-audit.md)).
 
 ---
 

@@ -2,7 +2,7 @@
 
 A Claude Code skill that takes a queue of GitHub issues, ships each through a four-agent BMAD pipeline (create-story → implement → code-review → build/PR/CI/merge into a shared batch branch), then runs a two-agent batch-QA pipeline (full tests + e2e + live-stack QA gate) and opens a Draft PR batch→**base branch**. **BMAD methodology + GitHub Issues as source of truth are hard requirements.** The run is fully autonomous through cheap retries + one Opus recovery attempt; on genuine failure it pauses the queue and converses with you to decide skip / retry / fix-manually / abort.
 
-**New in v4** (the previous version is kept, deprecated, as [`sequential-bmad-github-orion-v3-old`](../sequential-bmad-github-orion-v3-old/); see [CHANGELOG.md](./CHANGELOG.md) for the full list):
+**New in v4** (see [CHANGELOG.md](./CHANGELOG.md) for the full list):
 
 - **Run from any base branch, not just `main`.** The skill forks the batch from — and targets the Draft PR at — whatever branch you invoke it from (the *base branch*). Run it from a feature/integration branch, or from a separate worktree, and your `main` is never touched while the batch runs. Running from `main` behaves exactly as before.
 - **TODOs left during development are recorded in `lessons-learned.md`.** Markers were already surfaced (PR body, QA report); now a left-behind TODO/FIXME also gets a durable lessons-learned entry naming the `file:line`, what was deferred, and why — so a feature/gap punted to "later" doesn't get forgotten.
