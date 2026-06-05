@@ -144,8 +144,47 @@ the user's call.
      ([`guidelines/claude-setup-audit.md`](guidelines/claude-setup-audit.md)). Because
      this reads the user's home config (not the target repo), **only run it when the
      user opts in**; findings go in the same local report.
-   Use `AskUserQuestion` only if the user hasn't already said; otherwise state the plan
-   briefly and proceed. Always confirm the **opt-in** self-audit explicitly.
+
+### Standard questions (ask these verbatim — every repo, every run)
+
+So the skill asks the **same** thing in every repo, use the fixed `AskUserQuestion`
+set below. Don't paraphrase, reorder, or merge them; only skip a question the user
+already answered unprompted in their invocation. The two-question Phase-0 call and the
+one-question Phase-1 call are kept **separate** because Phase 1 must be shown *after*
+consensus links are re-validated (Phase 1, step 3).
+
+**Phase 0 — one `AskUserQuestion` call, two questions:**
+
+- **Q1 — header `Assessor set`** · question: *"Which of the six repo assessors should
+  this run cover? (agent instructions, README, contributing/governance, PR template,
+  issue template, agent tooling)"*
+  Options, in order — first is the default:
+  1. **All six repo assessors**
+  2. **Let me narrow the set**
+
+  Q1 is **only** about the repo assessors — it must **not** carry a "+ self-audit"
+  option. The self-audit is owned solely by Q2 (this removes the overlap/contradiction
+  that earlier phrasings hit).
+
+- **Q2 — header `Self-audit`** · question: *"Run the opt-in Claude setup self-audit? It
+  reads your `~/.claude/` (settings, hooks, memory, skills) outside the repo. Read-only;
+  findings go only in your local report."*
+  Options, in order — first is the default:
+  1. **No, repo only**  *(default — opt-in: it reads outside the repo)*
+  2. **Yes, include the self-audit**
+
+**Phase 1 — one `AskUserQuestion` call, one question** (asked in Phase 1, step 4, after
+the re-validated source list is shown):
+
+- **Q3 — header `Benchmark`** · question: *"These are the consensus sources I'll
+  benchmark against (re-validated above). Proceed with this built-in list, or add your
+  own first?"*
+  Options, in order — first is the default:
+  1. **Proceed with built-in list**
+  2. **I'll add sources**
+
+If the user narrows in Q1, follow up to learn which assessors to keep (free-form). If
+they pick "I'll add sources" in Q3, collect URLs and validate per Phase 1, step 4.
 
 ## Phase 1 — Confirm the benchmark resources (consensus layer)
 
@@ -161,10 +200,11 @@ that list **before** any assessment runs:
 3. **Show the user the exact list** that will be used, grouped by doc, with reachability
    status — so they can see what the consensus layer is grounded on. Keep it a clean,
    scannable list (clear language; the detail is in the file if they want it).
-4. **Ask whether to add more** (`AskUserQuestion`). If the user supplies URLs: validate
-   reachability and include the reachable ones in this run's benchmark (note any that
-   didn't resolve). If they decline, proceed with the built-in list. Never silently
-   swap or drop a source.
+4. **Ask whether to add more** — use the pinned **Q3** from Phase 0's "Standard
+   questions" block (header `Benchmark`), asked here after the list is shown. If the user
+   supplies URLs: validate reachability and include the reachable ones in this run's
+   benchmark (note any that didn't resolve). If they decline, proceed with the built-in
+   list. Never silently swap or drop a source.
 5. **Optional persistence (only if asked).** If the user wants their additions reused in
    future runs, offer to append them to `guidelines/consensus-resources.md` under the
    right section — with a one-line "what to take from it" note, marked **✓** only after
