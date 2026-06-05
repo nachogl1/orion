@@ -41,6 +41,38 @@ Every doc is judged against the **union** of:
 The report keeps the two **scored separately** so the reader sees the industry
 baseline gap distinctly from the orion-recommended gap.
 
+## Recommendation scope — repo vs user-level (hoisting)
+
+Many recommendations recur across **every repo the same user owns** — generic
+conventions and boilerplate templates that aren't project-specific. Rather than have
+the user re-apply them repo by repo, the report tags each recommendation with the
+**lowest scope it can live at**, so they can apply a common fix **once** at user level
+and let every repo inherit it. There are **three** scopes:
+
+- **`repo`** — inherently project-specific; must live in the target repo. README,
+  stack/build/test commands, architecture, ADRs/decision log/runbook, and any rule that
+  names this project's stack or domain.
+- **`user (~/.claude)`** — Claude Code user scope, loaded into **every** session on
+  every repo: `~/.claude/CLAUDE.md` (generic rules — commit/PR convention, the
+  agent-ready vs needs-human-decision marker, code-style musts), `~/.claude/settings.json`
+  (hooks, statusLine, plugin enablement), `~/.claude.json` (MCP servers).
+- **`account (.github)`** — GitHub's **default community health files**: a public repo
+  named **`<owner>/.github`** supplies defaults to **all repos under that account that
+  lack their own copy**. Hoistable here: `PULL_REQUEST_TEMPLATE.md`,
+  `ISSUE_TEMPLATE/*`, `CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, `SUPPORT`,
+  `FUNDING`. A per-repo copy still overrides when one repo needs something special.
+
+**Universality guard.** Only recommend hoisting a rule/template to a user-level scope
+when it's plausibly **universal for this user** — true for essentially all their repos,
+not just this one. A rule that fits a minority of repos pollutes every session/repo if
+hoisted; keep those at `repo` scope. When unsure, tag `repo` and note it *could* hoist
+if the user confirms it's universal.
+
+This skill stays **strictly read-only**: hoisting is a *recommendation* in the report
+(scope tag + where to put it + paste-ready snippet). The skill never creates a
+`.github` repo, never edits `~/.claude/`, and never commits — applying the level-up is
+the user's call.
+
 ## Operating principles
 
 1. **Strictly read-only — never modify the target repo.** Do **not** apply fixes, edit
@@ -201,7 +233,11 @@ Each assessor returns a structured result:
   one-line justification; mark **N/A** where a dimension legitimately doesn't apply
   (e.g. multi-agent safety in a repo that never runs parallel agents).
 - **Gaps → concrete recommendations**, and a **paste-ready rewrite snippet** for each
-  dimension under 3.
+  dimension under 3. **Tag each recommendation with its scope** — `repo`,
+  `user (~/.claude)`, or `account (.github)` (see "Recommendation scope — repo vs
+  user-level"). Default to `repo`; tag a user-level scope only when the fix is generic
+  boilerplate or a plausibly-universal rule (apply the universality guard), and name the
+  exact destination (e.g. `~/.claude/CLAUDE.md`, `<owner>/.github/PULL_REQUEST_TEMPLATE.md`).
 - **Smells caught** (from the guideline's "Smells to flag" list), including any
   **leaked specifics** (person/org/product/path) if the doc is meant to be public.
 - A **per-doc roll-up score** (mean of applicable dimensions) and a one-paragraph
@@ -236,6 +272,12 @@ After assessors return, the orchestrator (or a top-tier synthesis sub-agent):
 - **Tooling coverage** — relevant capability gaps (verification/browser, container,
   knowledge-base, context-compression) the project would benefit from, and any
   configured-but-unused tooling.
+- **Hoist / level-up pass** — collect every recommendation the assessors tagged
+  `user (~/.claude)` or `account (.github)` into one consolidated list, deduped across
+  assessors (the same convention may surface in CLAUDE.md *and* the PR template). This
+  is the user's "apply once, inherit everywhere" set — surfaced as its own report
+  section so they can level up commonalities instead of re-doing them per repo. Apply
+  the **universality guard**: anything that only fits this repo stays at `repo` scope.
 - **Overall scorecard** — per-area roll-ups + an AI-infrastructure health summary, with
   the 3–5 highest-leverage recommendations ranked first.
 
@@ -260,20 +302,33 @@ user's Downloads folder, e.g.
    - the **orion rubric** with each dimension's 0–5 score + justification,
    - **gaps → recommendations**, with **suggested rewrite snippets** (or the tooling
      config / generated template draft) in copy-friendly code blocks the user can lift,
+     each carrying a **scope badge** (`repo` / `user` / `account`),
    - **smells caught**.
    The **tooling** section lists recommended-but-missing tooling by capability with the
    scope to add it at; the **setup self-audit** section (if run) lists each
    broken/stale/wasteful finding with its `~/.claude/` file + line.
 4. **Cross-cutting findings** (duplication/drift, coverage gaps, convention
    consistency, no-source-of-truth → propose a tracker, tooling-coverage gaps).
-5. **Sources** — the consensus resources actually cited (including any the user added
+5. **Level up to user scope** — the consolidated, deduped set of recommendations tagged
+   `user (~/.claude)` or `account (.github)`: the commonalities this user can apply
+   **once** and have every repo inherit, instead of redoing them per repo. Group by
+   destination — `~/.claude/CLAUDE.md` (generic rules), `~/.claude/settings.json` /
+   `~/.claude.json` (hooks/statusLine/MCP), and a public **`<owner>/.github`** repo
+   (PR/issue templates, CONTRIBUTING/CODE_OF_CONDUCT/SECURITY/SUPPORT) — each with its
+   paste-ready snippet and the exact path/filename to place it at. Include a one-line
+   **universality caveat** (only hoist what's truly common across the user's repos; a
+   per-repo copy still overrides an account default) and, for the `.github` route, the
+   one-time `gh repo create <owner>/.github --public` setup note. Read-only: the skill
+   places nothing — it shows the user what to lift and where.
+6. **Sources** — the consensus resources actually cited (including any the user added
    in Phase 1), with their re-validation status.
-6. **Footer** — a note that everything here is a **recommendation only**; the skill
+7. **Footer** — a note that everything here is a **recommendation only**; the skill
    changed nothing in the repo or the user's settings and committed nothing — applying
    any change is the user's call.
 
 Keep the styling clean and dark-theme-friendly to match the other orion report skills.
-Then **summarize the headline in chat** (scores + top gaps) and give the file path.
+Then **summarize the headline in chat** (scores + top gaps, and call out the
+**level-up set** — what's worth hoisting to user scope) and give the file path.
 The skill ends here — it does **not** offer to apply fixes.
 
 ---
