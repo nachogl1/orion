@@ -72,6 +72,14 @@ weight, more of the budget spent on real work.
   deprecated keys/flags. Don't chase upgrades for their own sake — flag only where it
   causes breakage or waste.
 
+> **Tip — no status line, or no cost visibility?** If the user has no `statusLine`
+> configured (or one that doesn't surface context-usage and spend), suggest the
+> **orion status line** this repo ships: one line per session with alive-time,
+> color-coded context %, git/PR state, and **cost** (this session + rolling 30 days).
+> It installs with the same link-back mechanism as the skills and is opt-in:
+> `install.ps1 -StatusLine` (Windows) / `install.sh --statusline` (macOS/Linux), or
+> the y/N prompt during an interactive install. See the repo's `statusline/README.md`.
+
 ---
 
 ## C. Smells to flag
