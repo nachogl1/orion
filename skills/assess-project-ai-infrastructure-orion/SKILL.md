@@ -82,20 +82,27 @@ baseline gap distinctly from the orion-recommended gap.
 
 1. Identify the target repo root and its name (for the report filename only — a local
    artifact, not committed).
-2. Confirm the **assessor set**. Default = the six repo assessors; the seventh
-   (setup self-audit) is **opt-in** because it reads outside the repo:
+2. Confirm the **assessor set**, grouped into **three pillars** of a project's AI
+   infrastructure. Default = the six repo assessors; the seventh (setup self-audit) is
+   **opt-in** because it reads outside the repo:
+
+   **Pillar 1 — Agent instructions & docs**
    - **Agent instructions** — `CLAUDE.md`, `./.claude/CLAUDE.md`, `CLAUDE.local.md`,
      `.claude/rules/*.md`, an `AGENTS.md` imported by CLAUDE.md.
    - **README** — root + any per-package READMEs.
+
+   **Pillar 2 — Process & governance**
    - **Contributing & governance** — `CONTRIBUTING(.md)`, `CODE_OF_CONDUCT`,
      `SECURITY`, `SUPPORT`, CI/test docs, runbook/troubleshooting, ADRs + index,
-     decision log.
+     decision log, and the tracker / source-of-truth.
    - **PR template** — `PULL_REQUEST_TEMPLATE.md`, `.github/PULL_REQUEST_TEMPLATE.md`,
      `docs/…`, or a `PULL_REQUEST_TEMPLATE/` directory.
    - **Issue/ticket template** — `ISSUE_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/*.md|*.yml`
      (issue forms), or the tracker's request-type templates — checking for the
      **agent-ready vs needs-human-decision** marker
      ([`guidelines/issue-template.md`](guidelines/issue-template.md)).
+
+   **Pillar 3 — Tooling & environment**
    - **Agent tooling (MCPs / plugins)** — MCP servers, plugins and helper CLIs wired in
      at **repo scope** (`.mcp.json`, `.claude/`) and **user scope** (`~/.claude.json`,
      `~/.claude/`), recommending broadly-useful tooling that's missing
@@ -238,11 +245,16 @@ Write **one self-contained HTML file** (inline CSS/JS, no external assets) to th
 user's Downloads folder, e.g.
 `~/Downloads/assess-project-ai-infra-<repo>-<YYYY_MM_DD-HH_MM>.html`. Structure:
 
-1. **Header** — repo name, date, assessor set, the two-layer model explained in a line.
-2. **Overall scorecard** — per-area roll-up scores (visual, e.g. 0–5 bars), the
-   AI-infrastructure health headline, and the top ranked recommendations.
-3. **Per-area sections** (docs, PR/issue templates, tooling, setup self-audit), each
-   with:
+1. **Header** — repo name, date, assessor set, and a one-line framing: the assessment
+   covers **three pillars of AI infrastructure** — *(1) Agent instructions & docs,
+   (2) Process & governance, (3) Tooling & environment* — each scored against the
+   two-layer (consensus + orion) benchmark.
+2. **Overall scorecard** — per-area roll-up scores (visual, e.g. 0–5 bars) **grouped
+   under the three pillars**, a per-pillar headline plus the overall AI-infrastructure
+   health verdict, and the top ranked recommendations.
+3. **Per-area sections, organized under the three pillars** (Pillar 1: agent
+   instructions, README · Pillar 2: contributing/governance, PR template, issue
+   template · Pillar 3: tooling, setup self-audit), each with:
    - the **consensus checklist** (met/partial/missing) with **cited, re-validated**
      source links,
    - the **orion rubric** with each dimension's 0–5 score + justification,
