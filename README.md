@@ -16,6 +16,13 @@ The installer links each `skills/<name>/` folder into the agent's user skills di
 
 > Work-specific skills (anything that references a specific product, team, or internal workflow) live only on the machines that need them — not in this repo. This keeps the repo safely shareable: no product names, no team identifiers, no internal paths.
 
+## Prerequisites
+
+- **Git** — to clone the repo.
+- **Claude Code** — installed and run once (creates `~/.claude/skills/`).
+- **PowerShell 5.1+** (Windows) or **Bash** (macOS / Linux) — for the installers.
+- **jq** — only if you enable the optional status line.
+
 ## Install
 
 ```sh
@@ -43,6 +50,10 @@ Non-interactive form (no scheduled task registered):
 ```sh
 ./install.sh --force                          # macOS / Linux
 ```
+
+### After install
+
+Open any project in Claude Code and type `/clear-resources-orion` — you should see a list of branches/worktrees you created, ready for one-confirmation removal.
 
 ## How updates work
 

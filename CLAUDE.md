@@ -31,10 +31,12 @@ This applies even when a task's source material (a handoff note, a report, a tra
 
 ## How the repo is wired
 
-- Each `skills/<name>/` folder is linked into the user's skills dir (`~/.claude/skills/`) via a junction (Windows) / symlink (macOS/Linux). The link points back at the clone, so the user-level skill **is** the repo file — no copy step.
-- The `statusline/` folder is linked the same way to `~/.claude/statusline-orion`; activating it (the `statusLine` entry in `~/.claude/settings.json`, written with a per-user absolute path at install time) is opt-in via the installer's `-StatusLine` / `--statusline` flag or interactive prompt. The status line has no `-vN` convention — it's edited in place.
-- **Updates are manual:** `install.ps1 -Update` / `install.sh --update` (git pull + relink). Auto-pull is intentionally off (supply-chain risk). After adding a new skill folder, run the installer (without `-Update`) to create its link.
-- Each skill is a directory containing an uppercase `SKILL.md`; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
+See [`README.md`](README.md) — Skills / Status line / Install / How updates work. Key agent-specific facts:
+
+- Each `skills/<name>/` is a junction (Windows) / symlink (macOS/Linux) into `~/.claude/skills/<name>/`; the link points back at the clone, so the repo file **is** the user-level skill — no copy step.
+- The `statusline/` folder links the same way to `~/.claude/statusline-orion`; activating it is opt-in (installer `-StatusLine` / `--statusline`). No `-vN` convention — edited in place.
+- After adding a skill folder, run `install.ps1` / `install.sh` (no `-Update`) to create its link.
+- `SKILL.md` (uppercase) is the required entry-point file in every skill folder; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
 
 ## Filing issues — dedupe first, and never defer to a dead issue
 
@@ -46,3 +48,15 @@ This applies even when a task's source material (a handoff note, a report, a tra
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
 - Keep `install.ps1` / `install.sh` pure-ASCII and Windows-PowerShell-5.1-compatible.
 - Commit/push only when the user asks; branch off `main` for changes; end commit messages with the required `Co-Authored-By` trailer.
+
+## Git guardrails
+
+- Never commit directly to `main`; changes land via a `feat/<desc>` / `fix/<desc>` branch + PR.
+- Never force-push, bypass hooks (`--no-verify`), or merge a PR with failing/pending CI.
+- Never auto-merge — the merge decision belongs to a human.
+
+## Verification (no build/test suite)
+
+- After editing a `.md` skill file, confirm it renders without parse errors.
+- After editing `install.ps1` / `install.sh`, confirm pure-ASCII + PS 5.1 syntax.
+- "Done" = the edited file is valid and the installer relinks clean.
