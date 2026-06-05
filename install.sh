@@ -159,6 +159,17 @@ if [ -d "$STATUS_SOURCE" ]; then
                 jq -n --arg cmd "$sl_cmd" '{statusLine: {type: "command", command: $cmd}}' > "$settings"
             fi
             echo "statusLine configured in $settings"
+
+            # Pre-warm the 30-day cost cache so the status line shows the real
+            # figure on first render instead of the "$..." placeholder. Without
+            # this the in-script background refresh leaves it pending until the
+            # first npx ccusage run finishes. Best-effort: needs node/npx.
+            echo "Warming the 30-day cost cache (one-time, needs node/npx)..."
+            ( since=$(date -d "30 days ago" +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d 2>/dev/null)
+              cache="$HOME/.cache/claude-statusline/cost-30d.txt"
+              mkdir -p "$(dirname "$cache")" 2>/dev/null
+              total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r '.totals.totalCost // empty')
+              [ -n "$total" ] && printf '%.2f' "$total" > "$cache" && echo "  cost cache: $total" ) || true
         fi
     fi
 fi

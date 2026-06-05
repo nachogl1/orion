@@ -193,6 +193,21 @@ if (Test-Path $statusSource) {
             # WriteAllText -> UTF-8 without BOM (a BOM breaks Claude Code's JSON parse)
             [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 32))
             Write-Host "statusLine configured in $settingsPath"
+
+            # Pre-warm the 30-day cost cache so the status line shows the real
+            # figure on first render instead of the "$..." placeholder. Without
+            # this the in-script background refresh leaves it pending until the
+            # first npx ccusage run finishes. Best-effort: needs bash + node/npx
+            # (same prerequisites as the status line itself); ignored if absent.
+            Write-Host "Warming the 30-day cost cache (one-time, needs node/npx)..."
+            $warm = @'
+since=$(date -d "30 days ago" +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d 2>/dev/null)
+cache="$HOME/.cache/claude-statusline/cost-30d.txt"
+mkdir -p "$(dirname "$cache")" 2>/dev/null
+total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r ".totals.totalCost // empty")
+[ -n "$total" ] && printf "%.2f" "$total" > "$cache" && echo "  cost cache: $total"
+'@
+            try { $warm | bash 2>$null } catch { }
         }
     }
 }
