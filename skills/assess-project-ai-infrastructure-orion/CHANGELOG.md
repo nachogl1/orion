@@ -1,7 +1,40 @@
-# Changelog — assess-project-docs-orion
+# Changelog — assess-project-ai-infrastructure-orion
 
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
+
+## Renamed + scope expanded → AI-development infrastructure
+
+- **Renamed** `assess-project-docs-orion` → `assess-project-ai-infrastructure-orion`
+  (folder, frontmatter, headings, guideline cross-references, README row).
+- **Broadened** from "project documentation" to a project's **AI-development
+  infrastructure**: docs **+ agent tooling + the user's own Claude setup.**
+- **New assessor — issue/ticket template** (`guidelines/issue-template.md`): mirrors the
+  PR-template rubric, headlined by the **agent-ready vs needs-human-decision** marker so
+  an autonomous agent knows whether it may take a ticket; generates a draft (with the
+  marker) when none exists, in the report.
+- **New assessor — agent tooling (MCPs / plugins)**
+  (`guidelines/tooling-mcps-plugins.md`): detects MCP servers / plugins / helper CLIs at
+  **repo and user scope** and recommends broadly-useful, **relevant** missing tooling by
+  capability (browser-automation, container, knowledge-base, output/context-compression,
+  token-optimization), with publicly-available examples re-validated at run time.
+- **New assessor — Claude setup self-audit (opt-in)**
+  (`guidelines/claude-setup-audit.md`): points Claude at the user's own `~/.claude/`
+  (settings.json, hooks, memory, skills/plugins) and reports what's **stale / broken /
+  wasteful** — read-only, file+line findings, never edits the user's config.
+- **Governance:** if the repo has **no tracker at all**, the synthesis now proposes
+  adopting one as the single source of truth (**GitHub Issues** for a GitHub-hosted
+  repo); required-green-CI-before-merge and a stated **squash-merge** strategy added to
+  the merge/protection guidance.
+- **CLAUDE.md guideline additions:** cap **sub-agent output** in the spawn prompt
+  ("verdict + N bullets max") to protect main context; an explicit **ELI5 / layman**
+  audience-altitude preference; default-branch protection with **required green CI** and
+  a **squash-merge** default; the directness guideline reframed as **Radical Candor**
+  (care personally *and* challenge directly; ruinous empathy as the failure mode).
+- Consensus layer extended with §6 (MCP / plugins / tooling) and §7 (Claude Code
+  settings / hooks / memory) sources, plus distilled issue-template criteria.
+- Still **strictly read-only** across all assessors — including the new user-scope
+  reads; nothing is installed, edited, or committed.
 
 ## Initial version
 

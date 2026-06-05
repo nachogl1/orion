@@ -8,7 +8,7 @@ user_invocable: true
 
 > [!NOTE]
 > **Editing this skill?** This skill has **no `-vN` convention** — edit it in place
-> (like `guided-qa-orion` / `assess-project-docs-orion`). Keep everything here
+> (like `guided-qa-orion` / `assess-project-ai-infrastructure-orion`). Keep everything here
 > **general** (see the Distribution-safety gate below) — this repo is publicly
 > distributable. The *report* it generates about a user's repo is a local artifact
 > and may name their repo; the skill files must never hard-code anything
