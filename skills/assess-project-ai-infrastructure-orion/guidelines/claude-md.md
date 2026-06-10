@@ -32,6 +32,11 @@ whether it's concrete enough to act on.
 - A default reasoning-effort posture, with explicit "escalate only when stuck."
 - Sub-agent model tiering (cheap model for simple work, top model reserved for hard
   decisions) and a **cap on parallel sub-agents** to avoid rate limits.
+- **Cap sub-agent *output* in the spawn prompt** — instruct each sub-agent to return a
+  bounded result (e.g. *"return a verdict + 5 bullets max"*, or a fixed schema), not a
+  free-form essay. Uncapped sub-agent output floods the orchestrator's context and can
+  kill the turn; the instruction to bound the return belongs in the prompt that spawns
+  the agent.
 
 ### B2. Change philosophy
 - "Smallest change that works"; follow existing patterns; **no unrequested
@@ -54,15 +59,26 @@ whether it's concrete enough to act on.
 - **Functional / business-first explanations** when the reader is unfamiliar with the
   code — explain *what it does for the user* before implementation detail.
 - **Plain-language onboarding tone** — assume the reader is new to the stack and
-  tooling; gloss domain terms and tool steps on first use.
+  tooling; gloss domain terms and tool steps on first use. A common, strong user-level
+  preference is an explicit *"explain it like I don't know this tech stack or domain —
+  layman terms, no assumed knowledge"* instruction (an ELI5 posture). The assessor
+  checks whether the file sets an explicit audience/altitude for explanations, rather
+  than leaving tone to chance.
 - **Emit reports/docs as files**, not inline walls of text, unless inline is asked for.
 - Check the *actual* state of files/configs/services before asserting it.
 
-### B5. Directness (anti-sycophancy)
+### B5. Directness (anti-sycophancy) — *Radical Candor*
 - No flattery or agreement-for-its-own-sake; **say the hard thing**.
 - **Disagree explicitly before executing** when a plan is flawed ("that breaks X
   because Y"), but don't argue for argument's sake, and stop relitigating settled
   decisions. Treat the user as a **peer, not a principal.**
+- The orion posture here is **Radical Candor** — *care personally **and** challenge
+  directly*. Both axes matter: challenging without care reads as obnoxious aggression;
+  caring without challenge collapses into **ruinous empathy** (the sycophancy this
+  section exists to prevent) — withholding a real objection to avoid friction. A strong
+  CLAUDE.md asks for the candid, well-reasoned pushback, not deference. The assessor
+  checks the file establishes *both*: permission to challenge **and** the expectation
+  that challenges are specific and constructive, not just blunt.
 
 ### B6. Discuss-before-doing
 - While the user is exploring / asking for an opinion, give the opinion or trade-offs;
@@ -77,6 +93,11 @@ whether it's concrete enough to act on.
 - **Surface CI failures to the user**; don't auto-fix-and-re-push without approval.
 - **Never auto-merge** — the agent may open and describe a PR and suggest reviewers,
   but the **merge decision belongs to a human.**
+- **Default branch is protected, and the rule says so:** all changes land via PR;
+  **required CI checks must be green before merge** (no merging red or still-pending
+  CI); and the project's **merge strategy is stated** — a **squash merge** to keep the
+  default branch's history linear and one-commit-per-change is the common orion
+  default. The agent never merges around a failing/pending check.
 - Don't run destructive/irreversible operations without confirming; prefer
   dry-run/preview first.
 

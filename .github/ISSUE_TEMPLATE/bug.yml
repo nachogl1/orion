@@ -1,0 +1,45 @@
+name: Bug report
+description: A skill, installer, or the status line doesn't work as documented.
+title: "[bug] <short description>"
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [skill, "installer (install.ps1 / install.sh)", status line, docs / README, other]
+    validations: {required: true}
+  - type: dropdown
+    id: agent_posture
+    attributes:
+      label: Agent posture
+      description: Can an agent fix this autonomously, or is a human decision needed first?
+      options:
+        - "agent-ready — agent can fix this autonomously"
+        - "needs-human-decision — a human must decide or act first"
+    validations: {required: true}
+  - type: textarea
+    id: decision_needed
+    attributes:
+      label: "If needs-human-decision: what is the open question?"
+      description: State the decision + options. Once resolved, write the answer and relabel agent-ready.
+  - type: textarea
+    id: what_happened
+    attributes: {label: What happened?}
+    validations: {required: true}
+  - type: textarea
+    id: steps
+    attributes: {label: Steps to reproduce}
+    validations: {required: true}
+  - type: textarea
+    id: expected_actual
+    attributes: {label: Expected vs actual (paste any error output)}
+    validations: {required: true}
+  - type: input
+    id: env
+    attributes: {label: Environment, placeholder: "Windows 11 / PowerShell 5.1 / Claude Code 1.x / orion @ abc1234"}
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Acceptance criteria, description: "What is true when fixed? The closing PR verifies against these."}
+    validations: {required: true}

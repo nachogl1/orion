@@ -1,4 +1,4 @@
-# `assess-project-docs-orion` — guidelines corpus
+# `assess-project-ai-infrastructure-orion` — guidelines corpus
 
 These files are the **benchmark the skill scores a repository's docs against.** They
 are read at run time by the per-doc assessors; they are not copied into the target
@@ -19,6 +19,12 @@ report:
 
 ## Files
 
+The assessors group into **three pillars** of a project's AI infrastructure:
+**(1) Agent instructions & docs** — `claude-md.md`, `project-readme.md`;
+**(2) Process & governance** — `contributing-and-governance.md`, `pr-template.md`,
+`issue-template.md`; **(3) Tooling & environment** — `tooling-mcps-plugins.md`,
+`claude-setup-audit.md`. (`consensus-resources.md` is the shared external benchmark.)
+
 | File | Assesses | Consensus §s |
 |---|---|---|
 | [`consensus-resources.md`](consensus-resources.md) | (the external benchmark + runtime re-validation rules) | — |
@@ -26,6 +32,9 @@ report:
 | [`project-readme.md`](project-readme.md) | `README.md` (root + per-package) | §2 |
 | [`contributing-and-governance.md`](contributing-and-governance.md) | `CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, CI/test docs, runbook, ADR index, decision log | §3, §5 |
 | [`pr-template.md`](pr-template.md) | `PULL_REQUEST_TEMPLATE.md` / `.github/…` / `PULL_REQUEST_TEMPLATE/` | §4 |
+| [`issue-template.md`](issue-template.md) | `ISSUE_TEMPLATE.md` / `.github/ISSUE_TEMPLATE/*` (incl. the agent-ready marker) / tracker request types | §4 |
+| [`tooling-mcps-plugins.md`](tooling-mcps-plugins.md) | MCP servers, plugins & helper tooling at **repo** (`.mcp.json`) and **user** scope | §6 |
+| [`claude-setup-audit.md`](claude-setup-audit.md) | the **user's own** `~/.claude/` setup — `settings.json`, hooks, memory, skills/plugins/MCP | §7 |
 
 Each orion guideline file ends with a **0–5 scoring rubric** the assessor fills in,
 and instructs the assessor to attach a **concrete fix** (and a suggested rewrite
