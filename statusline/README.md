@@ -10,6 +10,8 @@ A shared [Claude Code status line](https://docs.anthropic.com/en/docs/claude-cod
 | PR status for the branch (`#12 ok` / `wait` / `fail` / `draft` / `merged` / `no PR`) | per-state | `gh pr view`, cached 5 min, refreshed in background |
 | **Session cost** (`$1.23`) | green | `cost.total_cost_usd` from Claude Code stdin JSON |
 | **Last-30-days cost** (`$345.67`) | blue | [ccusage](https://github.com/ryoppippi/ccusage) over local transcripts, cached 10 min, refreshed in background |
+| **Model** (`Opus`) | cyan | `model.display_name` from Claude Code stdin JSON |
+| **Reasoning effort** (`effort:high`) | green low/medium, yellow high, red xhigh/max | `effort.level` from Claude Code stdin JSON; omitted when the model exposes no effort level |
 
 Second line: the session's working directory.
 
