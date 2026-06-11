@@ -9,6 +9,8 @@
 #   - cost: API-equivalent USD for the open session (green) + rolling last
 #     30 days across all projects (blue), aggregated from local transcripts
 #     by ccusage (cached, background-refreshed via `npx`)
+#   - model name (cyan)
+#   - reasoning effort (color-coded by level; omitted when unsupported)
 #   - second line: current working directory
 #
 # Requirements: bash (Git Bash on Windows), jq. Optional: gh (PR segment),
@@ -23,6 +25,8 @@ input=$(cat)
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 cwd=$(echo "$input" | jq -r '.cwd // empty')
 transcript_path=$(echo "$input" | jq -r '.transcript_path // empty')
+model_name=$(echo "$input" | jq -r '.model.display_name // empty')
+effort_level=$(echo "$input" | jq -r '.effort.level // empty')
 
 # Compute elapsed time since session start (transcript file birth/creation time)
 alive_segment=""
@@ -281,12 +285,42 @@ if [ -n "$git_branch" ] && command -v gh >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
+# Model segment — current model display name (cyan)
+# ---------------------------------------------------------------------------
+model_segment=""
+if [ -n "$model_name" ]; then
+  model_segment="\033[0;36m${model_name}\033[0m"
+fi
+
+# ---------------------------------------------------------------------------
+# Effort segment — reasoning effort level, color-coded by level.
+# Absent from stdin JSON when the model doesn't support effort — omit entirely.
+# ---------------------------------------------------------------------------
+effort_segment=""
+if [ -n "$effort_level" ]; then
+  case "$effort_level" in
+    low|medium) _ecol="\033[0;32m" ;;   # green
+    high)       _ecol="\033[0;33m" ;;   # yellow
+    *)          _ecol="\033[0;31m" ;;   # red — xhigh / max
+  esac
+  effort_segment="${_ecol}effort:${effort_level}\033[0m"
+fi
+
+# ---------------------------------------------------------------------------
 # Assemble output
 # ---------------------------------------------------------------------------
 if [ -n "$cost_segment" ]; then
   cost_suffix="  |  ${cost_segment}"
 else
   cost_suffix=""
+fi
+
+# Model + effort sit to the right of cost: | modelname | effort:level
+if [ -n "$model_segment" ]; then
+  cost_suffix="${cost_suffix}  |  ${model_segment}"
+fi
+if [ -n "$effort_segment" ]; then
+  cost_suffix="${cost_suffix}  |  ${effort_segment}"
 fi
 
 if [ -n "$alive_segment" ]; then
