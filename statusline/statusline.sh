@@ -6,9 +6,9 @@
 #   - context usage % (green/yellow/red)
 #   - git branch + state indicators (stashes / untracked / modified / ahead)
 #   - PR status for the current branch (cached, background-refreshed via `gh`)
-#   - cost: API-equivalent USD for the open session (green) + rolling last
-#     30 days across all projects (blue), aggregated from local transcripts
-#     by ccusage (cached, background-refreshed via `npx`)
+#   - cost: API-equivalent USD for the open session (green) + current
+#     calendar month to date across all projects (blue), aggregated from
+#     local transcripts by ccusage (cached, background-refreshed via `npx`)
 #   - model name (cyan)
 #   - reasoning effort (color-coded by level; omitted when unsupported)
 #   - second line: current working directory
@@ -67,8 +67,9 @@ fi
 
 # ---------------------------------------------------------------------------
 # Cost segment — API-equivalent USD for this session (from stdin JSON) plus a
-# rolling-30-day total aggregated from local transcripts by ccusage.
-# The 30d figure is cached (10-min TTL) and refreshed in the background — same
+# current-calendar-month-to-date total aggregated from local transcripts by
+# ccusage (e.g. on Jun 23 it sums Jun 1 → Jun 23, resetting on the 1st).
+# The month figure is cached (10-min TTL) and refreshed in the background — same
 # pattern as the PR segment — so the status line never blocks on npx.
 # ---------------------------------------------------------------------------
 cost_segment=""
@@ -78,7 +79,7 @@ if [ -n "$session_cost" ]; then
   cost_segment="\033[0;32m\$${session_cost_fmt}\033[0m"
 fi
 
-month_cache="$HOME/.cache/claude-statusline/cost-30d.txt"
+month_cache="$HOME/.cache/claude-statusline/cost-mtd.txt"
 mkdir -p "$(dirname "$month_cache")" 2>/dev/null
 
 _month_fresh=false
@@ -100,7 +101,9 @@ if ! $_month_fresh; then
   # then recompute in the background (stale value keeps showing meanwhile).
   touch "$month_cache" 2>/dev/null
   (
-    _since=$(date -d '30 days ago' +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d 2>/dev/null)
+    # First day of the current calendar month (YYYYMM01) — month-to-date, not
+    # a rolling 30-day window. Pure strftime, so GNU and BSD `date` both work.
+    _since=$(date +%Y%m01)
     _total=$(npx -y ccusage daily --json --since "$_since" 2>/dev/null | jq -r '.totals.totalCost // empty')
     if [ -n "$_total" ]; then
       _tmp="${month_cache}.tmp.$$"
