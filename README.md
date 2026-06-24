@@ -153,3 +153,7 @@ The working rules for changes to this repo live in [`CLAUDE.md`](CLAUDE.md) — 
 - **Versioning.** `sequential-bmad-github-orion-vN` skills are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README. Other skills (and the status line) are edited in place.
 - **Issues.** Before filing one, dedupe first — search open issues *and* the code; never point at a **closed** issue as the reason to skip work.
 - **PR/commit hygiene.** Branch off `main`; keep installer scripts pure-ASCII and Windows-PowerShell-5.1-compatible; keep PR bodies as generic as the code they describe.
+
+## License
+
+[MIT](LICENSE) — free to use, modify, and redistribute with attribution.
