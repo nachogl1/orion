@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Installs the skills in this repo as user-level Claude Code skills via symlinks.
+# Installs the skills in this repo as user-level Claude Code skills via file copies.
+# Copies are used instead of symlinks: every update re-copies the skill content.
 #
 # Usage:
 #   ./install.sh                       # interactive install
@@ -48,66 +49,71 @@ fi
 
 mkdir -p "$TARGET_DIR"
 
-shopt -s nullglob
-added=0; skipped=0; existing=0; pruned=0
+# Marker file dropped into every copied folder so later runs recognise their
+# own copies (copies are otherwise indistinguishable from a user's own skills).
+MARKER=".orion-managed"
 
-# Prune dangling symlinks pointing into our repo (skills removed upstream)
-for entry in "$TARGET_DIR"/*; do
-    [ -L "$entry" ] || continue
-    target=$(readlink "$entry")
-    case "$target" in
-        "$SKILLS_SOURCE"/*)
-            if [ ! -e "$target" ]; then
-                rm "$entry"
-                echo "  -    $(basename "$entry") (pruned dangling)"
-                pruned=$((pruned+1))
-            fi
-            ;;
-    esac
+copy_managed() {  # src dst
+    rm -rf "$2"
+    cp -R "$1" "$2"
+    printf '%s' "$1" > "$2/$MARKER"
+}
+
+shopt -s nullglob
+added=0; skipped=0; updated=0; pruned=0
+
+# Prune managed copies whose source skill no longer exists (removed/renamed upstream)
+for entry in "$TARGET_DIR"/*/; do
+    name=$(basename "$entry")
+    [ -f "${entry%/}/$MARKER" ] || continue
+    if [ ! -d "$SKILLS_SOURCE/$name" ]; then
+        rm -rf "${entry%/}"
+        echo "  -    $name (pruned removed skill)"
+        pruned=$((pruned+1))
+    fi
 done
+
 for skill in "$SKILLS_SOURCE"/*/; do
     [ -d "$skill" ] || continue
     name=$(basename "$skill")
-    link="$TARGET_DIR/$name"
+    dest="$TARGET_DIR/$name"
     skill_path="${skill%/}"
 
-    if [ -L "$link" ]; then
-        current="$(readlink "$link")"
-        if [ "$current" = "$skill_path" ]; then
-            echo "  ok   $name"
-            existing=$((existing+1))
-            continue
-        fi
-    fi
+    is_ours=0
+    [ -f "$dest/$MARKER" ] && is_ours=1
 
-    if [ -e "$link" ] || [ -L "$link" ]; then
+    if [ -e "$dest" ] && [ "$is_ours" != "1" ]; then
         if [ "$UPDATE" = "1" ]; then
-            echo "  skip $name (exists, not our link)"
+            echo "  skip $name (exists, not ours)"
             skipped=$((skipped+1))
             continue
         fi
         if [ "$FORCE" != "1" ]; then
-            read -r -p "  !  $name exists and is not our link. Overwrite? [y/N] " resp
+            read -r -p "  !  $name exists and is not an orion copy. Overwrite? [y/N] " resp
             if [[ ! "$resp" =~ ^[Yy]$ ]]; then
                 echo "  skip $name"
                 skipped=$((skipped+1))
                 continue
             fi
         fi
-        rm -rf "$link"
     fi
 
-    ln -s "$skill_path" "$link"
-    echo "  +    $name"
-    added=$((added+1))
+    copy_managed "$skill_path" "$dest"
+    if [ "$is_ours" = "1" ]; then
+        echo "  ~    $name (updated)"
+        updated=$((updated+1))
+    else
+        echo "  +    $name"
+        added=$((added+1))
+    fi
 done
 
 echo ""
-echo "[$added added, $existing already linked, $pruned pruned, $skipped skipped] -> $TARGET_DIR"
+echo "[$added added, $updated updated, $pruned pruned, $skipped skipped] -> $TARGET_DIR"
 
 # ---------------------------------------------------------------------------
-# Status line - link ./statusline to ~/.claude/statusline-orion (same symlink
-# pattern as skills, so git pull updates it), then optionally point the
+# Status line - copy ./statusline to ~/.claude/statusline-orion (same copy +
+# marker pattern as skills, so --update re-copies it), then optionally point the
 # statusLine setting in ~/.claude/settings.json at it (opt-in; never in --update).
 # ---------------------------------------------------------------------------
 STATUS_SOURCE="$REPO_ROOT/statusline"
@@ -115,21 +121,19 @@ STATUS_LINK="$HOME/.claude/statusline-orion"
 
 if [ -d "$STATUS_SOURCE" ]; then
     link_ok=0
-    if [ -L "$STATUS_LINK" ] && [ "$(readlink "$STATUS_LINK")" = "$STATUS_SOURCE" ]; then
-        echo "  ok   statusline-orion"
-        link_ok=1
-    elif [ -e "$STATUS_LINK" ] || [ -L "$STATUS_LINK" ]; then
+    status_is_ours=0
+    [ -f "$STATUS_LINK/$MARKER" ] && status_is_ours=1
+    if [ -e "$STATUS_LINK" ] && [ "$status_is_ours" != "1" ]; then
         if [ "$UPDATE" = "1" ]; then
-            echo "  skip statusline-orion (exists, not our link)"
+            echo "  skip statusline-orion (exists, not ours)"
         else
             do_replace="$FORCE"
             if [ "$do_replace" != "1" ]; then
-                read -r -p "  !  statusline-orion exists and is not our link. Overwrite? [y/N] " resp
+                read -r -p "  !  statusline-orion exists and is not an orion copy. Overwrite? [y/N] " resp
                 [[ "$resp" =~ ^[Yy]$ ]] && do_replace=1
             fi
             if [ "$do_replace" = "1" ]; then
-                rm -rf "$STATUS_LINK"
-                ln -s "$STATUS_SOURCE" "$STATUS_LINK"
+                copy_managed "$STATUS_SOURCE" "$STATUS_LINK"
                 echo "  +    statusline-orion"
                 link_ok=1
             else
@@ -137,8 +141,12 @@ if [ -d "$STATUS_SOURCE" ]; then
             fi
         fi
     else
-        ln -s "$STATUS_SOURCE" "$STATUS_LINK"
-        echo "  +    statusline-orion"
+        copy_managed "$STATUS_SOURCE" "$STATUS_LINK"
+        if [ "$status_is_ours" = "1" ]; then
+            echo "  ~    statusline-orion (updated)"
+        else
+            echo "  +    statusline-orion"
+        fi
         link_ok=1
     fi
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Removes skill symlinks and the cron auto-pull entry.
+# Removes skill copies created by install.sh and the cron auto-pull entry.
 #
 # Usage: ./uninstall.sh [--target claude]
 
@@ -14,36 +14,32 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-REPO_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-SKILLS_SOURCE="$REPO_ROOT/skills"
+MARKER=".orion-managed"
 
 case "$TARGET" in
     claude) TARGET_DIR="$HOME/.claude/skills" ;;
     *) echo "Target '$TARGET' not supported."; exit 1 ;;
 esac
 
-if [ -d "$SKILLS_SOURCE" ]; then
-    for skill in "$SKILLS_SOURCE"/*/; do
-        [ -d "$skill" ] || continue
-        name=$(basename "$skill")
-        link="$TARGET_DIR/$name"
-        if [ -L "$link" ] && [ "$(readlink "$link")" = "${skill%/}" ]; then
-            rm "$link"
+# Remove every managed copy (any folder carrying our marker)
+shopt -s nullglob
+if [ -d "$TARGET_DIR" ]; then
+    for entry in "$TARGET_DIR"/*/; do
+        name=$(basename "$entry")
+        if [ -f "${entry%/}/$MARKER" ]; then
+            rm -rf "${entry%/}"
             echo "  -    $name"
-        elif [ -e "$link" ]; then
-            echo "  skip $name (not our link)"
         fi
     done
 fi
 
-# Status line: remove the link and, if the statusLine setting points at it, the setting
-STATUS_SOURCE="$REPO_ROOT/statusline"
+# Status line: remove our copy and, if the statusLine setting points at it, the setting
 STATUS_LINK="$HOME/.claude/statusline-orion"
-if [ -L "$STATUS_LINK" ] && [ "$(readlink "$STATUS_LINK")" = "$STATUS_SOURCE" ]; then
-    rm "$STATUS_LINK"
+if [ -f "$STATUS_LINK/$MARKER" ]; then
+    rm -rf "$STATUS_LINK"
     echo "  -    statusline-orion"
-elif [ -e "$STATUS_LINK" ] || [ -L "$STATUS_LINK" ]; then
-    echo "  skip statusline-orion (not our link)"
+elif [ -e "$STATUS_LINK" ]; then
+    echo "  skip statusline-orion (not an orion copy)"
 fi
 settings="$HOME/.claude/settings.json"
 if [ -f "$settings" ] && command -v jq >/dev/null 2>&1; then

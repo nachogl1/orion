@@ -12,7 +12,7 @@
 
 A collection of general-purpose [Claude Code](https://claude.com/claude-code) skills.
 
-The installer links each `skills/<name>/` folder into the agent's user skills directory (default `~/.claude/skills/`) using **directory junctions on Windows** and **symlinks on macOS/Linux**. The link points back at the cloned repo, so `git pull` *is* the update mechanism — no copy step, no re-install, no "apply" action. **Updates are manual**: run the installer with `-Update` / `--update` (or just ask Claude to do it for you) when you want to pull the latest skills. An optional scheduled auto-pull is available but disabled by default — see "How updates work" for the tradeoff.
+The installer **copies** each `skills/<name>/` folder into the agent's user skills directory (default `~/.claude/skills/`) and drops an `.orion-managed` marker so later runs can tell its own copies apart from your other skills. Copies are used instead of junctions/symlinks (Windows no longer treats junctioned skill folders reliably), so the user-level skill is a real copy — **`git pull` alone does not propagate; every update re-copies the skill content.** **Updates are manual**: run the installer with `-Update` / `--update` (or just ask Claude to do it for you) to pull *and* re-copy the latest skills. An optional scheduled auto-pull is available but disabled by default — see "How updates work" for the tradeoff.
 
 > Work-specific skills (anything that references a specific product, team, or internal workflow) live only on the machines that need them — not in this repo. This keeps the repo safely shareable: no product names, no team identifiers, no internal paths.
 
@@ -39,7 +39,7 @@ cd orion
 The installer:
 
 1. Asks which agent these skills are for (default: Claude Code → `~/.claude/skills/`).
-2. Creates a junction / symlink for each skill in `./skills/`.
+2. Copies each skill in `./skills/` into the target dir (marking each copy `.orion-managed`).
 3. Asks whether to register a scheduled auto-pull (default: **none** — manual updates are recommended).
 
 Non-interactive form (no scheduled task registered):
@@ -57,7 +57,7 @@ Open any project in Claude Code and type `/clear-resources-orion` — you should
 
 ## How updates work
 
-Updates are manual. After install, the user-level skill **is** the file in the repo (via the link), so a single `git pull` + relink pass propagates everything:
+Updates are manual. The user-level skills are **copies**, so a plain `git pull` is not enough — you must run the installer's update pass, which pulls *and* re-copies:
 
 ```powershell
 .\install.ps1 -Update          # Windows
@@ -68,14 +68,14 @@ Updates are manual. After install, the user-level skill **is** the file in the r
 
 …or just tell Claude something like *"update orion"* / *"pull the latest skills"* — Claude will run the update for you.
 
-That one command handles all three change types:
+That one command handles all four change types:
 
 | Change in the repo | What `-Update` does |
 |---|---|
-| Edit an existing skill | `git pull` updates the file the junction already points at. |
-| Add a new skill | `git pull` brings the folder; the link step adds a junction for it. |
-| Remove a skill | `git pull` deletes the folder; the prune step kills the dangling junction. |
-| Rename a skill | Both — prune kills the old-name junction, link creates the new-name one. |
+| Edit an existing skill | `git pull`, then re-copies the folder over the managed copy. |
+| Add a new skill | `git pull` brings the folder; the copy step adds it to the target dir. |
+| Remove a skill | `git pull` deletes the folder; the prune step removes the orphaned managed copy. |
+| Rename a skill | Both — prune removes the old-name copy, the copy step creates the new-name one. |
 
 ### Why manual instead of scheduled?
 
@@ -116,7 +116,7 @@ Besides skills, the repo ships a shared **Claude Code status line** (`statusline
 > `1h23m` | `ctx: 42.5%` | `[branch] ◆0 ◯1 ●2 ▲1` | `#12 ok` | **`$1.23`** `$345.67`
 
 - session alive time, context-usage % (color-coded), git branch + state indicators, PR status for the current branch (cached, background-refreshed), and **cost**: API-equivalent USD for the **open session** (green) plus the **rolling last 30 days across all projects** (blue, computed from local transcripts via [ccusage](https://github.com/ryoppippi/ccusage)).
-- installed with the same link-back-to-the-repo mechanism as skills (`~/.claude/statusline-orion`), so `-Update` / `--update` pulls status-line improvements too.
+- installed with the same copy + `.orion-managed` marker mechanism as skills (`~/.claude/statusline-orion`), so `-Update` / `--update` re-copies status-line improvements too.
 - activating it (writing the `statusLine` entry into `~/.claude/settings.json`) is **opt-in**: pass `-StatusLine` / `--statusline` to the installer, or answer the y/N prompt during an interactive install.
 
 ```powershell
@@ -143,7 +143,7 @@ Requirements and details (jq required; gh and node optional): see [`statusline/R
 ./uninstall.sh                    # macOS / Linux
 ```
 
-Removes the junctions / symlinks pointing into this repo (skills and status line), removes the `statusLine` entry from `~/.claude/settings.json` if it points at our link, and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
+Removes the managed copies (skills and status line — any folder carrying the `.orion-managed` marker), removes the `statusLine` entry from `~/.claude/settings.json` if it points at our copy, and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
 
 ## Contributing
 

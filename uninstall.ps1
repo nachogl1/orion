@@ -1,7 +1,7 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  Removes skill junctions created by install.ps1 and the scheduled auto-pull task.
+  Removes skill copies created by install.ps1 and the scheduled auto-pull task.
 .PARAMETER Target
   Which agent's skills directory to clean. Default: claude.
 #>
@@ -12,42 +12,30 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot     = Split-Path -Parent $MyInvocation.MyCommand.Path
-$skillsSource = Join-Path $repoRoot 'skills'
+$markerName = '.orion-managed'
 
 switch ($Target) {
     'claude' { $targetDir = Join-Path $HOME '.claude\skills' }
 }
 
-if (Test-Path $skillsSource) {
-    Get-ChildItem -Path $skillsSource -Directory | ForEach-Object {
-        $linkPath = Join-Path $targetDir $_.Name
-        if (Test-Path $linkPath) {
-            $item = Get-Item $linkPath -Force
-            $isOurLink = $item.LinkType -in 'Junction','SymbolicLink' -and `
-                         ($item.Target -contains $_.FullName -or $item.Target -contains "$($_.FullName)\")
-            if ($isOurLink) {
-                Remove-Item $linkPath -Recurse -Force
-                Write-Host "  -    $($_.Name)"
-            } else {
-                Write-Host "  skip $($_.Name) (not our link)"
-            }
+# Remove every managed copy (any folder carrying our marker)
+if (Test-Path $targetDir) {
+    Get-ChildItem -Path $targetDir -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object {
+        if (Test-Path -LiteralPath (Join-Path $_.FullName $markerName)) {
+            Remove-Item -LiteralPath $_.FullName -Recurse -Force
+            Write-Host "  -    $($_.Name)"
         }
     }
 }
 
-# Status line: remove the link and, if the statusLine setting points at it, the setting
-$statusSource = Join-Path $repoRoot 'statusline'
-$statusLink   = Join-Path $HOME '.claude\statusline-orion'
+# Status line: remove our copy and, if the statusLine setting points at it, the setting
+$statusLink = Join-Path $HOME '.claude\statusline-orion'
 if (Test-Path $statusLink) {
-    $item = Get-Item $statusLink -Force
-    $isOurLink = $item.LinkType -in 'Junction','SymbolicLink' -and `
-                 ($item.Target -contains $statusSource -or $item.Target -contains "$statusSource\")
-    if ($isOurLink) {
-        Remove-Item $statusLink -Recurse -Force
+    if (Test-Path -LiteralPath (Join-Path $statusLink $markerName)) {
+        Remove-Item -LiteralPath $statusLink -Recurse -Force
         Write-Host "  -    statusline-orion"
     } else {
-        Write-Host "  skip statusline-orion (not our link)"
+        Write-Host "  skip statusline-orion (not an orion copy)"
     }
 }
 $settingsPath = Join-Path $HOME '.claude\settings.json'

@@ -1,12 +1,14 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  Installs the skills in this repo as user-level Claude Code skills via junctions.
+  Installs the skills in this repo as user-level Claude Code skills via file copies.
 
 .DESCRIPTION
-  For each subdirectory of .\skills\, creates a directory junction in the target
-  agent's user skills directory (default: ~/.claude/skills). On scheduled runs
-  it can also git-pull and link any newly added skills (-Update mode).
+  For each subdirectory of .\skills\, copies the folder into the target agent's
+  user skills directory (default: ~/.claude/skills) and drops an `.orion-managed`
+  marker so later runs can recognise and refresh its own copies. On scheduled
+  runs it can also git-pull and re-copy every skill (-Update mode). Copies are
+  used instead of junctions/symlinks: every update re-copies the skill content.
 
 .PARAMETER Target
   Which agent to install for. Default: claude.
@@ -21,12 +23,13 @@
   Overwrite existing entries in the target dir without asking.
 
 .PARAMETER Update
-  Non-interactive mode used by the scheduled task: git pull, then link any new
-  skills. Skips schedule registration and never overwrites existing entries.
+  Non-interactive mode used by the scheduled task: git pull, then re-copy every
+  skill (refreshing managed copies). Skips schedule registration and never
+  overwrites entries that are not ours (no `.orion-managed` marker).
 
 .PARAMETER StatusLine
   Also configure the orion status line in ~/.claude/settings.json (points the
-  statusLine setting at the linked statusline script). Without this switch the
+  statusLine setting at the copied statusline script). Without this switch the
   interactive install offers it as a y/N prompt; -Update never touches settings.
 
 .PARAMETER Help
@@ -82,57 +85,56 @@ if (-not (Test-Path $targetDir)) {
     New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
 }
 
-$skillDirs = Get-ChildItem -Path $skillsSource -Directory
-$added = 0; $skipped = 0; $existing = 0; $pruned = 0
+# Marker file dropped into every copied folder so later runs recognise their
+# own copies (copies are otherwise indistinguishable from a user's own skills).
+$markerName = '.orion-managed'
 
-# Prune dangling junctions pointing into our repo (skills removed upstream)
-$sourcePrefix = $skillsSource.TrimEnd('\','/')
-Get-ChildItem -Path $targetDir -Force -ErrorAction SilentlyContinue | ForEach-Object {
-    if ($_.LinkType -notin 'Junction','SymbolicLink') { return }
-    $tgt = @($_.Target)[0]
-    if (-not $tgt) { return }
-    $tgtTrim = $tgt.TrimEnd('\','/')
-    if (-not $tgtTrim.StartsWith($sourcePrefix, [System.StringComparison]::OrdinalIgnoreCase)) { return }
-    if (-not (Test-Path -LiteralPath $tgtTrim)) {
+function Copy-Managed {
+    param([string]$Source, [string]$Dest)
+    if (Test-Path $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
+    Copy-Item -LiteralPath $Source -Destination $Dest -Recurse -Force
+    Set-Content -LiteralPath (Join-Path $Dest $markerName) -Value $Source -NoNewline -Encoding ASCII
+}
+
+$skillDirs = Get-ChildItem -Path $skillsSource -Directory
+$skillNames = $skillDirs.Name
+$added = 0; $skipped = 0; $updated = 0; $pruned = 0
+
+# Prune managed copies whose source skill no longer exists (removed/renamed upstream)
+Get-ChildItem -Path $targetDir -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object {
+    if (-not (Test-Path -LiteralPath (Join-Path $_.FullName $markerName))) { return }
+    if ($skillNames -notcontains $_.Name) {
         Remove-Item -LiteralPath $_.FullName -Recurse -Force
-        Write-Host "  -    $($_.Name) (pruned dangling)"
+        Write-Host "  -    $($_.Name) (pruned removed skill)"
         $pruned++
     }
 }
 
 foreach ($skill in $skillDirs) {
-    $linkPath = Join-Path $targetDir $skill.Name
-    if (Test-Path $linkPath) {
-        $item = Get-Item $linkPath -Force
-        $isOurLink = $item.LinkType -in 'Junction','SymbolicLink' -and `
-                     ($item.Target -contains $skill.FullName -or $item.Target -contains "$($skill.FullName)\")
-        if ($isOurLink) {
-            Write-Host "  ok   $($skill.Name)"
-            $existing++
-            continue
-        }
+    $destPath = Join-Path $targetDir $skill.Name
+    $isOurs = (Test-Path $destPath) -and (Test-Path -LiteralPath (Join-Path $destPath $markerName))
+    if ((Test-Path $destPath) -and -not $isOurs) {
         if ($Update) {
-            Write-Host "  skip $($skill.Name) (exists, not our link)"
+            Write-Host "  skip $($skill.Name) (exists, not ours)"
             $skipped++
             continue
         }
         if (-not $Force) {
-            $resp = Read-Host "  !  $($skill.Name) exists and is not our link. Overwrite? [y/N]"
+            $resp = Read-Host "  !  $($skill.Name) exists and is not an orion copy. Overwrite? [y/N]"
             if ($resp -notmatch '^[Yy]') { Write-Host "  skip $($skill.Name)"; $skipped++; continue }
         }
-        Remove-Item $linkPath -Recurse -Force
     }
-    New-Item -ItemType Junction -Path $linkPath -Target $skill.FullName | Out-Null
-    Write-Host "  +    $($skill.Name)"
-    $added++
+    Copy-Managed -Source $skill.FullName -Dest $destPath
+    if ($isOurs) { Write-Host "  ~    $($skill.Name) (updated)"; $updated++ }
+    else         { Write-Host "  +    $($skill.Name)";           $added++ }
 }
 
 Write-Host ""
-Write-Host "[$added added, $existing already linked, $pruned pruned, $skipped skipped] -> $targetDir"
+Write-Host "[$added added, $updated updated, $pruned pruned, $skipped skipped] -> $targetDir"
 
 # ---------------------------------------------------------------------------
-# Status line - link ./statusline to ~/.claude/statusline-orion (same junction
-# pattern as skills, so git pull updates it), then optionally point the
+# Status line - copy ./statusline to ~/.claude/statusline-orion (same copy +
+# marker pattern as skills, so -Update re-copies it), then optionally point the
 # statusLine setting in ~/.claude/settings.json at it (opt-in; never in -Update).
 # ---------------------------------------------------------------------------
 $statusSource = Join-Path $repoRoot 'statusline'
@@ -140,24 +142,18 @@ $statusLink   = Join-Path $HOME '.claude\statusline-orion'
 
 if (Test-Path $statusSource) {
     $linkOk = $false
-    if (Test-Path $statusLink) {
-        $item = Get-Item $statusLink -Force
-        $isOurLink = $item.LinkType -in 'Junction','SymbolicLink' -and `
-                     ($item.Target -contains $statusSource -or $item.Target -contains "$statusSource\")
-        if ($isOurLink) {
-            Write-Host "  ok   statusline-orion"
-            $linkOk = $true
-        } elseif ($Update) {
-            Write-Host "  skip statusline-orion (exists, not our link)"
+    $statusIsOurs = (Test-Path $statusLink) -and (Test-Path -LiteralPath (Join-Path $statusLink $markerName))
+    if ((Test-Path $statusLink) -and -not $statusIsOurs) {
+        if ($Update) {
+            Write-Host "  skip statusline-orion (exists, not ours)"
         } else {
             $doReplace = $Force
             if (-not $doReplace) {
-                $resp = Read-Host "  !  statusline-orion exists and is not our link. Overwrite? [y/N]"
+                $resp = Read-Host "  !  statusline-orion exists and is not an orion copy. Overwrite? [y/N]"
                 $doReplace = $resp -match '^[Yy]'
             }
             if ($doReplace) {
-                Remove-Item $statusLink -Recurse -Force
-                New-Item -ItemType Junction -Path $statusLink -Target $statusSource | Out-Null
+                Copy-Managed -Source $statusSource -Dest $statusLink
                 Write-Host "  +    statusline-orion"
                 $linkOk = $true
             } else {
@@ -165,8 +161,9 @@ if (Test-Path $statusSource) {
             }
         }
     } else {
-        New-Item -ItemType Junction -Path $statusLink -Target $statusSource | Out-Null
-        Write-Host "  +    statusline-orion"
+        Copy-Managed -Source $statusSource -Dest $statusLink
+        if ($statusIsOurs) { Write-Host "  ~    statusline-orion (updated)" }
+        else               { Write-Host "  +    statusline-orion" }
         $linkOk = $true
     }
 

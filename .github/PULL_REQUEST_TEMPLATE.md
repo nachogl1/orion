@@ -18,7 +18,7 @@ Closes #<!-- issue number — open one first if none exists -->
 
 ## Manual verification (no CI / tests exist)
 - [ ] Skill ran end-to-end as intended (describe scenario + outcome below)
-- [ ] Installer relinks cleanly (if touched)
+- [ ] Installer re-copies cleanly (if touched)
 **What I ran and what I saw:**
 
 ## Docs updated
