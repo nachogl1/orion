@@ -27,7 +27,7 @@ Cache files live under `~/.cache/claude-statusline/` — delete the folder to fo
 
 ## Install
 
-The repo installers link this folder to `~/.claude/statusline-orion` (junction on Windows, symlink elsewhere), so `git pull` / `-Update` updates the status line like any skill. Activating it in `~/.claude/settings.json` is **opt-in**:
+The repo installers **copy** this folder to `~/.claude/statusline-orion` (marked `.orion-managed`, like skills), so `-Update` / `--update` re-copies the status line like any skill (a plain `git pull` is not enough — the install must re-copy). Activating it in `~/.claude/settings.json` is **opt-in**:
 
 ```powershell
 .\install.ps1 -StatusLine          # Windows
