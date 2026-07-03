@@ -12,8 +12,11 @@ A shared [Claude Code status line](https://docs.anthropic.com/en/docs/claude-cod
 | **Last-30-days cost** (`$345.67`) | blue | [ccusage](https://github.com/ryoppippi/ccusage) over local transcripts, cached 10 min, refreshed in background |
 | **Model** (`Opus`) | cyan | `model.display_name` from Claude Code stdin JSON |
 | **Reasoning effort** (`effort:high`) | green low/medium, yellow high, red xhigh/max | `effort.level` from Claude Code stdin JSON; omitted when the model exposes no effort level |
+| **Jobs flag** (`⚑2` active / `⚑0` idle) | bold yellow when ≥1, dim when 0 | `claude agents --json`, cached 20 s, refreshed in background |
 
 Second line: the session's working directory.
+
+The **jobs flag** (`⚑N`) is a heads-up that background work is running: it counts the dispatched/background agent sessions reported by `claude agents --json`, excluding the current interactive session, and shows `⚑0` (dimmed) when nothing is running. It does **not** count cloud routines created via `/schedule` — those live server-side and are only reachable through the CLI's internal authenticated client, so there is no supported, distribution-safe way to list them from a shell script. If a routine is firing *right now* it dispatches a background agent, which the flag will pick up; a routine merely scheduled for later will not appear.
 
 Both cost figures are **API-equivalent USD** — what the usage would cost at API list prices. On a subscription plan this is a value measure, not a bill. The 30-day figure spans **all projects on the machine**, and can only see transcripts still on disk (Claude Code prunes them after `cleanupPeriodDays`, ~30 days by default).
 

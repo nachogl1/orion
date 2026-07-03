@@ -11,6 +11,7 @@
 #     local transcripts by ccusage (cached, background-refreshed via `npx`)
 #   - model name (cyan)
 #   - reasoning effort (color-coded by level; omitted when unsupported)
+#   - jobs flag (bold yellow ⚑N when background jobs run; dim ⚑0 when idle)
 #   - second line: current working directory
 #
 # Requirements: bash (Git Bash on Windows), jq. Optional: gh (PR segment),
@@ -310,6 +311,61 @@ if [ -n "$effort_level" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Jobs flag — a single leading indicator (⚑N) shown only when one or more
+# background jobs are active. Cached (20s TTL) and background-refreshed, same
+# non-blocking pattern as the PR/cost segments, so the status line never waits
+# on the `claude` CLI.
+#
+# Source: `claude agents --json` — dispatched/background agent sessions. The
+# current interactive session is excluded (kind == "interactive").
+#
+# NOTE: cloud routines created via `/schedule` are NOT counted here. They live
+# server-side and are only reachable through the CLI's internal authenticated
+# client — there is no supported, scriptable way to list them from a shell, and
+# hard-coding an undocumented internal endpoint would be fragile and unsafe for
+# a distributable status line. See statusline/README.md.
+# ---------------------------------------------------------------------------
+jobs_segment=""
+jobs_cache="$HOME/.cache/claude-statusline/jobs.txt"
+mkdir -p "$(dirname "$jobs_cache")" 2>/dev/null
+
+_jobs_fresh=false
+if [ -f "$jobs_cache" ]; then
+  _jmtime=$(stat -c %Y "$jobs_cache" 2>/dev/null)
+  if [ -z "$_jmtime" ]; then
+    _jmtime=$(stat -f %m "$jobs_cache" 2>/dev/null)
+  fi
+  if [ -n "$_jmtime" ] && [ "$(( $(date +%s) - _jmtime ))" -lt 20 ]; then
+    _jobs_fresh=true
+  fi
+fi
+
+if ! $_jobs_fresh && command -v claude >/dev/null 2>&1; then
+  # Bump mtime first so concurrent refreshes don't stampede the CLI, then
+  # recompute in the background (stale value keeps showing meanwhile).
+  touch "$jobs_cache" 2>/dev/null
+  (
+    _n=$(claude agents --json 2>/dev/null \
+      | jq -r '[.[] | select(.kind != "interactive")] | length' 2>/dev/null)
+    [ -n "$_n" ] || _n=0
+    _tmp="${jobs_cache}.tmp.$$"
+    printf '%s' "$_n" > "$_tmp" 2>/dev/null && mv "$_tmp" "$jobs_cache"
+  ) &
+  disown 2>/dev/null || true
+fi
+
+_jobs_n=""
+if [ -f "$jobs_cache" ]; then
+  _jobs_n=$(cat "$jobs_cache" 2>/dev/null)
+fi
+[ -n "$_jobs_n" ] || _jobs_n=0
+if [ "$_jobs_n" != "0" ]; then
+  jobs_segment="\033[1;33m⚑${_jobs_n}\033[0m"   # bold yellow ⚑N — jobs running
+else
+  jobs_segment="\033[0;90m⚑0\033[0m"            # dim ⚑0 — nothing running
+fi
+
+# ---------------------------------------------------------------------------
 # Assemble output
 # ---------------------------------------------------------------------------
 if [ -n "$cost_segment" ]; then
@@ -324,6 +380,10 @@ if [ -n "$model_segment" ]; then
 fi
 if [ -n "$effort_segment" ]; then
   cost_suffix="${cost_suffix}  |  ${effort_segment}"
+fi
+# Jobs flag sits rightmost, after effort
+if [ -n "$jobs_segment" ]; then
+  cost_suffix="${cost_suffix}  |  ${jobs_segment}"
 fi
 
 if [ -n "$alive_segment" ]; then
