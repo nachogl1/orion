@@ -3,6 +3,16 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## AI canary + never-guess evidence discipline (CLAUDE.md guideline)
+
+- **CLAUDE.md guideline additions** (`guidelines/claude-md.md`, §B4):
+  - **AI canary** — an instruction-adherence marker (e.g. a fixed salutation token at
+    the start of every response) that makes it visible when the instruction file has
+    dropped out of context; assessed as a bonus signal, absence not penalised.
+  - **Never guess or fabricate** — the "check actual file/config/service state"
+    bullet broadened into a general evidence discipline: back every claim with
+    something checkable; label unverified statements as assumptions.
+
 ## Recommendation scope tags + "Level up to user scope" report section
 
 - **Scope tagging.** Every recommendation is now tagged with the lowest scope it can

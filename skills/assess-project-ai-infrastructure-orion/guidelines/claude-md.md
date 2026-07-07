@@ -65,7 +65,16 @@ whether it's concrete enough to act on.
   checks whether the file sets an explicit audience/altitude for explanations, rather
   than leaving tone to chance.
 - **Emit reports/docs as files**, not inline walls of text, unless inline is asked for.
-- Check the *actual* state of files/configs/services before asserting it.
+- **Never guess or fabricate.** Check the *actual* state of files/configs/services
+  (code, docs, command output) before asserting it. Every claim should be backed by
+  something checkable; anything unverified is explicitly labelled an assumption or
+  uncertainty rather than stated as fact.
+- **An instruction-adherence canary ("AI canary").** A cheap, always-visible marker
+  that proves the instruction file is being applied — e.g. every response starts with
+  a fixed token (a name, a tag). If the marker disappears, the user knows the
+  instructions have dropped out of context or stopped being honoured. Optional: the
+  assessor notes its presence as a positive signal of a deliberately maintained file
+  rather than penalising its absence.
 
 ### B5. Directness (anti-sycophancy) — *Radical Candor*
 - No flattery or agreement-for-its-own-sake; **say the hard thing**.
