@@ -15,19 +15,33 @@
 #   - second line: current working directory
 #
 # Requirements: bash (Git Bash on Windows), jq. Optional: gh (PR segment),
-# node/npx (30-day cost segment — shows "$..." until available).
+# node/npx (month-to-date cost segment — shows "$..." until available).
 # Caches live under ~/.cache/claude-statusline/.
 #
-# Install: linked to ~/.claude/statusline-orion by this repo's installer; see
+# Install: copied to ~/.claude/statusline-orion by this repo's installer; see
 # statusline/README.md for the settings.json entry that activates it.
 
 input=$(cat)
 
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
-cwd=$(echo "$input" | jq -r '.cwd // empty')
-transcript_path=$(echo "$input" | jq -r '.transcript_path // empty')
-model_name=$(echo "$input" | jq -r '.model.display_name // empty')
-effort_level=$(echo "$input" | jq -r '.effort.level // empty')
+# Parse every needed stdin field in ONE jq pass (one process per redraw, not
+# six). Values are emitted one per line; none of them can contain a newline.
+# tr strips the \r that native-Windows jq builds append to every output line.
+_fields=$(echo "$input" | jq -r '
+  (.context_window.used_percentage // ""),
+  (.cwd // ""),
+  (.transcript_path // ""),
+  (.model.display_name // ""),
+  (.effort.level // ""),
+  (.cost.total_cost_usd // "")
+' | tr -d '\r')
+{
+  read -r used_pct
+  read -r cwd
+  read -r transcript_path
+  read -r model_name
+  read -r effort_level
+  read -r session_cost
+} <<< "$_fields"
 
 # Compute elapsed time since session start (transcript file birth/creation time)
 alive_segment=""
@@ -74,7 +88,6 @@ fi
 # pattern as the PR segment — so the status line never blocks on npx.
 # ---------------------------------------------------------------------------
 cost_segment=""
-session_cost=$(echo "$input" | jq -r '.cost.total_cost_usd // empty')
 if [ -n "$session_cost" ]; then
   session_cost_fmt=$(printf '%.2f' "$session_cost" 2>/dev/null)
   cost_segment="\033[0;32m\$${session_cost_fmt}\033[0m"
@@ -105,7 +118,7 @@ if ! $_month_fresh; then
     # First day of the current calendar month (YYYYMM01) — month-to-date, not
     # a rolling 30-day window. Pure strftime, so GNU and BSD `date` both work.
     _since=$(date +%Y%m01)
-    _total=$(npx -y ccusage daily --json --since "$_since" 2>/dev/null | jq -r '.totals.totalCost // empty')
+    _total=$(npx -y ccusage daily --json --since "$_since" 2>/dev/null | jq -r '.totals.totalCost // empty' | tr -d '\r')
     if [ -n "$_total" ]; then
       _tmp="${month_cache}.tmp.$$"
       printf '%.2f' "$_total" > "$_tmp" 2>/dev/null && mv "$_tmp" "$month_cache"
@@ -129,9 +142,6 @@ else
   cost_segment="${month_part}"
 fi
 
-# Get current git branch (skip optional locks to avoid contention)
-git_branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)
-
 # Build context segment with color coding
 if [ -n "$used_pct" ]; then
   used_int=${used_pct%.*}
@@ -145,37 +155,70 @@ if [ -n "$used_pct" ]; then
   fi
   reset="\033[0m"
 
-  ctx_segment="${color}ctx: ${used_pct}%%${reset}"
+  ctx_segment="${color}ctx: ${used_pct}%${reset}"
 else
   ctx_segment="ctx: --"
 fi
 
-# Build git state indicators (only when inside a git repo, i.e. branch is known)
+# ---------------------------------------------------------------------------
+# Git segment — branch + state indicators. The five git commands are cached
+# per cwd (10s TTL) so redraw storms don't relaunch git every time; on a stale
+# cache they are recomputed inline (git is local and fast enough once) and the
+# cache is rewritten. Cache layout: line 1 = branch, line 2 = indicators.
+# ---------------------------------------------------------------------------
+git_branch=""
 git_indicators=""
-if [ -n "$git_branch" ]; then
-  # ANSI color codes
-  _mag="\033[0;35m"   # magenta — stashes
-  _yel="\033[0;33m"   # yellow  — untracked
-  _red="\033[0;31m"   # red     — modifications
-  _blu="\033[0;34m"   # blue    — ahead
-  _rst="\033[0m"
+_git_cache_id=$(printf '%s' "$cwd" | cksum | tr -cd '0-9')
+git_cache="$HOME/.cache/claude-statusline/git-${_git_cache_id}.txt"
+mkdir -p "$(dirname "$git_cache")" 2>/dev/null
 
-  # 1. Stashes (magenta ◆N) — always shown
-  stash_count=$(git -C "$cwd" --no-optional-locks stash list 2>/dev/null | wc -l | tr -d ' ')
-  git_indicators="${git_indicators} ${_mag}◆${stash_count:-0}${_rst}"
+_git_fresh=false
+if [ -f "$git_cache" ]; then
+  _gmtime=$(stat -c %Y "$git_cache" 2>/dev/null)
+  if [ -z "$_gmtime" ]; then
+    _gmtime=$(stat -f %m "$git_cache" 2>/dev/null)
+  fi
+  if [ -n "$_gmtime" ] && [ "$(( $(date +%s) - _gmtime ))" -lt 10 ]; then
+    _git_fresh=true
+  fi
+fi
 
-  # 2. Untracked files (yellow ◯N) — always shown
-  untracked_count=$(git -C "$cwd" --no-optional-locks ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
-  git_indicators="${git_indicators} ${_yel}◯${untracked_count:-0}${_rst}"
+if $_git_fresh; then
+  git_branch=$(sed -n '1p' "$git_cache")
+  git_indicators=$(sed -n '2p' "$git_cache")
+else
+  # Get current git branch (skip optional locks to avoid contention)
+  git_branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)
 
-  # 3. Uncommitted modifications — staged + unstaged tracked (red ●N) — always shown
-  #    Count lines from `git status --porcelain` where the first two chars are NOT "??"
-  mod_count=$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null | grep -v '^??' | wc -l | tr -d ' ')
-  git_indicators="${git_indicators} ${_red}●${mod_count:-0}${_rst}"
+  # Build git state indicators (only when inside a git repo, i.e. branch is known)
+  if [ -n "$git_branch" ]; then
+    # ANSI color codes
+    _mag="\033[0;35m"   # magenta — stashes
+    _yel="\033[0;33m"   # yellow  — untracked
+    _red="\033[0;31m"   # red     — modifications
+    _blu="\033[0;34m"   # blue    — ahead
+    _rst="\033[0m"
 
-  # 4. Commits ahead of upstream (blue ▲N) — always shown; default to 0 when no upstream
-  ahead_count=$(git -C "$cwd" --no-optional-locks rev-list --count '@{u}..HEAD' 2>/dev/null)
-  git_indicators="${git_indicators} ${_blu}▲${ahead_count:-0}${_rst}"
+    # 1. Stashes (magenta ◆N) — always shown
+    stash_count=$(git -C "$cwd" --no-optional-locks stash list 2>/dev/null | wc -l | tr -d ' ')
+    git_indicators="${git_indicators} ${_mag}◆${stash_count:-0}${_rst}"
+
+    # 2. Untracked files (yellow ◯N) — always shown
+    untracked_count=$(git -C "$cwd" --no-optional-locks ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
+    git_indicators="${git_indicators} ${_yel}◯${untracked_count:-0}${_rst}"
+
+    # 3. Uncommitted modifications — staged + unstaged tracked (red ●N) — always shown
+    #    Count lines from `git status --porcelain` where the first two chars are NOT "??"
+    mod_count=$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null | grep -v '^??' | wc -l | tr -d ' ')
+    git_indicators="${git_indicators} ${_red}●${mod_count:-0}${_rst}"
+
+    # 4. Commits ahead of upstream (blue ▲N) — always shown; default to 0 when no upstream
+    ahead_count=$(git -C "$cwd" --no-optional-locks rev-list --count '@{u}..HEAD' 2>/dev/null)
+    git_indicators="${git_indicators} ${_blu}▲${ahead_count:-0}${_rst}"
+  fi
+
+  _tmp="${git_cache}.tmp.$$"
+  printf '%s\n%s\n' "$git_branch" "$git_indicators" > "$_tmp" 2>/dev/null && mv "$_tmp" "$git_cache"
 fi
 
 # Build git segment (branch + indicators, no PR yet)
@@ -211,9 +254,11 @@ if [ -n "$git_branch" ] && command -v gh >/dev/null 2>&1; then
     fi
 
     local _num _state _draft
-    _num=$(printf '%s' "$_gh_json" | jq -r '.number')
-    _state=$(printf '%s' "$_gh_json" | jq -r '.state')
-    _draft=$(printf '%s' "$_gh_json" | jq -r '.isDraft')
+    # tr strips the \r native-Windows jq appends (a bare \r resets the cursor
+    # to column 0 mid-line and corrupts the rendered status line)
+    _num=$(printf '%s' "$_gh_json" | jq -r '.number' | tr -d '\r')
+    _state=$(printf '%s' "$_gh_json" | jq -r '.state' | tr -d '\r')
+    _draft=$(printf '%s' "$_gh_json" | jq -r '.isDraft' | tr -d '\r')
 
     if [ "$_state" = "MERGED" ]; then
       printf '\033[0;35m#%s merged\033[0m' "$_num"
@@ -236,7 +281,7 @@ if [ -n "$git_branch" ] && command -v gh >/dev/null 2>&1; then
     _checks=$(printf '%s' "$_gh_json" | jq -r '
       .statusCheckRollup[]?
       | if .conclusion != null and .conclusion != "" then .conclusion else .state end
-    ' 2>/dev/null)
+    ' 2>/dev/null | tr -d '\r')
 
     if printf '%s' "$_checks" | grep -qiE '^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$'; then
       printf '\033[0;31m#%s fail\033[0m' "$_num"
@@ -346,7 +391,7 @@ if ! $_jobs_fresh && command -v claude >/dev/null 2>&1; then
   touch "$jobs_cache" 2>/dev/null
   (
     _n=$(claude agents --json 2>/dev/null \
-      | jq -r '[.[] | select(.kind != "interactive")] | length' 2>/dev/null)
+      | jq -r '[.[] | select(.kind != "interactive")] | length' 2>/dev/null | tr -d '\r')
     [ -n "$_n" ] || _n=0
     _tmp="${jobs_cache}.tmp.$$"
     printf '%s' "$_n" > "$_tmp" 2>/dev/null && mv "$_tmp" "$jobs_cache"
@@ -394,10 +439,15 @@ fi
 
 if [ -n "$git_segment" ]; then
   if [ -n "$pr_segment" ]; then
-    printf "${prefix}${ctx_segment}  |  ${git_segment}  |  ${pr_segment}${cost_suffix}\n${cwd}"
+    line1="${prefix}${ctx_segment}  |  ${git_segment}  |  ${pr_segment}${cost_suffix}"
   else
-    printf "${prefix}${ctx_segment}  |  ${git_segment}${cost_suffix}\n${cwd}"
+    line1="${prefix}${ctx_segment}  |  ${git_segment}${cost_suffix}"
   fi
 else
-  printf "${prefix}${ctx_segment}${cost_suffix}\n${cwd}"
+  line1="${prefix}${ctx_segment}${cost_suffix}"
 fi
+
+# %b expands the \033 color literals in the segments; the cwd goes through %s
+# verbatim, so a % or \ in a path (or branch name) can never be treated as a
+# printf format directive and corrupt the line.
+printf '%b\n%s' "$line1" "$cwd"
