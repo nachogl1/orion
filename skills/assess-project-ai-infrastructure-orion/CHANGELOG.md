@@ -3,6 +3,13 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## Read-only claim scoped to the target repo
+
+- The frontmatter description claimed the skill "never edits any file", contradicting
+  Phase 1's opt-in append of user-supplied sources to `guidelines/consensus-resources.md`.
+  The claim is now scoped: strictly read-only **towards the target repo and the user's
+  settings**; its only writes are the HTML report and (opt-in) its own guidelines corpus.
+
 ## Code-quality & design standards (CLAUDE.md guideline)
 
 - **New §B13 in `guidelines/claude-md.md`** — a strong CLAUDE.md declares its

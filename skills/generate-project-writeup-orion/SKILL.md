@@ -294,9 +294,11 @@ accepted it).
 - **Savings** = traditional − actual, in money, in calendar time, and as a %.
 
 **COCOMO II — use as a cross-check and for the phase split, with a caveat.** The COCOMO II
-Post-Architecture *phase distribution* (Boehm's nominal split — Plans&Reqs / Product Design /
-Programming / Integration&Test roughly **7 / 17 / 25 / 22 / 22 / 7** across
-requirements, design, code, test, …) is a sound, citable way to break the timeline into
+Post-Architecture *phase distribution* (Boehm's nominal split, roughly **7 / 17 / 25 / 22 /
+22 / 7** across the six waterfall buckets **Plans & Requirements / Product Design / Detailed
+Design / Code & Unit Test / Integration & Test / Transition** — merge Detailed Design +
+Code & Unit Test into one "Programming" row if a four-row table reads better) is a sound,
+citable way to break the timeline into
 **Table 2 (time by phase)** for both the traditional and the actual columns. You **may** also
 present a full COCOMO II effort estimate
 (`PM = 2.94 × KSLOC^E`, `E ≈ 1.10` at nominal scale factors;

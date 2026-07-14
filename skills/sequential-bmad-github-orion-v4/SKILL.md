@@ -966,7 +966,7 @@ Only TWO hard halts. Everything else is a soft failure that either pauses-and-co
 
 ## What this skill does NOT do
 
-- Does not discover or select issues itself (that's `/assign-issues-orion`'s job — run it first, then pass `@me` here to pick up what it assigned you, or supply issue numbers explicitly).
+- Does not discover or select issues itself (that's `/assign-gh-issue-orion`'s job — run it first, then pass `@me` here to pick up what it assigned you, or supply issue numbers explicitly).
 - Does not poll for the batch→base-branch merge. Phase 3 is pause-and-converse only — no `ScheduleWakeup`, no hourly poll, no auto-finalize.
 - Does not rebase the batch branch onto the base branch during Phase 3 wait — drift is the user's concern at merge time.
 - Does not touch the repo's default branch when the base branch is something else. Running off-main forks/targets only `<base-branch>`; `main` is left exactly as it was.
