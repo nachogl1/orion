@@ -91,9 +91,22 @@ $markerName = '.orion-managed'
 
 function Copy-Managed {
     param([string]$Source, [string]$Dest)
-    if (Test-Path $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
-    Copy-Item -LiteralPath $Source -Destination $Dest -Recurse -Force
+    if (Test-Path $Dest) {
+        $destItem = Get-Item -LiteralPath $Dest -Force
+        if ($destItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            # Stale junction/symlink from the old link-based install: delete the
+            # link itself, never recurse through it (a recursive delete would
+            # descend into the link target - i.e. this repo's source folder).
+            $destItem.Delete()
+        } else {
+            Remove-Item -LiteralPath $Dest -Recurse -Force
+        }
+    }
+    # The marker goes in FIRST so an interrupted copy still looks orion-managed
+    # and gets overwritten (not skipped as "not ours") by the next run.
+    New-Item -ItemType Directory -Path $Dest -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $Dest $markerName) -Value $Source -NoNewline -Encoding ASCII
+    Copy-Item -Path (Join-Path $Source '*') -Destination $Dest -Recurse -Force
 }
 
 $skillDirs = Get-ChildItem -Path $skillsSource -Directory
@@ -176,11 +189,18 @@ if (Test-Path $statusSource) {
         if ($configure) {
             $settingsPath = Join-Path $HOME '.claude\settings.json'
             $slScript = (Join-Path $statusLink 'statusline.sh') -replace '\\','/'
+            $settings = $null
             if (Test-Path $settingsPath) {
-                $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+                try {
+                    $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+                } catch {
+                    Write-Host "  !  $settingsPath is not valid JSON - skipping statusLine configuration."
+                    Write-Host "     Fix (or delete) the file, then re-run .\install.ps1 -StatusLine"
+                }
             } else {
                 $settings = New-Object PSCustomObject
             }
+            if ($null -ne $settings) {
             $slValue = [PSCustomObject]@{ type = 'command'; command = "bash `"$slScript`"" }
             if ($settings.PSObject.Properties['statusLine']) {
                 $settings.statusLine = $slValue
@@ -188,23 +208,25 @@ if (Test-Path $statusSource) {
                 $settings | Add-Member -NotePropertyName statusLine -NotePropertyValue $slValue
             }
             # WriteAllText -> UTF-8 without BOM (a BOM breaks Claude Code's JSON parse)
-            [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 32))
+            [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 100))
             Write-Host "statusLine configured in $settingsPath"
 
-            # Pre-warm the 30-day cost cache so the status line shows the real
-            # figure on first render instead of the "$..." placeholder. Without
-            # this the in-script background refresh leaves it pending until the
-            # first npx ccusage run finishes. Best-effort: needs bash + node/npx
-            # (same prerequisites as the status line itself); ignored if absent.
-            Write-Host "Warming the 30-day cost cache (one-time, needs node/npx)..."
+            # Pre-warm the month-to-date cost cache (the file the status line
+            # actually reads) so the first render shows the real figure instead
+            # of the "$..." placeholder. Without this the in-script background
+            # refresh leaves it pending until the first npx ccusage run finishes.
+            # Best-effort: needs bash + node/npx (same prerequisites as the
+            # status line itself); ignored if absent.
+            Write-Host "Warming the month-to-date cost cache (one-time, needs node/npx)..."
             $warm = @'
-since=$(date -d "30 days ago" +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d 2>/dev/null)
-cache="$HOME/.cache/claude-statusline/cost-30d.txt"
+since=$(date +%Y%m01)
+cache="$HOME/.cache/claude-statusline/cost-mtd.txt"
 mkdir -p "$(dirname "$cache")" 2>/dev/null
 total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r ".totals.totalCost // empty")
 [ -n "$total" ] && printf "%.2f" "$total" > "$cache" && echo "  cost cache: $total"
 '@
             try { $warm | bash 2>$null } catch { }
+            }
         }
     }
 }

@@ -6,7 +6,8 @@
 #   ./install.sh                       # interactive install
 #   ./install.sh --target claude --schedule daily
 #   ./install.sh --statusline          # also configure the orion status line
-#   ./install.sh --update              # called by cron; pull + link new skills
+#   ./install.sh --force               # overwrite non-orion entries without asking
+#   ./install.sh --update              # called by cron; pull + re-copy all skills
 #   ./install.sh --help
 
 set -euo pipefail
@@ -18,7 +19,7 @@ UPDATE=0
 STATUSLINE=0
 
 usage() {
-    sed -n '2,9p' "$0"
+    sed -n '2,11p' "$0"
     exit 0
 }
 
@@ -55,8 +56,11 @@ MARKER=".orion-managed"
 
 copy_managed() {  # src dst
     rm -rf "$2"
-    cp -R "$1" "$2"
+    # The marker goes in FIRST so an interrupted copy still looks orion-managed
+    # and gets overwritten (not skipped as "not ours") by the next run.
+    mkdir -p "$2"
     printf '%s' "$1" > "$2/$MARKER"
+    cp -R "$1"/. "$2"
 }
 
 shopt -s nullglob
@@ -168,13 +172,14 @@ if [ -d "$STATUS_SOURCE" ]; then
             fi
             echo "statusLine configured in $settings"
 
-            # Pre-warm the 30-day cost cache so the status line shows the real
-            # figure on first render instead of the "$..." placeholder. Without
-            # this the in-script background refresh leaves it pending until the
-            # first npx ccusage run finishes. Best-effort: needs node/npx.
-            echo "Warming the 30-day cost cache (one-time, needs node/npx)..."
-            ( since=$(date -d "30 days ago" +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d 2>/dev/null)
-              cache="$HOME/.cache/claude-statusline/cost-30d.txt"
+            # Pre-warm the month-to-date cost cache (the file the status line
+            # actually reads) so the first render shows the real figure instead
+            # of the "$..." placeholder. Without this the in-script background
+            # refresh leaves it pending until the first npx ccusage run finishes.
+            # Best-effort: needs node/npx.
+            echo "Warming the month-to-date cost cache (one-time, needs node/npx)..."
+            ( since=$(date +%Y%m01)
+              cache="$HOME/.cache/claude-statusline/cost-mtd.txt"
               mkdir -p "$(dirname "$cache")" 2>/dev/null
               total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r '.totals.totalCost // empty')
               [ -n "$total" ] && printf '%.2f' "$total" > "$cache" && echo "  cost cache: $total" ) || true
@@ -189,7 +194,8 @@ if [ "$SCHEDULE" = "prompt" ]; then
     echo "Updates are manual by default - run './install.sh --update' (or ask Claude to)"
     echo "when you want to pull the latest skills."
     read -r -p "Register a scheduled auto-pull anyway? (daily/hourly/none) [none] " resp
-    SCHEDULE="${resp:-none}"
+    # Normalize case so Daily/HOURLY etc. are accepted (parity with install.ps1)
+    SCHEDULE=$(printf '%s' "${resp:-none}" | tr '[:upper:]' '[:lower:]')
 fi
 
 case "$SCHEDULE" in

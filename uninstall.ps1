@@ -40,12 +40,17 @@ if (Test-Path $statusLink) {
 }
 $settingsPath = Join-Path $HOME '.claude\settings.json'
 if (Test-Path $settingsPath) {
-    $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
-    if ($settings.PSObject.Properties['statusLine'] -and `
+    $settings = $null
+    try {
+        $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+    } catch {
+        Write-Host "  !  $settingsPath is not valid JSON - leaving it untouched."
+    }
+    if ($null -ne $settings -and $settings.PSObject.Properties['statusLine'] -and `
         "$($settings.statusLine.command)" -match 'statusline-orion') {
         $settings.PSObject.Properties.Remove('statusLine')
         # WriteAllText -> UTF-8 without BOM (a BOM breaks Claude Code's JSON parse)
-        [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 32))
+        [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 100))
         Write-Host "statusLine setting removed from $settingsPath"
     }
 }
