@@ -9,7 +9,7 @@ A shared [Claude Code status line](https://docs.anthropic.com/en/docs/claude-cod
 | Git branch + state (`[branch] ◆stashes ◯untracked ●modified ▲ahead`) | per-indicator | `git` in the session's cwd |
 | PR status for the branch (`#12 ok` / `wait` / `fail` / `draft` / `merged` / `no PR`) | per-state | `gh pr view`, cached 5 min, refreshed in background |
 | **Session cost** (`$1.23`) | green | `cost.total_cost_usd` from Claude Code stdin JSON |
-| **Last-30-days cost** (`$345.67`) | blue | [ccusage](https://github.com/ryoppippi/ccusage) over local transcripts, cached 10 min, refreshed in background |
+| **Month-to-date cost** (`$345.67`) | blue | [ccusage](https://github.com/ryoppippi/ccusage) over local transcripts, current calendar month to date (resets on the 1st), cached 10 min, refreshed in background |
 | **Model** (`Opus`) | cyan | `model.display_name` from Claude Code stdin JSON |
 | **Reasoning effort** (`effort:high`) | green low/medium, yellow high, red xhigh/max | `effort.level` from Claude Code stdin JSON; omitted when the model exposes no effort level |
 | **Jobs flag** (`⚑2` active / `⚑0` idle) | bold yellow when ≥1, dim when 0 | `claude agents --json`, cached 20 s, refreshed in background |
@@ -18,13 +18,13 @@ Second line: the session's working directory.
 
 The **jobs flag** (`⚑N`) is a heads-up that background work is running: it counts the dispatched/background agent sessions reported by `claude agents --json`, excluding the current interactive session, and shows `⚑0` (dimmed) when nothing is running. It does **not** count cloud routines created via `/schedule` — those live server-side and are only reachable through the CLI's internal authenticated client, so there is no supported, distribution-safe way to list them from a shell script. If a routine is firing *right now* it dispatches a background agent, which the flag will pick up; a routine merely scheduled for later will not appear.
 
-Both cost figures are **API-equivalent USD** — what the usage would cost at API list prices. On a subscription plan this is a value measure, not a bill. The 30-day figure spans **all projects on the machine**, and can only see transcripts still on disk (Claude Code prunes them after `cleanupPeriodDays`, ~30 days by default).
+Both cost figures are **API-equivalent USD** — what the usage would cost at API list prices. On a subscription plan this is a value measure, not a bill. The month-to-date figure spans **all projects on the machine**, and can only see transcripts still on disk (Claude Code prunes them after `cleanupPeriodDays`, ~30 days by default).
 
 ## Requirements
 
 - `bash` (on Windows: Git Bash, normally present with Git) and `jq` — required.
 - `gh` (GitHub CLI) — optional; without it the PR segment is omitted.
-- `node`/`npx` — optional; powers the 30-day cost segment via `npx -y ccusage`. Without it the segment shows `$...`.
+- `node`/`npx` — optional; powers the month-to-date cost segment via `npx -y ccusage`. Without it the segment shows `$...`.
 
 Cache files live under `~/.cache/claude-statusline/` — delete the folder to force a refresh.
 
@@ -41,7 +41,7 @@ The repo installers **copy** this folder to `~/.claude/statusline-orion` (marked
 
 (The interactive installer also offers it as a y/N prompt.)
 
-Or configure manually — point `statusLine` at the linked script in `~/.claude/settings.json`:
+Or configure manually — point `statusLine` at the copied script in `~/.claude/settings.json`:
 
 ```json
 {
@@ -56,4 +56,4 @@ Or configure manually — point `statusLine` at the linked script in `~/.claude/
 
 ## Uninstall
 
-`uninstall.ps1` / `uninstall.sh` remove the link and, if the `statusLine` setting points at it, remove that setting too.
+`uninstall.ps1` / `uninstall.sh` remove the managed copy and, if the `statusLine` setting points at it, remove that setting too.

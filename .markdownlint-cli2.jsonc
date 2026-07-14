@@ -1,0 +1,14 @@
+// markdownlint-cli2 config for the docs/guidelines corpus.
+// Deliberately minimal: this repo is long-form prose for AI agents, so style
+// rules (line length, heading increments, emphasis style, ...) are all OFF.
+// Only rules that catch genuinely broken markdown are enabled.
+{
+  "config": {
+    "default": false,
+    "MD011": true, // reversed link syntax [(text)[url]
+    "MD042": true, // no empty links []()
+    "MD052": true  // reference links/images must have a defined label
+  },
+  "globs": ["**/*.md"],
+  "ignores": ["node_modules/**"]
+}

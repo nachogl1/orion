@@ -4,6 +4,11 @@ This skill has **no `-vN` convention** — it is edited in place. Record notable
 
 ## Unreleased
 
+- **COCOMO phase split disambiguated.** The nominal 7/17/25/22/22/7 split listed six
+  percentages against four phase names; the six waterfall buckets are now named
+  (Plans & Requirements / Product Design / Detailed Design / Code & Unit Test /
+  Integration & Test / Transition), with an explicit note that Detailed Design +
+  Code & Unit Test may merge into one "Programming" row for a four-row Table 2.
 - **Name the contributors, derive the count (Step 4).** Instead of asking for a bare contributor
   count, the skill now asks the user to **name** the real contributors as two lists — the
   embedded business-unit (BU) developers/owners and the central/shared specialist delivery-team

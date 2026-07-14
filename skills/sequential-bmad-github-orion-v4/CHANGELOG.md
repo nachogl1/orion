@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Companion-skill rename fix (edited in place)
+
+- The companion issue-picker skill was renamed `assign-issues-orion` → `assign-gh-issue-orion` upstream; the two operational references in `SKILL.md` and `README.md` now point at the current name (the mention in the older CHANGELOG entry below is left as a historical record). No behaviour change.
+
 ## v5.1 — Orchestrator-owned CI/merge + targeted-test finalize + issue pre-flight triage + sub-agent git/probe hardening
 
 Edited in place on the `-v4` folder (not forked) by explicit user choice — these are corrections derived from three later production-run lessons-learned logs (the runs that exercised v3/v4). Nine improvements, walked one-by-one and filtered to the high-value set; seven lower-value candidates were dropped (Phase-0 guard allowlist, warm `node_modules` seeding, Edit-tool smart-quote guard, QA scratch cosmetics, perf knobs 4b/4d/4e, and stack-specific engineering hazards — the last belong in the *application* repo's own conventions, not a distributable skill).

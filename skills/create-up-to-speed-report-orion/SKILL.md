@@ -7,7 +7,7 @@ user_invocable: true
 # create-up-to-speed-report-orion
 
 > [!NOTE]
-> **Thinking of editing this skill?** Prefer creating a *new version* — copy it to a new skill name (e.g. bump a `-vN` suffix) — and leave this one as-is. People and automated workflows may rely on the current behaviour, so versioning beats editing in place.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (the copy-to-a-bumped-`-vN` rule applies only to the `sequential-bmad-github-orion-vN` pipeline skills; see the repo's `CLAUDE.md`).
 
 Produce a single self-contained dark-themed HTML presentation that gets the reader from "I know nothing about this project" to "I can spin the stack up, click through every working feature, and tell you what shipped this week."
 

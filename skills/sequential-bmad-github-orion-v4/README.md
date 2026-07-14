@@ -26,7 +26,7 @@ It also keeps everything from v3: deferral tracking into find-or-reuse `#N`s lin
 
 - BMAD isn't set up in your project — Agents A/B/C invoke `/bmad-create-story`, `/bmad-dev-story`, `/bmad-code-review`, and will fail immediately without them.
 - GitHub Issues isn't your team's source of truth (you use Jira, Linear, etc.). The skill posts milestone comments on issues throughout the run and closes them in Phase 4.
-- You want parallel execution — this skill is sequential by design. (`/assign-issues-orion` helps you pick a parallelizable, collision-free set of issues up front, but execution here is still strictly one-at-a-time.)
+- You want parallel execution — this skill is sequential by design. (`/assign-gh-issue-orion` helps you pick a parallelizable, collision-free set of issues up front, but execution here is still strictly one-at-a-time.)
 - You want a non-merged review queue. This skill drops everything into a batch branch and opens a Draft PR; if you'd rather review per-issue PRs separately, use a different flow.
 
 ## Quick start

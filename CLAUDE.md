@@ -27,6 +27,7 @@ This applies even when a task's source material (a handoff note, a report, a tra
 
 - For the **`sequential-bmad-github-orion-vN`** skills: prefer creating a **new version** (copy to a bumped `-vN` suffix) over editing in place — people and automated workflows may depend on the current behaviour. Add a CHANGELOG entry describing the deltas, leave the prior version as-is, and add the new skill's row to the root `README.md`.
 - Other skills (e.g. `guided-qa-orion`) have **no `-vN` convention** and are edited in place. Each skill's top-of-file editor note states which applies.
+- **CHANGELOGs:** required for the `-vN` skills; optional for in-place skills — an in-place skill *may* keep a `CHANGELOG.md` for notable behaviour changes, and if it has one, keep it updated.
 - When historical CHANGELOG entries mention the *old* skill name, leave them — they're an accurate record of that version; only operational references point at the current name.
 
 ## How the repo is wired
@@ -46,8 +47,9 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 ## Conventions for changes here
 
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
-- Keep `install.ps1` / `install.sh` pure-ASCII and Windows-PowerShell-5.1-compatible.
-- Commit/push only when the user asks; branch off `main` for changes; end commit messages with the required `Co-Authored-By` trailer.
+- **Skills are self-contained by design** — they're copied standalone into the user's skills dir, so they can't reference repo files. Shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is therefore *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
+- Keep `install.ps1` / `install.sh` (and the `uninstall.*` counterparts) pure-ASCII and Windows-PowerShell-5.1-compatible.
+- Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary` — see `CONTRIBUTING.md`) and end with the required `Co-Authored-By` trailer.
 
 ## Git guardrails
 
