@@ -8,9 +8,9 @@ See [CLAUDE.md](CLAUDE.md) for the full working rules. Key points:
 - Before a PR: search open issues AND the code; never point at a *closed* issue to skip work.
 - Self-check your diff AND PR title/body for any person/org/product/path specifics.
 
-## Doc checks (CI runs these on every PR)
+## Doc checks (run these before every PR)
 
-CI (`.github/workflows/docs-ci.yml`) lints the markdown corpus and checks internal (relative) links strictly; external links are checked non-blocking. Run locally before pushing (needs node):
+The markdown corpus is linted (structural errors only, config in `.markdownlint-cli2.jsonc`) and internal (relative) links are checked strictly (config in `.markdown-link-check.json`). Run locally before pushing (needs node) — a CI workflow that runs the same checks on every PR is tracked in issue #29 and lands once Actions is available for the repo:
 
 ```sh
 npx -y markdownlint-cli2                                             # structural markdown errors
