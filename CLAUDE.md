@@ -51,6 +51,15 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 - Keep `install.ps1` / `install.sh` (and the `uninstall.*` counterparts) pure-ASCII and Windows-PowerShell-5.1-compatible.
 - Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary` — see `CONTRIBUTING.md`) and end with the required `Co-Authored-By` trailer.
 
+## Planning & ticket creation
+
+- When designing or planning a project and when producing tickets (GitHub issues, Jira, or any other tracker), **prioritise parallelism**: split the work into tasks and divide the domain according to the number of developers on the project, so every developer can work in parallel without clashing with the others (minimise shared files/modules per ticket and cross-ticket dependencies; when a dependency is unavoidable, state it explicitly on the ticket).
+
+## Asking the user questions
+
+- When you need to ask the user something, **list the questions** and use the clickable-options format (the AskUserQuestion tool): offer distinct options per question, mark your recommendation, and let the user pick by clicking.
+- Phrase every question and option **for a junior developer with zero knowledge of the tech stack or the company domain** — plain language, no unexplained technical concepts, define any jargon or acronym on first use.
+
 ## Git guardrails
 
 - Never commit directly to `main`; changes land via a `feat/<desc>` / `fix/<desc>` branch + PR.
