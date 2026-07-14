@@ -3,6 +3,17 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## Code-quality & design standards (CLAUDE.md guideline)
+
+- **New §B13 in `guidelines/claude-md.md`** — a strong CLAUDE.md declares its
+  code-quality posture: a stated design paradigm (OOP as the orion default — SOLID,
+  encapsulation, composition over inheritance — unless the stack idiomatically calls
+  for another), concrete clean-code rules (verifiable, not "write good code"), TDD as
+  the default workflow (failing test first; bug fixes start with a regression test),
+  and code-smell vigilance (refactor smells in new code, surface pre-existing ones —
+  without licensing unrequested refactors).
+- **Rubric dimension 10 added** to score §B13.
+
 ## AI canary + never-guess evidence discipline (CLAUDE.md guideline)
 
 - **CLAUDE.md guideline additions** (`guidelines/claude-md.md`, §B4):

@@ -159,6 +159,24 @@ whether it's concrete enough to act on.
 - A short **dev-environment** section: how to bring the stack up, common pitfalls,
   port/credential checks before starting servers.
 
+### B13. Code-quality & design standards
+- **A stated design paradigm, with OOP as the orion default.** The file declares how
+  code is organised — the orion default is object-oriented design (SOLID, strong
+  encapsulation, composition over inheritance, polymorphism over type-switching) —
+  unless the project's stack idiomatically calls for another paradigm. The point is
+  that the default is *declared*, not left to whatever the agent improvises.
+- **Clean-code expectations made concrete** — intention-revealing names, small
+  single-purpose functions/classes, no dead or commented-out code, no magic values —
+  phrased as verifiable rules, not "write good code" (that's a §C smell).
+- **TDD as the default workflow** — new behaviour starts with a failing test
+  (red → green → refactor); tests are written with the code, not bolted on after; a
+  bug fix starts with a regression test that reproduces the bug.
+- **Code-smell vigilance** — watch for classic smells (long methods, god classes,
+  duplicated logic, feature envy, shotgun surgery) in code the agent writes *and*
+  code it touches: refactor smells in new code before committing; **surface**
+  pre-existing ones rather than silently extending them. (Compatible with §B2 —
+  surfacing a smell is not a licence for an unrequested refactor.)
+
 ---
 
 ## C. Smells to flag
@@ -191,6 +209,8 @@ and well-scoped (right mechanism, right length).
 7. **Source-of-truth, deferral & agent-safe tagging** (§B10).
 8. **Doc maintenance & governance** (§B11).
 9. **Stack/architecture enforcement specificity** (§B12).
+10. **Code-quality & design standards** (§B13) — paradigm declared, clean-code rules
+    verifiable, TDD workflow, code-smell vigilance.
 
 For every dimension under 3, the report must give a **concrete fix** and, where
 useful, a **suggested rewrite snippet** the user could paste in.
