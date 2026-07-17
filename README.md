@@ -106,6 +106,7 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 | **project-handover-orion** | Generates a plain-language, code-internals-free HTML handover document for stakeholders and new joiners, with a dated epics-and-stories snapshot. Strictly read-only. |
 | **generate-project-writeup-orion** | Generates a leadership-facing Word (`.docx`) project write-up that leads with a transparent traditional-vs-actual cost comparison; every metric measured or marked "not measured." Strictly read-only. |
 | **assess-project-ai-infrastructure-orion** | Grades the repo's AI-development infrastructure (agent instruction file, README, governance docs, PR/issue templates, tooling, opt-in `~/.claude` self-audit) against a consensus + orion two-layer benchmark, emitting a scored HTML report. Read-only against the target repo. |
+| **handoff-orion** | Distils the current conversation into a single markdown handoff document a fresh agent can continue from — goal, state, decisions + rationale, dead-ends, open questions, next steps — referencing existing artifacts by path/URL instead of copying them. Saves outside the workspace to a location you pick, redacts secrets/PII, and tailors to what the next session is for. Explicit-invocation only; no git changes. |
 
 ## Status line (optional)
 
