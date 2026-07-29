@@ -136,7 +136,9 @@ No args → ask which issues to batch.
 1. **Environment:** `gh auth status` OK · inside a git repo · resolve `<base-branch>` =
    current branch (pull `--ff-only`; diverged → halt) · working tree has no staged
    changes · resolve config (above) · ensure the four labels exist (above).
-2. **Fetch + validate** every issue: must be OPEN. List all violations at once.
+2. **Fetch + validate** every issue: must be OPEN, and either unassigned or already
+   assigned to the invoking user — an issue assigned to someone ELSE is a collision:
+   refuse it and say who holds it. List all violations at once.
 3. **Label sanity** per issue → classification table printed to the user.
 4. **Readiness audit** per issue — labels are intent, bodies rot, so audit even
    `agent-ready` issues: ACs concrete and testable? No TBD / open-question markers? Do
@@ -184,8 +186,13 @@ folder path and wait. The user chooses: retry the slot · "I fixed it, resume" �
 this issue (only then: revert its batch contributions, close its PR, comment on the
 issue, continue) · abort the batch. Every failure appends a finding (forced trigger).
 
-Status comments: post short progress comments on each issue (queued → PR opened →
-merged into batch → closed at finalize) so GitHub remains the source of truth.
+Issue prep, the moment work on issue `N` starts: **assign it to the invoking user**
+(`gh issue edit <N> --add-assignee @me`, idempotent) — the assignee field is the
+at-a-glance "taken" signal teammates scan, so it must be set BEFORE any code exists,
+not at PR time. Then status comments: post short progress comments on each issue
+(queued → PR opened → merged into batch → closed at finalize) so GitHub remains the
+source of truth. On a user-skip after failure, the issue STAYS assigned — the failure
+comment explains its state; unassigning would hide who owns the follow-up.
 
 ## Phase 2 — Batch QA (autonomous, tiered)
 
@@ -216,7 +223,8 @@ OUTSIDE the boundary, so it starts with an explicit confirm: name the target rep
 wait for the user's go (a machine-level boundary hook may additionally prompt on the
 first write there — expected; the user approves once).
 
-Same P → D → R → F pipeline, but: the worktree/branch live in the **target repo**; the
+Same issue prep (assign to the invoking user first) and P → D → R → F pipeline, but:
+the worktree/branch live in the **target repo**; the
 PR opens against the **target repo's default branch** with full evidence pasted; and the
 run **stops dead at PR-open**: the user assigns a human reviewer from the team that owns
 that repo, a human merges, and only on the user's later "merged" signal is the issue

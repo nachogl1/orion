@@ -2,6 +2,14 @@
 
 Edited in place (no `-vN` convention); notable behaviour changes are recorded here.
 
+## 1.1.0 — ownership visibility
+
+- Issue prep now **assigns each issue to the invoking user the moment work starts**
+  (idempotent `--add-assignee @me`, batch and solo modes alike) so teammates see it is
+  taken from the issue list, not just from a comment. Stays assigned on a user-skip.
+- Preflight validation now refuses an issue **assigned to someone else** (collision
+  guard — mirrors the v4 pipeline's rule).
+
 ## 1.0.0 — initial release
 
 - Label-gated batch development of 1–8 GitHub issues: two-axis labels
