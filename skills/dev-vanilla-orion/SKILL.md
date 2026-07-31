@@ -7,8 +7,9 @@ description: 'Label-gated batch development of 1-8 GitHub issues against a batch
   run. Issues labelled human-needed halt preflight for a focused Q&A; issues labelled
   outside-change never batch - they run solo and stop at a PR for a human reviewer.
   After the queue: tiered batch QA (full suites always; live browser walkthrough only
-  when the batch touched UI) producing ONE consolidated qa-report.html, then a batch PR
-  the HUMAN merges. Halt-on-failure (pause and converse; never auto-skip). Process
+  when the batch touched UI), then a fresh-eyes review of the WHOLE combined diff for
+  cross-issue defects no per-issue review can see, producing ONE consolidated
+  qa-report.html, then a batch PR the HUMAN merges. Halt-on-failure (pause and converse; never auto-skip). Process
   friction is journalled to a findings store under forced triggers. Project facts come
   from a per-repo config file written by a first-run interview; toolchain is
   auto-detected. Use when the user says "/dev-vanilla-orion <issues>", "run a batch of
@@ -167,7 +168,7 @@ For each issue `N` in order — worktree `<worktree-parent>/<repo-name>-<N>` on 
 |---|---|---|
 | **P — plan** | Read the issue (+ its epic/linked docs). Write a short implementation plan + test list to `<worktree>/_plan-<N>.md`. No product code. | `agent-status: done` + plan path |
 | **D — dev** | TDD-implement the plan: failing test → code → refactor. Follow the project's own conventions (its `CLAUDE.md`/docs). Targeted tests green. | `agent-status: done` + files/tests summary |
-| **R — review** | Review the uncommitted diff against the configured `review_checklist` skill's checklist (read that skill's file locally) or the builtin list (correctness, security, tests-quality, conventions, AC trace vs the ISSUE's ACs — not the PR body's claims). Fix findings in place per the fix-in-place-first test; re-run targeted tests. | `agent-status: done` + findings fixed/deferred |
+| **R — review** | **Fresh agent — has never seen D's context**; it gets the diff on disk and nothing else, so the review is genuinely independent of the reasoning that produced the code. Review the uncommitted diff against the configured `review_checklist` skill's checklist (read that skill's file locally) or the builtin list (correctness, security, tests-quality, conventions, AC trace vs the ISSUE's ACs — not the PR body's claims). Fix findings in place per the fix-in-place-first test; re-run targeted tests. **Scope: this issue's diff only** — cross-issue interactions are structurally invisible here and are caught by BR in Phase 2. | `agent-status: done` + findings fixed/deferred |
 | **F — finalize** | Conventional commit(s), push, open PR **into the batch branch** with `Refs #<N>` (never `Closes` — issues stay open until batch lands), body = what/why + pasted test output. **Stops at PR-open.** | `agent-status: pr-opened pr:<n>` |
 
 **Orchestrator-owned merge gate** (after F): run the project's **FULL build + FULL test
@@ -201,10 +202,16 @@ them, front and back). **End-to-end suite + live browser walkthrough only when t
 touched UI** (changed paths vs `ui_paths`/auto-detection) — a backend-only batch skips
 the browser tier, and the report says so.
 
+Phase 1's R agents review **one issue's diff each**. Two blind spots survive that and
+reach the human otherwise unreviewed: **cross-issue interactions** (each change correct
+alone, wrong combined) and **QA-1's own in-place fixes** (new code written after the last
+review). BR closes both before the batch PR opens.
+
 | Agent | Job |
 |---|---|
 | **QA-1 — test-and-fix** | Run the full suites (+ e2e when tiered in). For UI batches: live walkthrough of each batched issue's surface against the running stack, **as a human user** — start from the landing page and navigate by clicking, never deep-link to known URLs (an unreachable-by-clicking feature is itself a finding); cover happy path, role/permission gating, side-effects (endpoints fired, persisted rows), adjacent-area regressions, edge cases. Before declaring any UI click broken (or fine), prove it at DOM level — computed `pointer-events`, `elementFromPoint`, dispatched-event control — browser automation can silently no-op. Fix findings per fix-in-place-first; after any fix, re-run the affected gates; bugs too big to fix → defer with `#N` (find-or-reuse). Docker hygiene: clean-slate = containers + volumes only, NEVER images; wait for true stack readiness (health signal, not a port). Returns a structured handoff: gates green/failed, suites pass/total, fixes made, coverage caveats. |
-| **QA-2 — report + PR** | Write **ONE consolidated `qa-report.html`** into the session folder: per-issue verdicts (✅/🟡/🔴), gate results, findings (fixed in-session vs deferred-with-`#N`), and an HONEST **"NOT verified"** list — everything the local stack cannot reach (external systems, cross-app handoffs) stated plainly; a passing gate is not proof of correctness, and the report never overstates. File the deferral tracking issues (find-or-reuse, whole-batch deduped) and back-link each `#N` into the per-issue PR bodies. Then open the **batch PR** (draft) batch → base: `Closes #<N>` line per completed issue, gate evidence, link to the report path. QA-failed state → the PR still opens, with a prominent DO-NOT-MERGE callout. |
+| **BR — batch review** | **Fresh agent, clean context — has seen no per-issue review and none of the pipeline's reasoning.** Reviews the **whole combined diff** (`<base-branch>..<batch tip>`, i.e. `git diff <base>...HEAD` in the QA worktree) against the configured `review_checklist` skill's checklist, PLUS two axes only visible at batch level: (1) **cross-issue interaction** — an assumption issue A relies on that issue B invalidated; the same file, contract, schema object, config key or shared helper changed by two issues in incompatible ways; duplicated logic two issues added independently; (2) **fix-cycle integrity over QA-1's fixes** — QA-1's in-place edits are unreviewed new code, so scan them with the same adversarial lens. On a single-issue batch axis (1) is vacuous — say so and still run axis (2); never skip BR. Fix findings per fix-in-place-first and **re-run every gate the fix touches**; too big → defer with `#N` (find-or-reuse). It is a REVIEW agent: it never opens, merges or comments on a PR. Returns a structured handoff for QA-2: verdict (clean / fixed-in-place / deferred), every finding with `file:line`, and which gates were re-run after fixes. |
+| **QA-2 — report + PR** | Write **ONE consolidated `qa-report.html`** into the session folder: per-issue verdicts (✅/🟡/🔴), gate results, **BR's batch-review verdict + its cross-issue findings as their own section** (so the human sees the combined diff was reviewed, by whom, and what it found), findings (fixed in-session vs deferred-with-`#N`), and an HONEST **"NOT verified"** list — everything the local stack cannot reach (external systems, cross-app handoffs) stated plainly; a passing gate is not proof of correctness, and the report never overstates. File the deferral tracking issues (find-or-reuse, whole-batch deduped) and back-link each `#N` into the per-issue PR bodies. Then open the **batch PR** (draft) batch → base: `Closes #<N>` line per completed issue, gate evidence, link to the report path. QA-failed state → the PR still opens, with a prominent DO-NOT-MERGE callout. |
 
 ## Phase 3 — Wait, then finalize
 
@@ -293,6 +300,7 @@ concurrent sessions never conflict). No secondbrain configured → findings appe
       without the user's word.
 - [ ] Every per-issue PR merged into the batch had a green FULL local build+test (or
       green PR checks where they exist) at merge time.
+- [ ] BR reviewed the whole combined diff; its verdict and findings are in the report.
 - [ ] `qa-report.html` written and its absolute path reported.
 - [ ] Findings flushed (secondbrain committed + pushed, or session-folder fallback);
       unharvested count reported.

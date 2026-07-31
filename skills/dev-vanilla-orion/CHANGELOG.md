@@ -2,6 +2,27 @@
 
 Edited in place (no `-vN` convention); notable behaviour changes are recorded here.
 
+## 1.2.0 — whole-batch review (BR)
+
+- **New Phase 2 agent, `BR — batch review`**, between QA-1 and QA-2: a fresh agent that
+  reviews the **whole combined diff** (`<base>...<batch tip>`) before the batch PR opens.
+  Closes two blind spots that previously reached the human unreviewed:
+  - **Cross-issue interactions** — Phase 1's R agents each see one issue's diff, so a
+    defect that exists only in the *combination* (issue B invalidating an assumption
+    issue A relies on, two issues changing one contract incompatibly, duplicated logic)
+    was structurally invisible to every reviewer in the run.
+  - **QA-1's in-place fixes** — new code written after the last review, previously
+    shipped with no review at all.
+- BR runs **after** QA-1 so it reviews the code that actually ships, fixes per
+  fix-in-place-first (re-running every gate a fix touches), and defers with `#N`.
+  It never opens, merges or comments on a PR. On a single-issue batch the cross-issue
+  axis is declared vacuous but BR still runs for the QA-1 fix-review axis.
+- `qa-report.html` now carries BR's verdict and cross-issue findings as their own
+  section; the cleanup checklist gained a matching item.
+- Documentation: the R row now states explicitly that R is a **fresh agent that has
+  never seen D's context** and is scoped to one issue's diff — the independence was
+  already real, but readers could not tell from the table.
+
 ## 1.1.0 — ownership visibility
 
 - Issue prep now **assigns each issue to the invoking user the moment work starts**
