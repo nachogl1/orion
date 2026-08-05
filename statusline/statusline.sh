@@ -12,6 +12,8 @@
 #   - model name (cyan)
 #   - reasoning effort (color-coded by level; omitted when unsupported)
 #   - jobs flag (bold yellow ⚑N when background jobs run; dim ⚑0 when idle)
+#   - subscription usage limits, rightmost: 5-hour window (bright magenta) and
+#     7-day window (bright blue), each "used % + time until it resets"
 #   - second line: current working directory
 #
 # Requirements: bash (Git Bash on Windows), jq. Optional: gh (PR segment),
@@ -32,7 +34,11 @@ _fields=$(echo "$input" | jq -r '
   (.transcript_path // ""),
   (.model.display_name // ""),
   (.effort.level // ""),
-  (.cost.total_cost_usd // "")
+  (.cost.total_cost_usd // ""),
+  (.rate_limits.five_hour.used_percentage // ""),
+  (.rate_limits.five_hour.resets_at // ""),
+  (.rate_limits.seven_day.used_percentage // ""),
+  (.rate_limits.seven_day.resets_at // "")
 ' | tr -d '\r')
 {
   read -r used_pct
@@ -41,6 +47,10 @@ _fields=$(echo "$input" | jq -r '
   read -r model_name
   read -r effort_level
   read -r session_cost
+  read -r five_h_pct
+  read -r five_h_reset
+  read -r seven_d_pct
+  read -r seven_d_reset
 } <<< "$_fields"
 
 # Compute elapsed time since session start (transcript file birth/creation time)
@@ -411,6 +421,60 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Usage-limit segments — the subscription rate-limit windows, read straight
+# from the stdin JSON (no external command, so these never block): the 5-hour
+# rolling window and the 7-day (weekly) window, each shown as "used % + time
+# until that window refreshes".
+#
+# `rate_limits` is only present for Claude.ai subscription (Pro/Max) sessions,
+# and only after the first API response of the session; each window can be
+# absent independently. Every field is therefore optional and its segment is
+# omitted rather than faked. Each window gets its OWN color so the two are
+# never confused at a glance.
+# ---------------------------------------------------------------------------
+
+# Echo " ↻<time-left>" for a Unix-epoch reset timestamp — "3d5h" / "2h14m" /
+# "12m" / "now". Echoes nothing when the timestamp is missing or not an integer.
+_reset_suffix() {
+  local _epoch=${1%.*}
+  case "$_epoch" in
+    ''|*[!0-9]*) return ;;
+  esac
+
+  local _left=$(( _epoch - $(date +%s) ))
+  if [ "$_left" -le 0 ]; then
+    printf ' ↻now'
+    return
+  fi
+
+  local _d=$(( _left / 86400 ))
+  local _h=$(( (_left % 86400) / 3600 ))
+  local _m=$(( (_left % 3600) / 60 ))
+  if [ "$_d" -gt 0 ]; then
+    printf ' ↻%dd%dh' "$_d" "$_h"
+  elif [ "$_h" -gt 0 ]; then
+    printf ' ↻%dh%dm' "$_h" "$_m"
+  else
+    printf ' ↻%dm' "$_m"
+  fi
+}
+
+# Echo "<color><label>:<pct>% ↻<reset><reset-color>" for one window, or nothing
+# when the percentage is missing/non-numeric. Colors stay as literal \033 text
+# here — the final printf '%b' expands them, same as every other segment.
+_usage_segment() {
+  local _label="$1" _pct="$2" _reset="$3" _color="$4"
+  local _pct_int=${_pct%.*}
+  case "$_pct_int" in
+    ''|*[!0-9]*) return ;;
+  esac
+  printf '%s%s:%s%%%s\\033[0m' "$_color" "$_label" "$_pct_int" "$(_reset_suffix "$_reset")"
+}
+
+usage_5h_segment=$(_usage_segment "5h" "$five_h_pct" "$five_h_reset" '\033[1;35m')   # bright magenta
+usage_7d_segment=$(_usage_segment "7d" "$seven_d_pct" "$seven_d_reset" '\033[1;34m') # bright blue
+
+# ---------------------------------------------------------------------------
 # Assemble output
 # ---------------------------------------------------------------------------
 if [ -n "$cost_segment" ]; then
@@ -426,9 +490,15 @@ fi
 if [ -n "$effort_segment" ]; then
   cost_suffix="${cost_suffix}  |  ${effort_segment}"
 fi
-# Jobs flag sits rightmost, after effort
 if [ -n "$jobs_segment" ]; then
   cost_suffix="${cost_suffix}  |  ${jobs_segment}"
+fi
+# Usage-limit windows sit rightmost of all, after the jobs flag
+if [ -n "$usage_5h_segment" ]; then
+  cost_suffix="${cost_suffix}  |  ${usage_5h_segment}"
+fi
+if [ -n "$usage_7d_segment" ]; then
+  cost_suffix="${cost_suffix}  |  ${usage_7d_segment}"
 fi
 
 if [ -n "$alive_segment" ]; then
