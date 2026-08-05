@@ -94,6 +94,14 @@ the user's call.
 7. **Distribution-safety self-check** before writing the report (see gate).
 8. **Summarize in chat; the report holds the detail.** Tell the user the headline
    scores and the top gaps in clear language; point them to the HTML for depth.
+9. **Assess each `CLAUDE.md` on its own scope.** Detect whether each agent-instruction
+   file is **user-level** (`~/.claude/…`, loaded on every repo) or **repo-level**
+   (`<repo>/…`, loaded for one repo) and score it against the scope-appropriate rubric
+   in [`guidelines/claude-md.md`](guidelines/claude-md.md) ("Scope" section). Assess each
+   file **independently** — never compare two `CLAUDE.md` files, and never mark a rule
+   "missing" that correctly lives at the other scope (a user file isn't docked for
+   lacking a repo's stack rules; a repo file isn't docked for lacking generic personal
+   preferences).
 
 ## Inputs / pre-conditions
 
@@ -120,7 +128,11 @@ the user's call.
 
    **Pillar 1 — Agent instructions & docs**
    - **Agent instructions** — `CLAUDE.md`, `./.claude/CLAUDE.md`, `CLAUDE.local.md`,
-     `.claude/rules/*.md`, an `AGENTS.md` imported by CLAUDE.md.
+     `.claude/rules/*.md`, an `AGENTS.md` imported by CLAUDE.md. These are the
+     **repo-level** files by default; the **user-level** `~/.claude/CLAUDE.md` (and
+     `~/.claude/rules/*`) is **also** assessed with this rubric — at **user scope** —
+     when the user asks to grade it or opts into the self-audit. Each file is scored
+     independently on its own scope (Operating principle 9).
    - **README** — root + any per-package READMEs.
 
    **Pillar 2 — Process & governance**
@@ -221,7 +233,9 @@ Do this once, up front, and pass the results to every assessor so they judge aga
 the *real* project:
 
 1. **Locate the docs** for each assessor in scope (record which exist, which are
-   missing, and their paths). Missing high-value docs are findings, not skips.
+   missing, and their paths). Missing high-value docs are findings, not skips. For each
+   `CLAUDE.md` found, also record its **scope** — user-level (`~/.claude/…`) vs
+   repo-level — so the assessor applies the right rubric (Operating principle 9).
 2. **Detect the stack & commands** from manifests actually present — e.g.
    `package.json` scripts (npm/pnpm/yarn/bun; workspaces), `*.sln`/`*.csproj`,
    `Makefile`, `pyproject.toml`/`tox.ini`, `go.mod`, `Cargo.toml`,
@@ -294,6 +308,12 @@ The **tooling assessor** recommends only **relevant, genuinely-missing** tooling
 per gap with the scope to add it at, and **re-validates** that each named tool still
 exists/reachable at run time. The **self-audit assessor** names the exact file + line
 for every broken/stale/wasteful finding. Neither installs or edits anything.
+
+The **agent-instructions assessor** tags each `CLAUDE.md` it assesses with its **scope**
+(user-level vs repo-level) and applies the scope-appropriate rubric per
+[`guidelines/claude-md.md`](guidelines/claude-md.md) ("Scope" section), scoring each file
+**independently** — repo-only dimensions are marked **N/A** (not 0) for a user-level
+file, and it never scores one file by comparison to another.
 
 ## Phase 4 — Cross-doc synthesis
 

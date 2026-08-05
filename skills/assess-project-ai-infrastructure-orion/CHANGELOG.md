@@ -3,6 +3,34 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## Root-cause-on-repeated-failure discipline (CLAUDE.md guideline)
+
+- **New bullet in `guidelines/claude-md.md` §B3** — a strong CLAUDE.md tells the agent
+  that when the same command/test/build/action fails again (e.g. a second time), it must
+  **stop retrying and diagnose the root cause** before the next attempt: read the real
+  error, check actual state, act on the cause — never blind-loop a failing action, never
+  mask a failure (skip/delete the test, widen a timeout, swallow the error). Explicitly
+  **applies at both user and repo scope**. Rubric dimension 2 (Verification) and the
+  smells list updated to cover it.
+
+## User-level vs repo-level CLAUDE.md — scope-aware, independent assessment
+
+- **`guidelines/claude-md.md` gained a "Scope" section.** The assessor now detects
+  whether each `CLAUDE.md` is **user-level** (`~/.claude/…`, loaded on every repo) or
+  **repo-level** (`<repo>/…`, loaded for one repo) and scores it against the rubric
+  **for its own scope**. A user-level file is no longer penalized for lacking
+  repo-specifics (stack rules, a repo's tracker/commands) — those dimensions are **N/A**
+  at user scope — and hardcoding one project's specifics into a user file is now flagged
+  as a smell. A per-dimension scope-applicability table and user-level-only checks
+  (token economy, no machine paths, no single-project specifics) were added.
+- **Independent assessment, no comparison.** Every `CLAUDE.md` is assessed on its own
+  merits; the skill never scores one file by comparing it to another, and never marks a
+  rule "missing" that correctly lives at the other scope.
+- **`SKILL.md`** — new operating principle 9; Phase 2 records each file's scope; the
+  Phase 3 agent-instructions assessor tags scope and applies the scope-appropriate
+  rubric; the user-level `~/.claude/CLAUDE.md` is assessed with this rubric (at user
+  scope) when the user asks or opts into the self-audit.
+
 ## Read-only claim scoped to the target repo
 
 - The frontmatter description claimed the skill "never edits any file", contradicting
