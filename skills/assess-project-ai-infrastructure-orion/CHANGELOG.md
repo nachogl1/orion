@@ -3,6 +3,29 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## Response shape & descriptive sub-agent naming (CLAUDE.md guidelines)
+
+- **`guidelines/claude-md.md` §B4 gained "a declared *response shape*".** Tone rules
+  say how an answer should *sound*; a response shape fixes the *form* every answer
+  takes. The assessor now checks whether the file states one in checkable terms:
+  action first, numbered steps for multi-step work, exactly one concrete next step,
+  tangents suppressed, a one-line state restatement each turn, concrete time estimates
+  (or an explicit "can't estimate without X"), wins stated concretely, errors reported
+  matter-of-factly, and no preamble/recap/sign-off — with any always-on marker (an AI
+  canary) **explicitly exempted** so the rules don't collide. Flagged as prime
+  **user-level** material; a repo-level file that omits it is *"could hoist"*, not a
+  defect.
+- **§B9 gained "name every sub-agent for the human watching."** Each spawned sub-agent
+  needs a title/name/description saying *what it is doing* — the agent list / run graph
+  is the operator's only window into a parallel fan-out, and generic or duplicated
+  labels make a run impossible to stop, inspect, or attribute. Treated as a safety
+  item, not cosmetics; pairs with the §B1 output cap.
+- **New §C smells** — response-shape rules that contradict each other (e.g. "restate
+  state every turn" alongside "never recap", or a mandated canary banned by a
+  "no preamble" rule), and sub-agents spawned with generic/duplicated labels.
+- **Rubric (§D)** — dimension 5 now covers the response shape and its internal
+  consistency; dimension 6 now covers descriptive sub-agent naming.
+
 ## Root-cause-on-repeated-failure discipline (CLAUDE.md guideline)
 
 - **New bullet in `guidelines/claude-md.md` §B3** — a strong CLAUDE.md tells the agent
