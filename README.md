@@ -113,9 +113,9 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 
 Besides skills, the repo ships a shared **Claude Code status line** (`statusline/`) you can opt into. One line, live in every session:
 
-> `1h23m` | `ctx: 42.5%` | `[branch] ◆0 ◯1 ●2 ▲1` | `#12 ok` | **`$1.23`** `$345.67` | `Opus` | `effort:high` | `⚑0`
+> `1h23m` | `ctx: 42.5%` | `[branch] ◆0 ◯1 ●2 ▲1` | `#12 ok` | **`$1.23`** `$345.67` | `Opus` | `effort:high` | `⚑0` | `5h:23% ↻2h14m` | `7d:41% ↻3d5h`
 
-- session alive time, context-usage % (color-coded), git branch + state indicators, PR status for the current branch (cached, background-refreshed), **cost**: API-equivalent USD for the **open session** (green) plus the **current calendar month to date across all projects** (blue, computed from local transcripts via [ccusage](https://github.com/ryoppippi/ccusage)), the **model name**, the **reasoning-effort level** (when the model exposes one), and a **jobs flag** (`⚑N` when background agent sessions are running).
+- session alive time, context-usage % (color-coded), git branch + state indicators, PR status for the current branch (cached, background-refreshed), **cost**: API-equivalent USD for the **open session** (green) plus the **current calendar month to date across all projects** (blue, computed from local transcripts via [ccusage](https://github.com/ryoppippi/ccusage)), the **model name**, the **reasoning-effort level** (when the model exposes one), a **jobs flag** (`⚑N` when background agent sessions are running), and — rightmost, each in its own colour — the **subscription usage limits**: how much of the **5-hour** and **7-day** window is used and how long until each refreshes (subscription sessions only).
 - installed with the same copy + `.orion-managed` marker mechanism as skills (`~/.claude/statusline-orion`), so `-Update` / `--update` re-copies status-line improvements too.
 - activating it (writing the `statusLine` entry into `~/.claude/settings.json`) is **opt-in**: pass `-StatusLine` / `--statusline` to the installer, or answer the y/N prompt during an interactive install.
 
