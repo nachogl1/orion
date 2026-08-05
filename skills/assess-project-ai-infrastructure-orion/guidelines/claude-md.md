@@ -12,6 +12,60 @@ project's stack. The assessor checks whether the target file covers each area
 
 ---
 
+## Scope — detect user-level vs repo-level FIRST, then assess each file on its own
+
+A `CLAUDE.md` is judged **differently depending on where it lives**, because the two
+scopes do different jobs. Before scoring, determine each file's scope from its path:
+
+- **User-level** — `~/.claude/CLAUDE.md`, `~/.claude/CLAUDE.local.md`,
+  `~/.claude/rules/*`. Loaded into **every** session on **every** repo. Its job is the
+  user's cross-project preferences (how to communicate, candor, verification posture,
+  generic git/PR conventions, effort economy).
+- **Repo-level** — `<repo>/CLAUDE.md`, `<repo>/.claude/CLAUDE.md`,
+  `<repo>/CLAUDE.local.md`, `<repo>/.claude/rules/*`, an `AGENTS.md` imported by one.
+  Loaded **only** for that repo. Its job is this project's specifics (stack, build/test
+  commands, architecture, its source-of-truth tracker, its naming rules).
+
+**Rules for the assessor:**
+
+1. **Assess every file independently, against the rubric for its own scope.** Do
+   **not** compare two `CLAUDE.md` files against each other, and do **not** mark a rule
+   "missing" from one file when that rule correctly lives at the **other** scope.
+2. **A user-level file is not penalized for lacking repo-specifics** (a project's stack
+   rules, build/test commands, that repo's tracker, its branch/naming tables). Those
+   dimensions are **N/A** at user scope — and a user-level file that *hardcodes* one
+   project's specifics is a **smell** (it pollutes every other repo's session).
+3. **A repo-level file is not penalized for lacking generic cross-project preferences**
+   (personal tone, an AI canary, a global default paradigm) — those may sit at user
+   scope and be inherited. Note them as *"could hoist to user scope"*, not a repo defect.
+
+**Which rubric dimensions (§D) apply at each scope:**
+
+| §D dimension | User-level | Repo-level |
+|---|---|---|
+| 1 Hygiene & form | ✅ (leanness weighted **higher** — loads every prompt) | ✅ |
+| 2 Verification & quality gates | ✅ generic posture ("run the real thing; green before commit; root-cause on repeated failure") | ✅ + this repo's actual commands |
+| 3 Git/GitHub & merge guardrails | ✅ generic (never commit to default branch, Conventional Commits, no force-push) | ✅ + this repo's merge strategy / CI gates |
+| 4 Change philosophy & effort economy | ✅ | ✅ |
+| 5 Communication & directness | ✅ (prime user-level material) | ✅ (or inherited) |
+| 6 Multi-agent safety | ✅ if the user runs parallel agents, else N/A | ✅ if the repo does, else N/A |
+| 7 Source-of-truth, deferral & agent-safe tagging | generic convention only; the **named tracker is N/A** | ✅ (names this repo's tracker) |
+| 8 Doc maintenance & governance | usually **N/A** (change→doc maps, ADRs are project-specific) | ✅ |
+| 9 Stack/architecture enforcement | **N/A** (and hardcoding a stack here is a smell) | ✅ |
+| 10 Code-quality & design standards | ✅ if the user sets a global default, else "could hoist" | ✅ |
+
+**Extra checks that apply only to a user-level file** (a bloated or leaky user file
+costs on every prompt of every project — cross-reference
+[`claude-setup-audit.md`](claude-setup-audit.md), which audits it as part of the whole
+`~/.claude/` setup):
+
+- **Token economy** — it loads on every prompt everywhere; keep it lean.
+- **No machine-specific values** — absolute user paths, home-folder names, secrets.
+- **No single project's specifics** — stack rules, one repo's tracker/commands, one
+  team's naming table. Those belong in that repo's file, not here.
+
+---
+
 ## A. Consensus baseline (must hold before orion specifics)
 
 Fail these and the rest barely matters:
@@ -52,6 +106,14 @@ whether it's concrete enough to act on.
   acknowledged; never disclaim with "those were already failing."
 - If something genuinely can't be run locally (missing infra, OS-specific), **say so
   explicitly** — don't claim success.
+- **Root-cause on repeated failure — don't blind-retry.** When the same command, test,
+  build, or action fails **again** (e.g. a second time), **stop repeating it** and work
+  out *why* before the next attempt — read the actual error, check the real state, form
+  a hypothesis, then act on the cause. Never loop the same failing action hoping it
+  passes, and never "fix" a failure by masking the symptom (deleting/skipping the test,
+  widening a timeout, swallowing the error). A signal that looks like a known failure
+  may have a **different** cause — confirm the cause before acting on it. *(Applies at
+  both user and repo scope.)*
 
 ### B4. Communication & tone
 - **Summarize and use clear language by default; let the user ask for more detail.**
@@ -189,8 +251,14 @@ whether it's concrete enough to act on.
   before commit") — note it as a hook candidate.
 - Secrets, absolute user paths, or machine-specific values committed into the file.
 - No verification/green-suite rule; no git guardrails; no source-of-truth statement.
+- Blind-retrying a failing command/test/action instead of diagnosing the root cause; or
+  "fixing" a failure by masking it (skip/delete the test, widen the timeout, swallow the
+  error).
 - Stack rules hardcoded as copy-paste from another project (mismatch with the repo's
   actual manifests).
+- **(User-level file)** hardcodes a single project's stack, tracker, commands, or
+  absolute paths — it pollutes every other repo's session; those belong in that repo's
+  own file.
 
 ## D. Scoring rubric (per dimension, 0–5)
 
@@ -198,9 +266,15 @@ Score each, then roll up. **0** absent · **1** mentioned only · **2** partial/
 **3** present & adequate · **4** specific & verifiable · **5** specific, verifiable,
 and well-scoped (right mechanism, right length).
 
+**Apply the "Scope" section first.** For a **user-level** file, mark the repo-only
+dimensions **N/A** (don't score them 0) and add the user-level extra checks; for a
+**repo-level** file, score the full set. Roll up over the **applicable** dimensions
+only, and assess the file on its own — never by comparison to another `CLAUDE.md`.
+
 1. **Hygiene & form** — concise, imperative, specific, scannable, ≤~200 lines, no
    contradictions, references not duplicates (consensus baseline, §A).
-2. **Verification & quality gates** (§B3) — *weighted highest.*
+2. **Verification & quality gates** (§B3) — *weighted highest;* includes root-cause
+   discipline on repeated failure (no blind-retry, no symptom-masking).
 3. **Git/GitHub & merge guardrails** (§B7).
 4. **Change philosophy & effort economy** (§B1–B2).
 5. **Communication & directness** (§B4–B6).
