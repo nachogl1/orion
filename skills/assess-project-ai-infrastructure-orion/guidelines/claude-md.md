@@ -131,6 +131,36 @@ whether it's concrete enough to act on.
   (code, docs, command output) before asserting it. Every claim should be backed by
   something checkable; anything unverified is explicitly labelled an assumption or
   uncertainty rather than stated as fact.
+- **A declared *response shape*, not just a tone.** Tone rules say how an answer
+  should *sound*; a response shape fixes the *form* every answer takes, so the reader
+  never hunts for the point. The assessor checks whether the file pins this down in
+  some checkable form — the exact list matters less than that it is stated:
+  - **Action first** — the opening line is the next action or what changed, not
+    context-setting, not a restatement of the question, not a warm-up.
+  - **Numbered steps** for anything multi-step — one action per line, in the order
+    they happen.
+  - **Exactly one concrete next step** to close — a single action, not a menu of
+    options and not an open-ended offer to help.
+  - **Tangents suppressed** — an unasked observation is cut, or parked in one
+    labelled line at the very end; never dropped mid-answer.
+  - **A one-line state restatement each turn** — what is done, in progress, and
+    blocked (and on whom). This is *current status*; a good file explicitly
+    distinguishes it from a recap of already-reported work, so it doesn't collide
+    with the "no recap" rule below.
+  - **Concrete time/effort estimates** ("~15 min", "3 commands") instead of "a bit" /
+    "shortly" — and, per the no-guessing rule above, an explicit *"can't estimate
+    without X"* rather than an invented number.
+  - **Wins stated plainly and concretely** ("suite green, 42/42") — about the work,
+    never flattery of the user (§B5).
+  - **Errors reported matter-of-factly** — what broke, why, and the fix; no
+    apologising, no self-criticism, no dwelling.
+  - **No preamble, no recap, no sign-off.** If the file also mandates an always-on
+    marker (an AI canary, below), it must **explicitly exempt** it here — otherwise
+    the two rules contradict, which is a §C smell.
+
+  This is prime **user-level** material: it is a cross-project preference and costs
+  almost nothing to carry. A repo-level file that omits it is not defective (§Scope,
+  rule 3) — note it as *"could hoist to user scope"*.
 - **An instruction-adherence canary ("AI canary").** A cheap, always-visible marker
   that proves the instruction file is being applied — e.g. every response starts with
   a fixed token (a name, a tag). If the marker disappears, the user knows the
@@ -188,6 +218,14 @@ whether it's concrete enough to act on.
   **never `git add -A`** in a multi-agent context.
 - **Fail clean** — a failing sub-agent reports and stops; it doesn't attempt recovery
   that conflicts with the parent.
+- **Name every sub-agent for the human watching, not for the code.** Each spawned
+  sub-agent gets a title/name/description saying **what that agent is doing**
+  (`review-auth-tests`, not `agent-3`, not a repeat of the parent task). The agent
+  list / run graph is the operator's only window into a parallel fan-out: with
+  generic or duplicated labels they cannot tell which agent to stop, re-run, inspect,
+  or blame for a bad result — the run becomes unobservable, which is a safety
+  problem, not a cosmetic one. Pairs with the output cap in §B1: a bounded return
+  *and* a descriptive label make a fan-out readable.
 
 ### B10. Source-of-truth & deferral discipline
 - A single, named **source of truth for status** (e.g. the issue tracker), and a rule
@@ -256,6 +294,13 @@ whether it's concrete enough to act on.
   error).
 - Stack rules hardcoded as copy-paste from another project (mismatch with the repo's
   actual manifests).
+- **Response-shape rules that contradict each other** — e.g. "restate the state every
+  turn" alongside "never recap" with no stated distinction, or an always-on marker (an
+  AI canary) mandated in one rule and banned by a "no preamble" rule. A shape rule that
+  can't be followed without breaking another is worse than none.
+- Sub-agents spawned with generic, duplicated, or task-echoing labels (`agent-1`,
+  `task`, `subagent`) in a file that mandates parallel fan-out — the run can't be
+  observed, stopped, or attributed from the agent list.
 - **(User-level file)** hardcodes a single project's stack, tracker, commands, or
   absolute paths — it pollutes every other repo's session; those belong in that repo's
   own file.
@@ -277,9 +322,12 @@ only, and assess the file on its own — never by comparison to another `CLAUDE.
    discipline on repeated failure (no blind-retry, no symptom-masking).
 3. **Git/GitHub & merge guardrails** (§B7).
 4. **Change philosophy & effort economy** (§B1–B2).
-5. **Communication & directness** (§B4–B6).
+5. **Communication & directness** (§B4–B6) — includes a declared **response shape**
+   (action first, numbered steps, one concrete next step, no preamble/recap) whose
+   rules don't contradict one another.
 6. **Multi-agent safety** (§B9) — *N/A if the project never uses parallel sub-agents;
-   mark N/A rather than 0.*
+   mark N/A rather than 0* — includes **descriptive sub-agent naming** so a fan-out is
+   observable from the agent list/graph.
 7. **Source-of-truth, deferral & agent-safe tagging** (§B10).
 8. **Doc maintenance & governance** (§B11).
 9. **Stack/architecture enforcement specificity** (§B12).
