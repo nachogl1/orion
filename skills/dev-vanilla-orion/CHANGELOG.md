@@ -2,6 +2,39 @@
 
 Edited in place (no `-vN` convention); notable behaviour changes are recorded here.
 
+## 1.3.0 — unattended by default
+
+The skill used to stop for a confirm at every tracker write and every triage decision,
+which meant a "batch" run needed a human sitting next to it. It now runs from invocation
+to batch-PR-open without asking anything.
+
+- **New `Autonomy contract` section** — the authoritative list of what the skill does
+  without asking versus the only four pauses that survive: an unrecoverable issue failure,
+  the batch PR → base merge, destroying work the run did not create, and a machine-level
+  boundary-hook prompt. Everything else (labels, config, issue-body sharpening, in-place
+  fixes, deferral issues, per-issue PR merges into the batch) is announce-and-continue.
+- **No first-run interview.** Every config field is auto-derived from the repo and
+  written to `.claude/dev-vanilla-orion.yaml`, with the assumed values printed. New
+  `autonomy: full | checkpointed` field (default `full`); `checkpointed` restores the old
+  confirm-before-tracker-writes behaviour for anyone who wants to supervise triage.
+- **Self-triage.** Untriaged or conflictingly-labelled issues are labelled by the skill
+  from an evidence-logged deep-read (comment records the decision + evidence) instead of
+  waiting for a confirm. Missing triage labels are created without a confirm.
+- **Readiness gaps self-repair before demoting.** A stale path or an AC the code makes
+  unambiguous is fixed in the issue body (audit comment records before/after) and the
+  issue stays in the batch; demotion is reserved for a missing *decision*.
+- **Excluded instead of blocking.** `human-needed`, mixed blast-zone, and cyclic-dependency
+  issues are excluded from the run — labelled, commented with the concrete blocking
+  questions, and named in `qa-report.html` and the final summary — rather than stopping
+  the batch for a live Q&A. More than 8 issues trims to 8 and reports the remainder; no
+  args derives the queue from the user's own assigned `agent-ready` + `local-change`
+  issues. If every issue is excluded, the run exits clean without creating a branch.
+- **Solo mode announces instead of asking** — invoking the skill on an `outside-change`
+  issue is the go signal; it still never routes around a machine boundary hook.
+- **More autonomous recovery before the halt:** a logical `incomplete` now gets two
+  recovery attempts, the second required to root-cause from the first's diagnosis rather
+  than re-run it. Papering over a red gate remains forbidden.
+
 ## 1.2.0 — whole-batch review (BR)
 
 - **New Phase 2 agent, `BR — batch review`**, between QA-1 and QA-2: a fresh agent that
