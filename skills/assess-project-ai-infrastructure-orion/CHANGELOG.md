@@ -3,6 +3,16 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## Response shape framed as ADHD-support pillars (CLAUDE.md guideline)
+
+- **`guidelines/claude-md.md` §B4** — the "declared response shape" block now names
+  what the rules are in reality: **ADHD-support pillars** (answer-first, one idea per
+  line, visible state, a single next step, no prose walls — the structure that keeps a
+  reply followable for a reader who struggles to sustain focus). A user-level file may
+  make the framing explicit (e.g. *"talk to me like I have ADHD and struggle to focus —
+  these rules are the support pillars"*); the assessor treats that clause as a positive
+  signal of a deliberate shape, never as a requirement — absence is not penalized.
+
 ## Response shape & descriptive sub-agent naming (CLAUDE.md guidelines)
 
 - **`guidelines/claude-md.md` §B4 gained "a declared *response shape*".** Tone rules

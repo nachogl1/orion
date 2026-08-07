@@ -158,6 +158,14 @@ whether it's concrete enough to act on.
     marker (an AI canary, below), it must **explicitly exempt** it here — otherwise
     the two rules contradict, which is a §C smell.
 
+  In reality these shape rules are **ADHD-support pillars**: answer-first ordering,
+  one idea per line, visible state, a single next step, and no prose walls are what
+  keep a reply followable for a reader who struggles to sustain focus. A strong
+  user-level file may make that framing explicit with a clause like *"talk to me
+  like I have ADHD and struggle to focus — these rules are the support pillars"* —
+  the assessor treats such a clause as a positive signal that the shape is
+  deliberate, not incidental (never as a requirement; its absence is not penalized).
+
   This is prime **user-level** material: it is a cross-project preference and costs
   almost nothing to carry. A repo-level file that omits it is not defective (§Scope,
   rule 3) — note it as *"could hoist to user scope"*.
