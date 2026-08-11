@@ -236,9 +236,13 @@ order: …") is honored.
 7. **Batch setup:** session folder `~/Downloads/batch-<repo-name>-<timestamp>-i<N1>-<N2>…/`
    with `run.jsonl` (append-only event log; one JSON object per line: ts, phase, issue,
    status, detail — every autonomous decision that would once have been a question goes
-   here). Batch branch `batch/<gh-login>/<timestamp>` from the fresh base branch; push
-   with `-u`. Print the run plan and start Phase 1 immediately — do **not** ask the user
-   to approve the plan.
+   here). Batch branch `batch/<N1>-<N2>-…` — the batched issue numbers in run order and
+   nothing else (a four-issue batch gives `batch/<N1>-<N2>-<N3>-<N4>`) — from the fresh
+   base branch; push with `-u`. The name deliberately carries no timestamp or login, so
+   it can collide: if it already exists locally or on the remote (an abandoned earlier
+   run of the same issue set), stop and report it — never reuse or force-update it. Print
+   the run plan and start Phase 1 immediately — do **not** ask the user to approve the
+   plan.
 
 ## Phase 1 — Per-issue pipeline (strictly sequential)
 
