@@ -2,6 +2,22 @@
 
 Edited in place (no `-vN` convention); notable behaviour changes are recorded here.
 
+## 1.3.1 — batch branch named after its issues
+
+The batch branch was `batch/<gh-login>/<timestamp>`, which told you who ran it and when
+but not **what was in it** — you had to open the PR to find out which issues a branch
+carried.
+
+- **Batch branch is now `batch/<N1>-<N2>-…`** — the batched issue numbers in run order,
+  nothing else. The content of a batch is readable straight from `git branch` and from
+  any PR list.
+- **Collision is now possible and is handled loudly.** Dropping the timestamp means a
+  re-run of the same issue set produces the same branch name, so the skill stops and
+  reports instead of reusing or force-updating an existing branch.
+- The session folder is unchanged (`~/Downloads/batch-<repo-name>-<timestamp>-i<N1>-…/`)
+  — it already carried the issue numbers, and its timestamp keeps successive runs of the
+  same set from overwriting each other's evidence.
+
 ## 1.3.0 — unattended by default
 
 The skill used to stop for a confirm at every tracker write and every triage decision,
