@@ -137,6 +137,10 @@ whether it's concrete enough to act on.
   some checkable form — the exact list matters less than that it is stated:
   - **Action first** — the opening line is the next action or what changed, not
     context-setting, not a restatement of the question, not a warm-up.
+  - **TLDR and one-liners by default** — every point lands as a single plain-and-simple
+    line (a TLDR-style statement); depth is deferred until the reader asks for it.
+    This governs density, not substance: a fact or caveat gets compressed into a
+    one-liner, never dropped.
   - **Numbered steps** for anything multi-step — one action per line, in the order
     they happen.
   - **Exactly one concrete next step** to close — a single action, not a menu of
@@ -159,8 +163,9 @@ whether it's concrete enough to act on.
     the two rules contradict, which is a §C smell.
 
   In reality these shape rules are **ADHD-support pillars**: answer-first ordering,
-  one idea per line, visible state, a single next step, and no prose walls are what
-  keep a reply followable for a reader who struggles to sustain focus. A strong
+  one idea per line, TLDR summaries with detail on demand, visible state, a single
+  next step, and no prose walls are what keep a reply followable for a reader who
+  struggles to sustain focus. A strong
   user-level file may make that framing explicit with a clause like *"talk to me
   like I have ADHD and struggle to focus — these rules are the support pillars"* —
   the assessor treats such a clause as a positive signal that the shape is

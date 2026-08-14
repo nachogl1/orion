@@ -3,6 +3,14 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## TLDR-and-one-liners pillar added to the response shape (CLAUDE.md guideline)
+
+- **`guidelines/claude-md.md` §B4** — the response-shape pillar list gained **"TLDR
+  and one-liners by default"**: every point lands as a single plain-and-simple line,
+  with depth deferred until the reader asks for it. Density only, never substance —
+  facts and caveats are compressed into one-liners, not dropped. The ADHD-support
+  summary line now names it ("TLDR summaries with detail on demand").
+
 ## Response shape framed as ADHD-support pillars (CLAUDE.md guideline)
 
 - **`guidelines/claude-md.md` §B4** — the "declared response shape" block now names
