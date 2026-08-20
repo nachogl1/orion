@@ -39,8 +39,9 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 - After adding a skill folder, run `install.ps1` / `install.sh` (no `-Update`) to copy it into the target dir.
 - `SKILL.md` (uppercase) is the required entry-point file in every skill folder; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
 
-## Filing issues — dedupe first, and never defer to a dead issue
+## Filing issues — only when needed, dedupe first, and never defer to a dead issue
 
+- **Only file a ticket when the work genuinely needs one.** A deferral is not an automatic ticket. Before filing, ask: is this real, actionable, and worth someone's time later? If yes, file it. If it's small enough to just do, do it now. If it's noise, drop it and say so in the reply. Filing "to be safe" grows a backlog nobody ever drains — every task then ends by producing more tickets instead of ending.
 - **Before offering to file any new issue, do a deep dive first.** Search the actual code *and* the open issues to check whether something already covers what you're about to file — an existing open issue, or code that already implements/handles it. Don't propose a new issue until you've confirmed nothing already covers it. This has been gotten wrong repeatedly; treat the dedupe pass as mandatory, not optional.
 - **Never defer to a closed issue.** Do not say "I won't do X because it's handled/tracked by issue #<N>" without first checking that #<N> is actually **open**. A closed issue means nobody will pick it up, so the work silently falls through the cracks. Before pointing at an existing issue as the reason to skip work, verify it's open; if it's closed (or doesn't really cover the case), either do the work or file/reopen a tracking issue.
 
@@ -54,6 +55,12 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 ## Planning & ticket creation
 
 - When designing or planning a project and when producing tickets (GitHub issues, Jira, or any other tracker), **prioritise parallelism**: split the work into tasks and divide the domain according to the number of developers on the project, so every developer can work in parallel without clashing with the others (minimise shared files/modules per ticket and cross-ticket dependencies; when a dependency is unavoidable, state it explicitly on the ticket).
+
+## Answering the user — short by default
+
+- **Five lines max unless the user asks for more.** A chat reply defaults to at most five lines. The user asks for detail when they want it.
+- **Multiple relevant topics become one-liners, never casualties.** If several things are worth the user knowing, give each as a single plain line rather than dropping it or expanding it. Goal: the user learns everything we could tell them in the shortest possible form, and expands whatever they choose.
+- Applies to chat replies only — files a skill emits (reports, docs, HTML decks) keep their own format.
 
 ## Asking the user questions
 
