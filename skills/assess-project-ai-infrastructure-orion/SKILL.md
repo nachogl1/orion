@@ -96,9 +96,11 @@ the user's call.
    scores and the top gaps in clear language; point them to the HTML for depth.
 9. **Assess each `CLAUDE.md` on its own scope.** Detect whether each agent-instruction
    file is **user-level** (`~/.claude/…`, loaded on every repo) or **repo-level**
-   (`<repo>/…`, loaded for one repo) and score it against the scope-appropriate rubric
-   in [`guidelines/claude-md.md`](guidelines/claude-md.md) ("Scope" section). Assess each
-   file **independently** — never compare two `CLAUDE.md` files, and never mark a rule
+   (`<repo>/…`, loaded for one repo) via the scope router in
+   [`guidelines/claude-md.md`](guidelines/claude-md.md), then score it against **that
+   scope's rubric only** — [`claude-md-user.md`](guidelines/claude-md-user.md) or
+   [`claude-md-repo.md`](guidelines/claude-md-repo.md). Assess each file
+   **independently** — never compare two `CLAUDE.md` files, and never mark a rule
    "missing" that correctly lives at the other scope (a user file isn't docked for
    lacking a repo's stack rules; a repo file isn't docked for lacking generic personal
    preferences).
@@ -129,10 +131,13 @@ the user's call.
    **Pillar 1 — Agent instructions & docs**
    - **Agent instructions** — `CLAUDE.md`, `./.claude/CLAUDE.md`, `CLAUDE.local.md`,
      `.claude/rules/*.md`, an `AGENTS.md` imported by CLAUDE.md. These are the
-     **repo-level** files by default; the **user-level** `~/.claude/CLAUDE.md` (and
-     `~/.claude/rules/*`) is **also** assessed with this rubric — at **user scope** —
-     when the user asks to grade it or opts into the self-audit. Each file is scored
-     independently on its own scope (Operating principle 9).
+     **repo-level** files by default, scored against `guidelines/claude-md-repo.md`.
+     The **user-level** `~/.claude/CLAUDE.md` (and `~/.claude/rules/*`) is a **separate
+     opt-in check** scored against `guidelines/claude-md-user.md` — offered when the user
+     asks to grade it or opts into the self-audit. **Ask which the user wants** when it's
+     ambiguous ("this repo's file, my global file, or both"); both is fine and produces
+     two scorecards. Each file is scored independently on its own scope (Operating
+     principle 9).
    - **README** — root + any per-package READMEs.
 
    **Pillar 2 — Process & governance**
@@ -294,8 +299,10 @@ Each assessor returns a structured result:
   exact destination (e.g. `~/.claude/CLAUDE.md`, `<owner>/.github/PULL_REQUEST_TEMPLATE.md`).
 - **Smells caught** (from the guideline's "Smells to flag" list), including any
   **leaked specifics** (person/org/product/path) if the doc is meant to be public.
-- A **per-doc roll-up score** (mean of applicable dimensions) and a one-paragraph
-  plain-English verdict.
+- A **per-doc roll-up score** — a **weighted mean** of the applicable dimensions where
+  the guideline defines weights (e.g. `claude-md-user.md` / `claude-md-repo.md` §D each
+  weight Verification and Enforcement wiring at 2), otherwise a plain mean; **N/A** dimensions drop out of both
+  numerator and divisor — and a one-paragraph plain-English verdict.
 
 The **PR-template and issue-template assessors** additionally: if no template exists,
 *generate a draft* from the Phase-2 conventions + the rubric (the issue draft includes
@@ -310,10 +317,14 @@ exists/reachable at run time. The **self-audit assessor** names the exact file +
 for every broken/stale/wasteful finding. Neither installs or edits anything.
 
 The **agent-instructions assessor** tags each `CLAUDE.md` it assesses with its **scope**
-(user-level vs repo-level) and applies the scope-appropriate rubric per
-[`guidelines/claude-md.md`](guidelines/claude-md.md) ("Scope" section), scoring each file
-**independently** — repo-only dimensions are marked **N/A** (not 0) for a user-level
-file, and it never scores one file by comparison to another.
+(user-level vs repo-level) and loads the matching rubric via the scope router in
+[`guidelines/claude-md.md`](guidelines/claude-md.md) — **user-level** files are scored
+against [`guidelines/claude-md-user.md`](guidelines/claude-md-user.md), **repo-level**
+files against [`guidelines/claude-md-repo.md`](guidelines/claude-md-repo.md). The two
+rubrics are disjoint where the scopes differ, so a criterion absent from a scope's file
+is not a gap at that scope. Each file is scored **independently**, never by comparison to
+another; if both scopes are assessed in one run, the report carries **two separate
+scorecards**, never a blended one.
 
 ## Phase 4 — Cross-doc synthesis
 

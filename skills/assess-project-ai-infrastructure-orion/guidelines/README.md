@@ -20,7 +20,8 @@ report:
 ## Files
 
 The assessors group into **three pillars** of a project's AI infrastructure:
-**(1) Agent instructions & docs** — `claude-md.md`, `project-readme.md`;
+**(1) Agent instructions & docs** — `claude-md.md` (scope router) → `claude-md-user.md`
+/ `claude-md-repo.md`, and `project-readme.md`;
 **(2) Process & governance** — `contributing-and-governance.md`, `pr-template.md`,
 `issue-template.md`; **(3) Tooling & environment** — `tooling-mcps-plugins.md`,
 `claude-setup-audit.md`. (`consensus-resources.md` is the shared external benchmark.)
@@ -28,7 +29,9 @@ The assessors group into **three pillars** of a project's AI infrastructure:
 | File | Assesses | Consensus §s |
 |---|---|---|
 | [`consensus-resources.md`](consensus-resources.md) | (the external benchmark + runtime re-validation rules) | — |
-| [`claude-md.md`](claude-md.md) | `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/*`, imported `AGENTS.md` | §1 |
+| [`claude-md.md`](claude-md.md) | **scope router** — detects user-level vs repo-level and sends the assessor to one of the two below (no scoring of its own) | §1 |
+| [`claude-md-user.md`](claude-md-user.md) | **user-level** `~/.claude/CLAUDE.md`, `~/.claude/CLAUDE.local.md`, `~/.claude/rules/*` | §1 |
+| [`claude-md-repo.md`](claude-md-repo.md) | **repo-level** `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/*`, imported `AGENTS.md` | §1 |
 | [`project-readme.md`](project-readme.md) | `README.md` (root + per-package) | §2 |
 | [`contributing-and-governance.md`](contributing-and-governance.md) | `CONTRIBUTING`, `CODE_OF_CONDUCT`, `SECURITY`, CI/test docs, runbook, ADR index, decision log | §3, §5 |
 | [`pr-template.md`](pr-template.md) | `PULL_REQUEST_TEMPLATE.md` / `.github/…` / `PULL_REQUEST_TEMPLATE/` | §4 |

@@ -3,6 +3,68 @@
 This skill follows **no `-vN` convention** — it is edited in place. Record notable
 changes here.
 
+## CLAUDE.md guideline split by scope — user-level and repo-level are now separate rubrics
+
+- **`guidelines/claude-md.md` is now a thin scope router** (~45 lines): it detects
+  user-level vs repo-level from the file's path, sends the assessor to one of two
+  rubrics, and holds the rules that span both (assess independently, never compare, N/A
+  drops out of the roll-up, two scorecards when both scopes are assessed in one run).
+  It no longer scores anything itself.
+- **New `guidelines/claude-md-user.md`** — the rubric for `~/.claude/CLAUDE.md`,
+  `~/.claude/CLAUDE.local.md`, `~/.claude/rules/*`. Ten dimensions covering scope purity
+  and token economy, generic verification posture, generic git guardrails, change
+  philosophy and effort economy, communication/tone/response shape, directness and
+  discuss-before-doing, multi-agent safety, generic deferral discipline, an optional
+  global code-quality default, and enforcement wiring via `~/.claude/settings.json`
+  hooks. The ~200-line cap applies in full here and leanness weighs harder, because the
+  file loads on every prompt of every repo.
+- **New `guidelines/claude-md-repo.md`** — the rubric for a project's own file. Twelve
+  dimensions covering verification with the repo's **real commands**, git/merge
+  guardrails, branch and worktree naming, change philosophy, repo-specific communication
+  and reporting, multi-agent safety, named source-of-truth plus deferral and agent-safe
+  tagging, doc maintenance and governance (now including **AGENTS.md single-sourcing**),
+  stack/architecture specificity, code-quality and design standards, and enforcement
+  wiring via repo hooks / required CI checks / branch protection.
+- **The N/A gymnastics are gone.** The old single file asked the assessor to hold a
+  scope table in mind and mark whole dimensions N/A; the two rubrics are now disjoint
+  where the scopes differ, so a criterion absent from a scope's file simply isn't a gap
+  at that scope. Each assessor also loads roughly half the text it used to.
+- **Response shape moved wholly to user scope.** At repo scope it is no longer a scored
+  dimension — repo files are scored only on genuinely project-specific communication
+  (where output goes, who reads it), with generic tone noted as "could hoist".
+- **`SKILL.md` updated** — operating principle 9 and the assessor description route via
+  the scope router; Phase 0 now says to **ask** whether the user wants this repo's file,
+  their global file, or both, and to emit two separate scorecards rather than a blended
+  score.
+
+## Enforcement dimension, scope line budgets, weighted roll-up, de-opinionated defaults (CLAUDE.md guideline)
+
+- **New dimension 11 — "Enforcement wiring" (`guidelines/claude-md.md` §B14 + §D).** The
+  rubric previously scored only what the file *says*; a beautifully-worded but wholly
+  unenforced `CLAUDE.md` could score 5/5. Each **hard** rule (green suite before commit,
+  no direct commits to the default branch, no `--no-verify`, no committed secrets) is now
+  scored on whether a real mechanism backs it — hook, required CI check, branch
+  protection, or a template — with the search locations listed per scope, a
+  fraction-of-hard-rules-backed scoring rule, and every prose-only rule reported as a
+  concrete hook/CI candidate. Claiming enforcement that doesn't exist is a new §C smell.
+- **Line budget is now per scope (§A, §C, §D dim 1).** The old rule demanded ~≤200 lines
+  while §B asked for 13 areas of coverage — unsatisfiable together. User-level files keep
+  ~200 (they load on every prompt of every repo); repo-level files get ~350, since they
+  carry naming tables, Must Always / Must Never lists, a change→doc map and real commands.
+  The deviation from the cited consensus ~200 figure is stated explicitly so the consensus
+  criterion is still scored against the source as written; overflow goes to path-scoped
+  `.claude/rules/*`, not a longer root file. Prose is sprawl at any length.
+- **Roll-up is now a defined weighted mean (§D).** §D said Verification was "weighted
+  highest" while `SKILL.md` computed an unweighted mean — identical dimension scores could
+  justify different roll-ups. Weights are now explicit (2 on Verification and on
+  Enforcement wiring, 1 elsewhere), N/A drops out of numerator *and* divisor, and a worked
+  example is given. `SKILL.md`'s roll-up line was updated to match.
+- **Two orion opinions de-fanged into "declare it" checks.** §B13 no longer names OOP as
+  the orion default paradigm (wrong advice for Go, Rust, functional React, data pipelines)
+  and §B7 no longer names squash as the orion default merge strategy — both now score that
+  the project *declares* one and that it matches the repo's detected idiom/settings, never
+  that it matches an orion preference.
+
 ## TLDR-and-one-liners pillar added to the response shape (CLAUDE.md guideline)
 
 - **`guidelines/claude-md.md` §B4** — the response-shape pillar list gained **"TLDR
