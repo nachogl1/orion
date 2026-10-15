@@ -169,6 +169,14 @@ PRD wins on product, the rules files win on process.
   tickets or rule edits it made. It groups items touching the same area into one ticket (the fewer the better) and
   drops an item only when the human says so. `/dev-next` only counts: at **10 unharvested items** it ends its run
   with `Harvest due: run /harvest`.
+- **Reconciling.** `/reconcile-issue-map` is run by a person, never by another skill. It reads the PRDs, every issue
+  with its native links, and the code on `main`, and lists every way they disagree — a PRD section no story covers
+  or one changed after its stories were cut, a story the PRD never asked for or an outcome it never absorbed, a
+  broken issue map (no epic, blocker forms that disagree, impossible label pairs, two stories on one folder, built
+  out of order), work the code and the issues disagree on — then fixes each with the person's word, under the
+  ownership rules above. A bookmark file on `main` records what was reconciled and what the person accepted as fine.
+  `/dev-next` only probes: a disagreement in the issue map's footer, an impossible label pair or a story without an
+  epic, or a PRD changed since the bookmark, and it ends its run with `Drift found: run /reconcile-issue-map`.
 - **Sub-agents:** name each one after what it does (`review-auth-tests`, never `agent-3`); mechanical work runs on a
   cheap model at low effort, hard decisions and reviews on the top model; every spawn prompt asks for a bounded result
   (a verdict plus a few bullets, never an essay). A sub-agent never uses `git stash` and never switches branches — it
@@ -185,6 +193,9 @@ PRD wins on product, the rules files win on process.
   with a question left.
 - `/issue-map` draws the blocked-by graph of every issue, level by level, into `docs/issue_map/issue_map.html` — a
   local, never-committed snapshot that `/dev-next` rebuilds after every claim and merge. The issues stay the truth.
+- `/reconcile-issue-map` checks the issues, the PRDs and the code on `main` against each other and fixes the drift
+  with the person present: issue edits under the ownership rules, PRD edits and its bookmark in a pull request a
+  human merges. The PRD wins on what to build; `main` wins on what is done.
 
 ## What the project's `CLAUDE.md` must state
 
