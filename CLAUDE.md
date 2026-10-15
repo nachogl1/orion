@@ -25,14 +25,14 @@ This applies even when a task's source material (a handoff note, a report, a tra
 
 ## Versioning convention
 
-- For any skill carrying a **`-vN`** suffix (none at present — the convention is kept for future pipeline-style skills): prefer creating a **new version** (copy to a bumped `-vN` suffix) over editing in place — people and automated workflows may depend on the current behaviour. Add a CHANGELOG entry describing the deltas, leave the prior version as-is, and add the new skill's row to the root `README.md`.
+- For any skill carrying a **`-vN`** suffix (none at present — the convention is kept for future pipeline-style skills): prefer creating a **new version** (copy to a bumped `-vN` suffix) over editing in place — people and automated workflows may depend on the current behaviour. Add a CHANGELOG entry describing the deltas and leave the prior version as-is.
 - All current skills (e.g. `project-handover`) have **no `-vN` convention** and are edited in place. Each skill's top-of-file editor note states which applies.
 - **CHANGELOGs:** required for the `-vN` skills; optional for in-place skills — an in-place skill *may* keep a `CHANGELOG.md` for notable behaviour changes, and if it has one, keep it updated.
 - When historical CHANGELOG entries mention the *old* skill name, leave them — they're an accurate record of that version; only operational references point at the current name.
 
 ## How the repo is wired
 
-See [`README.md`](README.md) — Skills / Status line / Install / How updates work. Key agent-specific facts:
+The root `README.md` is a short, non-technical overview and install guide for people — keep it that way; the detailed facts for agents live here:
 
 - orion is installed **into a project**, never at user level. `orion.sh` (bash; `orion.ps1` is only a Windows launcher that finds Git Bash and runs it) has the sub-commands `init | update | check | status | uninstall`. `init` copies each `skills/<name>/` into `<project>/.claude/skills/<name>/` with an `.orion-managed` marker, copies `baselines/ORION.md` → `<project>/.claude/orion/ORION.md`, the script itself and a `VERSION` file (commit SHA) into `<project>/.claude/orion/`, creates `<project>/CLAUDE.md` from `baselines/BASE_CLAUDE.md` if missing (otherwise only adds the `@.claude/orion/ORION.md` import line), creates `config.json` (`updateMode`: `ask`/`auto`/`off`) once, and adds one `SessionStart` hook (`orion.sh check`) to `<project>/.claude/settings.json`. Ownership keys off the marker and the `.orion-manifest` list: `update`/`uninstall` touch only those, never the project's `CLAUDE.md`, `config.json`, unmarked skills, or other settings.
 - **Editing the repo does NOT update any project — every project runs `orion update`** (offered at session start by the hook in `ask` mode). The project copy of `orion.sh` fetches orion with `git clone --depth 1` from the `source`/`ref` in its `config.json`; when `orion.sh` runs from inside this checkout it uses the checkout directly (handy for testing: `./orion.sh init --project <tmp-dir>`).
