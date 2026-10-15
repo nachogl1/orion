@@ -40,6 +40,8 @@ irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
 
 That is all. The command fetches the latest orion, puts it into your project and tells you what it added. Save (commit) those files to your project so your teammates get them too.
 
+The next time you open Claude Code in the project, the assistant runs a one-time check that everything fits together: your project's instructions file, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical by itself, asks before changing anything that is yours, and tells you what is left. You can repeat the check any time by typing `/orion-verify`.
+
 Prefer to let the assistant do it? Open Claude Code in your project and say *"set up orion in this project"*.
 
 The status bar is not installed by default, because it is a personal setting rather than part of the project. If you want it, add `--statusline` to the end of the Mac/Linux command above, or answer *yes* when the installer asks.
