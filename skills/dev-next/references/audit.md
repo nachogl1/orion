@@ -78,9 +78,47 @@ second time. A `low` finding is not recorded anywhere; if you are tempted to wri
 nothing. **Empty lists are the normal outcome of a clean run** — a harvest spends a person's time on every line, so a
 line that does not change what someone does next is a cost, not a record.
 
-All three lists are the **only** pile `/harvest` reads; it decides with a person where each item goes — a fix, a
+All three lists are the **only** pile `/harvest` reads (the QA record below is `/harvest-qa`'s, and the two never cross); it decides with a person where each item goes — a fix, a
 ticket, a rule, or nowhere. Nothing here is harvested automatically. Which run each branch has been harvested through
 is kept in `docs/harvest-state.json` on `main`, written only by the harvest.
+
+## The QA record — `qa-<N>.json`, beside the run report
+
+A merged story also leaves one QA record on the same branch, `runs/<run id>/qa-<N>.json`, written by the orchestrator
+from the dev agent's `QA checks` blocks and story (`dev-agent.md`). It is the only file `/harvest-qa` reads, and
+`/harvest` never reads it; the two skills keep separate bookmarks on `main` (`docs/harvest-qa-state.json` and
+`docs/harvest-state.json`). Only a `merged` outcome gets one.
+
+```json
+{
+  "run_id": "<repo>-20250106-141233-a4f1",
+  "issue": 31,
+  "title": "Parse the settings section of an input file",
+  "login": "<login>",
+  "pr": 47,
+  "merged_at": "2025-01-06T15:04:02Z",
+  "merge_commit": "<sha of main after the merge>",
+  "seam": "src/<Area>/",
+  "story": "Before this story the importer ignored the settings section of an input file. It now reads the section into the model and shows its values on the import summary screen; an empty section shows 'no settings' where the screen used to be blank.",
+  "checks": [
+    {
+      "key": "src/<Area>/import-summary",
+      "criterion": "The import summary shows the settings read from the file",
+      "steps": "Start the product. Open the import screen. Import the fixture input-03. Open its summary.",
+      "expected": "A settings box listing every field of the fixture's settings section, in file order."
+    }
+  ],
+  "no_qa_reason": null
+}
+```
+
+- `seam` is the issue's `### Seam` line; `key` is `<seam>/<short flow name>` and the same flow keeps the same key
+  across stories — that is how a later record supersedes an earlier one.
+- `story` is the dedupe context: what changed, which screens or commands, what it replaced. Two to four sentences in a
+  user's words, never a diff summary.
+- `checks` is empty, with `no_qa_reason` filled, when the dev reported `QA checks: none` (a documentation-only story,
+  a library with no surface). The record is still written, so the QA skill can log it as nothing to test.
+- Steps carry made-up values or shipped fixtures only; a check that would need real data is not a check.
 
 ## What the token figures are — and what they are not
 

@@ -102,7 +102,8 @@ touches four files in that one area and nothing else is working there."
 3. **The pile:** for every `origin/audit/<login>` branch, `git ls-tree -r --name-only origin/audit/<login> runs/`
    lists its reports; keep `runs/<run id>/issue-<N>.json` whose run id is newer than that login's `harvested_through`
    entry (run ids sort by time: `<repo>-<yyyymmdd-hhmmss>-<hex>`, in UTC). Read each with
-   `git show origin/audit/<login>:runs/<run id>/issue-<N>.json` — **never check the branch out**. Collect every
+   `git show origin/audit/<login>:runs/<run id>/issue-<N>.json` — **never check the branch out, and never read a
+   `qa-<N>.json`**: those are the QA records `/harvest-qa` works through, with its own bookmark. Collect every
    `deferred` entry, every `friction` line and every `lessons_learned` line with its run id, issue number, login and
    kind, plus every `carried` entry.
 
@@ -245,7 +246,8 @@ the pull request — this skill has no merge autonomy.
 ## Rules
 
 - **Never start from `/dev-next`.** It counts; a person harvests.
-- **One pile.** The audit branches are the only source.
+- **One pile.** The audit branches are the only source — their `issue-<N>.json` reports only. The `qa-<N>.json`
+  records beside them and `docs/harvest-qa-state.json` belong to `/harvest-qa` and are never read or written here.
 - **Nothing already tracked is shown.** An item an open task covers, or a merged story fixed, goes straight to the
   pull request table.
 - **Fewer tickets.** A single-item ticket needs a reason written in the issue body.
