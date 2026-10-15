@@ -71,7 +71,7 @@ flowchart TD
     reconcile -.-> backlog
 ```
 
-A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
+A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/clear-git-resources` tidies up the branches, worktrees and leftover files the loop leaves behind (it lists what looks stale, says what deleting each one would lose, and deletes only what you agree to; the session-start hook offers it once the project has 20 or more branches), `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
 
 ## Install
 
@@ -106,7 +106,7 @@ The status bar is not installed by default, because it is a personal setting rat
 
 orion checks for a newer version when you start a session and asks whether you want to update. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
 
-If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`.
+If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`. The same file holds `branchLimit` (20 by default): once the project has that many branches, local and remote together, the session start offers the `/clear-git-resources` tidy-up; set it higher, or to `off`, if you prefer not to be asked.
 
 ## License
 
