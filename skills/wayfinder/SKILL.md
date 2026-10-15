@@ -8,7 +8,7 @@ disable-model-invocation: true
 # wayfinder
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (the copy-to-a-bumped-`-vN` rule applies only to the `sequential-bmad-github-orion-vN` pipeline skills; see the repo's `CLAUDE.md`).
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `project-handover` / `handoff`; see the repo's `CLAUDE.md`).
 
 A loose idea has arrived. It is too big for one agent session and wrapped in fog: the way from here to the **destination** is not visible yet. Wayfinding is about *finding the way*, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** — questions whose answer is a decision, not slices of a build to execute — one at a time until the route is clear.
 

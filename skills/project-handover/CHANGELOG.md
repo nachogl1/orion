@@ -2,6 +2,14 @@
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
 
+## Product discovery is now self-contained
+
+- **Step 2b no longer depends on a companion onboarding skill** (that skill was removed
+  from the repo). The handover runs its own product discovery pass — README, product/PRD/
+  architecture docs, user-facing routes/screens/commands, domain models, backlog epic
+  titles — and distils it under the same no-paths / no-code / impersonal rules as before.
+  The optional-companion prerequisite and the "companion unavailable" failure mode are gone.
+
 ## Renamed to `project-handover`
 
 - The `-orion` suffix is dropped and the description now starts with `ORION -` so the

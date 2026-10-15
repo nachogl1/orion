@@ -101,6 +101,13 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 | **handoff** | Distils the current conversation into a single markdown handoff document a fresh agent can continue from — goal, state, decisions + rationale, dead-ends, open questions, next steps — referencing existing artifacts by path/URL instead of copying them. Saves outside the workspace to a location you pick, redacts secrets/PII, and tailors to what the next session is for. Explicit-invocation only; no git changes. |
 | **wayfinder** | Charts a chunk of work too big for one agent session as a shared *map* issue plus typed decision tickets on the repo's tracker (detected at run time) — destination first, sharp questions become tickets, blurry ones stay written-down "fog" until they sharpen, anything past the destination is ruled out of scope. Resolves one ticket per session and records the decision back onto the map. Planning only; it produces decisions, not the deliverable. Adapted from the MIT-licensed [`wayfinder`](https://github.com/mattpocock/skills) skill. |
 
+## Base CLAUDE.md baseline
+
+[`baselines/BASE_CLAUDE.md`](baselines/BASE_CLAUDE.md) is a starting `CLAUDE.md` for a new project run the orion way:
+tracker-driven stories, worktree-per-issue, fresh-agent review, merge on green, one audit pile harvested with a human.
+Copy it to `<repo>/CLAUDE.md` and fill every `<angle-bracket>` slot (tracker, stack, commands, worktree root); delete
+the bullets the project has no use for. It is not installed by the installer — it is copied into a project by hand.
+
 ## Status line (optional)
 
 Besides skills, the repo ships a shared **Claude Code status line** (`statusline/`) you can opt into. One line, live in every session:

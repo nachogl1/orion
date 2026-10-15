@@ -8,7 +8,7 @@ disable-model-invocation: true
 # handoff
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (the copy-to-a-bumped-`-vN` rule applies only to the `sequential-bmad-github-orion-vN` pipeline skills; see the repo's `CLAUDE.md`).
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `project-handover` / `generate-project-writeup`; see the repo's `CLAUDE.md`).
 
 Distil the **current conversation** into a single markdown handoff document so a fresh agent — with none of this chat's memory — can pick up exactly where this one left off. The value of the document is the knowledge that exists *only* in the conversation: the goal, the current state, the decisions and *why* they were made, the approaches that were tried and rejected, the open questions, and the immediate next steps. Everything already recorded elsewhere (a spec, a plan, an ADR, an issue, a commit, a diff) is **linked, not copied**.
 
