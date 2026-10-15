@@ -53,7 +53,7 @@ Non-interactive form (no scheduled task registered):
 
 ### After install
 
-Open any project in Claude Code and type `/clear-resources-orion` — you should see a list of branches/worktrees you created, ready for one-confirmation removal.
+Open any project in Claude Code and type `/handoff-orion` — the skill should start by asking where to save the handoff document.
 
 ## How updates work
 
@@ -96,20 +96,10 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 
 | Skill | What it does |
 |---|---|
-| **clear-resources-orion** | Lists and removes the local branches, worktrees, and remote branches *you created* (detected at runtime), with one consolidated confirmation before anything is deleted. |
-| **itemize-orion** | Walks your pasted list of items/decisions one at a time — plain restatement, options, an explicit recommendation — waiting for your pick before moving on. |
-| **guided-qa-orion** | Story-by-story QA of a built batch against the live app, driven by a QA report you provide — records findings as it goes (no per-story halts) into one consolidated `qa-findings.md`, with a single decision session at the end and a green-suite gate before anything commits. |
-| **assign-gh-issue-orion** | Picks and assigns you *N* **agent-ready** GitHub issues (2 by default), halting only to resolve any human decision a promising issue still hides. |
-| **sequential-bmad-github-orion-v4** | Automated one-issue-at-a-time [BMAD](https://github.com/bmad-code-org/BMAD-METHOD)+GitHub pipeline into a batch branch — per issue create-story → implement → review → CI-green merge, then batch QA, a neutral `qa-report.html`, and a Draft PR that *you* merge. |
-| **dev-vanilla-orion** | Label-gated batch development of 1–8 GitHub issues (no BMAD needed) — per issue plan → TDD → review → PR into a batch branch, merged only on a green full local suite; tiered batch QA with one consolidated `qa-report.html`. **Unattended by default:** self-derives its config, self-triages labels, and asks nothing until the batch PR is open; halts only when an issue is genuinely stuck, and a human merges the batch PR. |
-| **create-up-to-speed-report-orion** | Generates a self-contained HTML onboarding deck for the current project into your Downloads folder, written for a junior dev with zero stack/domain knowledge. |
-| **project-status-forecast-orion** | Reads the project's real backlog (tracker detected at runtime), measures scope/velocity/trend, and forecasts a deploy-ready date range across conservative/expected/optimistic scenarios in an HTML stakeholder deck. |
 | **project-handover-orion** | Generates a plain-language, code-internals-free HTML handover document for stakeholders and new joiners, with a dated epics-and-stories snapshot. Strictly read-only. |
 | **generate-project-writeup-orion** | Generates a leadership-facing Word (`.docx`) project write-up that leads with a transparent traditional-vs-actual cost comparison; every metric measured or marked "not measured." Strictly read-only. |
-| **assess-project-ai-infrastructure-orion** | Grades the repo's AI-development infrastructure (agent instruction file, README, governance docs, PR/issue templates, tooling, opt-in `~/.claude` self-audit) against a consensus + orion two-layer benchmark, emitting a scored HTML report. Read-only against the target repo. |
 | **handoff-orion** | Distils the current conversation into a single markdown handoff document a fresh agent can continue from — goal, state, decisions + rationale, dead-ends, open questions, next steps — referencing existing artifacts by path/URL instead of copying them. Saves outside the workspace to a location you pick, redacts secrets/PII, and tailors to what the next session is for. Explicit-invocation only; no git changes. |
 | **wayfinder-orion** | Charts a chunk of work too big for one agent session as a shared *map* issue plus typed decision tickets on the repo's tracker (detected at run time) — destination first, sharp questions become tickets, blurry ones stay written-down "fog" until they sharpen, anything past the destination is ruled out of scope. Resolves one ticket per session and records the decision back onto the map. Planning only; it produces decisions, not the deliverable. Adapted from the MIT-licensed [`wayfinder`](https://github.com/mattpocock/skills) skill. |
-| **teach-orion** | Personal tutor for any topic across multiple sessions, run inside a dedicated teaching-workspace folder (never a code repo): mission-grounded, source-cited HTML lessons plus printable reference sheets, with learning records that let each session resume where the last stopped and pitch difficulty right. Explicit-invocation only. |
 
 ## Status line (optional)
 
@@ -152,7 +142,7 @@ Removes the managed copies (skills and status line — any folder carrying the `
 The working rules for changes to this repo live in [`CLAUDE.md`](CLAUDE.md) — read it before contributing (it's written for AI agents working in the repo, but the rules bind humans equally). The short version:
 
 - **Distribution safety (highest-priority rule).** Everything here is publicly distributable. Never introduce anything that identifies a specific person, team, company, product, private repo, or machine — in prose, code, examples, placeholders, **and git metadata (commit messages, PR titles, PR bodies)**. Use runtime-resolved placeholders (`<repo-name>`, `<gh-login>`, `#<N>`, `~/.claude`) instead; skills detect everything project-specific from the target repo at run time. Self-check your diff *and* your commit/PR text before pushing.
-- **Versioning.** `sequential-bmad-github-orion-vN` skills are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README. Other skills (and the status line) are edited in place.
+- **Versioning.** All current skills (and the status line) are edited in place. Skills carrying a `-vN` suffix are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README.
 - **Issues.** Before filing one, dedupe first — search open issues *and* the code; never point at a **closed** issue as the reason to skip work.
 - **PR/commit hygiene.** Branch off `main`; commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`, e.g. `fix(installer): guard junction delete`); keep installer scripts pure-ASCII and Windows-PowerShell-5.1-compatible; keep PR bodies as generic as the code they describe.
 

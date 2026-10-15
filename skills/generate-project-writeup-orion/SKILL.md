@@ -8,7 +8,7 @@ user_invocable: true
 
 > [!NOTE]
 > **Editing this skill?** This skill has **no `-vN` convention** — edit it in place
-> (like `project-handover-orion` / `guided-qa-orion`). Keep everything in the skill
+> (like `project-handover-orion` / `handoff-orion`). Keep everything in the skill
 > files **general** (see the Distribution-safety gate at the bottom) — this repo is
 > publicly distributable. The *report* it generates about a user's repo is a local
 > artifact in their Downloads and may name their project, people, and figures; the
