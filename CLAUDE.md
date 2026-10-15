@@ -50,6 +50,7 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
 - **Skills are self-contained by design** — they're copied standalone into the user's skills dir, so they can't reference repo files. Shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is therefore *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
 - Keep `install.ps1` / `install.sh` (and the `uninstall.*` counterparts) pure-ASCII and Windows-PowerShell-5.1-compatible.
+- **Every change updates `docs/CHANGELOG.md`.** Any commit or PR that adds, changes, removes, or updates something in this repo also adds **one short line** under the top `## Unreleased` section, in the matching `Added` / `Changed` / `Removed` / `Fixed` heading (newest first). Summarise, don't log: one line per user-visible change, not one per commit; merge related edits into a single line; skip typo fixes and metadata-only tweaks. The file is for people deciding whether to update, not a copy of `git log`.
 - Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary`) and end with the required `Co-Authored-By` trailer.
 
 ## Planning & ticket creation
