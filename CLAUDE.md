@@ -20,7 +20,7 @@ This repo is a collection of **general-purpose, publicly distributable** Claude 
 | Typecheck / static analysis | `powershell -NoProfile -Command "[scriptblock]::Create((Get-Content -Raw orion.ps1)) > \$null"` (parses `orion.ps1` with Windows PowerShell 5.1; Windows only) |
 | Lint | `grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md` (lists every skill whose description lacks the `ORION - ` prefix; must print nothing) |
 
-Run the build, the lint and the typecheck after any edit; run the full suite after editing `orion.sh` or `orion.ps1`. "Done" = every edited `.md` renders without parse errors, the lint prints nothing, and the round trip is clean. CI (`.github/workflows/ci.yml`) runs the same commands on every pull request.
+Run the build, the lint and the typecheck after any edit; the full suite runs before any pull request opens (the baseline's gate) and after every edit to `orion.sh` or `orion.ps1`. "Done" = every edited `.md` renders without parse errors, the lint prints nothing, and the round trip is clean. CI (`.github/workflows/ci.yml`) runs the same commands on every pull request.
 
 ## Stack and layout
 
