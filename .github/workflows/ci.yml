@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  bash-and-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (syntax check)
+        run: bash -n orion.sh
+      - name: One file (Python compiles)
+        run: python3 -m py_compile skills/issue-map/scripts/issue_map.py
+      - name: Lint (every skill description carries the ORION prefix)
+        run: |
+          missing=$(grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md || true)
+          if [ -n "$missing" ]; then echo "missing ORION - prefix:"; echo "$missing"; exit 1; fi
+      - name: Full suite (init / update / check / uninstall round trip)
+        run: |
+          d=$(mktemp -d)
+          bash orion.sh init --project "$d" --no-statusline --update-mode ask
+          bash orion.sh update --project "$d" --force
+          bash orion.sh check --project "$d" --force
+          bash orion.sh uninstall --project "$d" --yes
+          # uninstall keeps the starter CLAUDE.md and an empty settings.json on purpose;
+          # the check is that nothing orion owns is left behind
+          if [ -e "$d/.claude/orion" ] || [ -e "$d/.claude/skills" ] || grep -qi orion "$d/CLAUDE.md" "$d/.claude/settings.json"; then
+            echo "orion left something behind after uninstall:"; ls -laR "$d"; cat "$d/CLAUDE.md" "$d/.claude/settings.json"; exit 1
+          fi
+
+  powershell-parse:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Typecheck (orion.ps1 parses under Windows PowerShell 5.1)
+        shell: powershell
+        run: '[scriptblock]::Create((Get-Content -Raw orion.ps1)) > $null'
