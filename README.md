@@ -17,6 +17,62 @@ Once installed, it lives inside the project itself, so there is nothing for team
 - **Working rules** – a set of mandatory good practices your project's own instructions file (`CLAUDE.md`) imports, so the assistant works the same careful way for everyone on the team. Your `CLAUDE.md` holds the facts that are specific to your project and stays yours.
 - **A status bar** (optional, per computer) – a one-line display at the bottom of the assistant that shows useful live information such as time, cost and usage while you work.
 
+## How the skills fit together
+
+orion's skills are built around one way of working, from a first idea to finished, checked software. You do not have to use all of them, but they are designed to hand over to each other:
+
+1. **Find out what to build.** `/wayfinder` takes a loose idea, names the destination it is heading for and turns every open question into a small decision ticket. It settles them one at a time until the way is clear.
+2. **Write it down.** The decisions become a PRD (a product requirements document: a plain description of what the software should do), kept in the project under `docs/PRDs/`.
+3. **Cut it into work.** `/prd-to-tickets` splits the PRD into epics and stories on GitHub Issues, arranged so several people or agents can build in parallel without getting in each other's way. `/dev-quick` is the side door for a change that has no ticket yet: it asks you what you want and files the issue in the same shape.
+4. **Build, review, merge.** `/dev-next` picks the next free story and takes it all the way: it claims it, builds the change on its own branch, has a fresh agent review it, merges once the automatic checks pass, closes the story and writes an audit of how the run went. After every claim and merge it refreshes `/issue-map`, the live picture of what is blocked by what.
+5. **Check the work and learn from it.** `/harvest-qa` re-tests every finished story against the main branch and files a bug for anything that fails. `/harvest` goes through the notes each run left behind (problems spotted, things that slowed it down, tips) with you and turns what matters into tasks. Both feed new issues back into the list, so the loop continues. `/reconcile-issue-map` is the periodic sanity check that the issues, the PRDs and the code still describe the same product.
+
+```mermaid
+flowchart TD
+    idea([A loose idea])
+
+    subgraph s1 ["1. Find out what to build"]
+        wayfinder["/wayfinder<br/>names the destination and settles<br/>the open questions one at a time"]
+    end
+
+    subgraph s2 ["2. Write it down"]
+        prd[["The PRD<br/>what the software should do"]]
+    end
+
+    subgraph s3 ["3. Cut it into work"]
+        tickets["/prd-to-tickets<br/>epics and stories built for parallel work"]
+        quick["/dev-quick<br/>a change with no ticket yet"]
+        backlog[("GitHub Issues")]
+    end
+
+    subgraph s4 ["4. Build, review, merge"]
+        devnext["/dev-next<br/>claim, build, fresh-agent review,<br/>merge on green checks, close, audit"]
+        map["/issue-map<br/>what is blocked by what"]
+    end
+
+    subgraph s5 ["5. Check the work and learn from it"]
+        records[("Audit notes and QA records")]
+        harvestqa["/harvest-qa<br/>re-tests finished stories on main"]
+        harvest["/harvest<br/>turns the notes into decisions with you"]
+        reconcile["/reconcile-issue-map<br/>issues, PRDs and code still agree?"]
+    end
+
+    idea --> wayfinder --> prd --> tickets --> backlog
+    quick --> backlog
+    backlog --> devnext
+    devnext -- "after every claim and merge" --> map
+    devnext -- "leaves behind" --> records
+    records --> harvestqa
+    records --> harvest
+    harvestqa -- "bug issues" --> backlog
+    harvest -- "new tasks" --> backlog
+    devnext -- "when drift is spotted" --> reconcile
+    reconcile -.-> prd
+    reconcile -.-> backlog
+```
+
+A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
+
 ## Install
 
 You need two things on your computer first:
