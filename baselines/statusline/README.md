@@ -37,10 +37,10 @@ Cache files live under `~/.cache/claude-statusline/` — delete the folder to fo
 This is a **baseline** and a **per-computer** setting: `orion init --statusline` copies this folder **once** to `~/.claude/statusline` and points `statusLine` in `~/.claude/settings.json` at it. From then on the copy is **yours** — edit it freely. `orion update` never touches it, and a re-run of `init` leaves it alone. To start again from the baseline, delete the folder (or pass `--force` together with `--statusline`). Installing is **opt-in**, one decision per computer:
 
 ```sh
-git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init --statusline && rm -rf /tmp/orion
+curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init --statusline
 ```
 ```powershell
-git clone -q --depth 1 https://github.com/nachogl1/orion.git $env:TEMP\orion; & $env:TEMP\orion\orion.ps1 init --statusline; Remove-Item -Recurse -Force $env:TEMP\orion
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
 ```
 
 (An interactive `init` also offers it as a y/N prompt.)

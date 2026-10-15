@@ -24,4 +24,4 @@ Changes made before this file existed are only in the git history.
 
 ### Fixed
 
-- Bootstrap one-liners use a throwaway shallow `git clone` instead of raw file URLs, which return 404 while the repo is private.
+- Bootstrap one-liners fetch `orion.sh` / `orion.ps1` straight from the public repo (`curl … | bash`, `irm … | iex`); the shallow-clone form stays documented as an alternative.
