@@ -42,6 +42,11 @@
 - Deferred findings: small, safe **and** in a file already being changed → fix now. Critical → a tracker issue.
   Everything else is written down once, never filed "to be safe". Before filing any issue, search the code and the open
   issues for something that already covers it; never defer to a **closed** issue.
+- Sub-agents: name each one after what it does (`review-auth-tests`, never `agent-3`); mechanical work runs on a
+  cheap model at low effort, hard decisions and reviews on the top model; every spawn prompt asks for a bounded result
+  (a verdict plus a few bullets, never an essay). A sub-agent never uses `git stash` and never switches branches — it
+  works in its own worktree — commits only the files it touched, and on failure reports and stops instead of
+  attempting its own recovery.
 - Secrets live only in gitignored env files; never in code, issues, pull requests or committed files. No personal or
   production data anywhere in the repository.
 

@@ -53,6 +53,8 @@ acceptance bar, the build decisions — is read from `docs/PRDs/PRD.md` (every P
 one), never restated here. Until PRD v1 exists the pre-PRDs there stand in. **Disagreement is a bug**: the PRD wins
 on product, this file wins on process.
 
+- **Every big change gets its own PRD first**, at `docs/PRDs/PRD<SummaryName>.md`, before any ticket or code for it
+  exists. Small fixes and tweaks need none.
 - **No real production data in this repository.** <Name the sensitive data classes: customer records, partner-owned
   schemas, corpus extracts, database dumps.> Synthetic or de-identified fixtures only. **No personal data anywhere**
   — not in prompts, logs, tests, fixtures, issues or git history — and never run anything against production.
