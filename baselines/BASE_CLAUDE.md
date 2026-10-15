@@ -123,6 +123,11 @@ PRD wins on product, the rules files win on process.
   (`--no-verify`), never `git add -A`, never rebase or stash someone else's work, never delete work you did not create.
 - Never merge on red or pending checks; "no checks reported" counts as red — poll for the check run first, the host can
   take minutes.
+- **Leave nothing behind.** A merged branch is deleted, locally and on the remote; a worktree whose work landed is
+  removed. What slips through (a failed run, a pull request a human merged) is swept by `/clear-git-resources`, which
+  the session-start hook offers once the project reaches its branch limit (`branchLimit` in `.claude/orion/config.json`,
+  20 by default): it deletes only what the person agrees to, never `main`, the audit branches, an open pull request or
+  anything in flight.
 - Conventional Commits: `type(scope): summary`.
 
 ## Definition of done
