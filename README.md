@@ -48,6 +48,8 @@ The status bar is not installed by default, because it is a personal setting rat
 
 orion checks for a newer version when you start a session and asks whether you want to update. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
 
+If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`.
+
 ## License
 
 [MIT](LICENSE) — free to use, modify and redistribute with attribution.
