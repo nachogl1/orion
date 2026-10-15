@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- The five PRDs for already shipped work (dev-quick, orion-verify, prd-to-tickets, reconcile-issue-map, the single rules file) are removed from `docs/PRDs/`: the skills and the baseline are the record now, so the folder no longer carries out-of-date plans.
 - The orion repo's own `CLAUDE.md` drops a second round of repeats: the gate and definition of done, the harvest, QA, reconcile and issue-shape rules the imported `BASE_CLAUDE.md` already states, and three lines that said the same thing twice inside the file, so the skills' wiring is stated once as file names and couplings.
 - The status line now shows the session or agent name (from `--agent`, `--name`, `/rename` or the AI title) so parallel sessions are told apart, and the pull-request segment is gone: it cost a `gh` call per branch and told nothing the session needed.
 - New skill `clear-git-resources`: lists the stale worktrees, local and remote branches and leftover files in the worktree root in plain words, says what deleting each would lose, and deletes only what you agree to; the session-start hook offers it once the project has `branchLimit` branches (20 by default, in `.claude/orion/config.json`).
