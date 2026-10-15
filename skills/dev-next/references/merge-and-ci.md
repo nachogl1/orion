@@ -92,8 +92,8 @@ If the issue did not close, the `Closes #N` line was missing or malformed. Close
 ```
 git -C <main checkout> worktree remove <wt root>/<N>-<slug>   # "not a working tree" means already gone: fine
 git -C <main checkout> worktree prune
-git -C <main checkout> branch -D feature/<N>-<slug>            # "not found": fine
-git -C <main checkout> push origin --delete feature/<N>-<slug> # "remote ref does not exist": fine
+git -C <main checkout> branch -D feat/<N>-<slug>            # "not found": fine
+git -C <main checkout> push origin --delete feat/<N>-<slug> # "remote ref does not exist": fine
 ```
 
 `worktree remove` refuses a worktree with untracked files. When the only ones are the dev agent's local environment

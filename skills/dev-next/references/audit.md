@@ -7,7 +7,7 @@ are saving time, and the only record the process can be improved from.
 ## Where it goes
 
 A branch of your own, never `main`: `audit/<your github login>`. It is the one branch exempt from the pull-request and
-`feature/` rules: pushed directly, never merged. Each run appends one file:
+`feat/` rules: pushed directly, never merged. Each run appends one file:
 
 ```
 audit/<login>  →  runs/<run id>/issue-<N>.json

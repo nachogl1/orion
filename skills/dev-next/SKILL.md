@@ -27,7 +27,7 @@ repository's files). This skill expects that file to state the items below; the 
 | **The gate chain** — build → lint → typecheck → full suite, with the exact commands | Derived from the CI workflow (`.github/workflows/`) and the project files (`package.json`, `pyproject.toml`, `Makefile`, …), and the run says so in the first touchpoint. Nothing derivable → stop (phase 0 step 3). |
 | **Skip-count baseline** | The skip count the suite reports on `main` before the change; any other number fails the gate. |
 | **Worktree root** `<wt root>` | `C:\wt` on Windows, `~/wt` elsewhere. Worktrees live outside the project. |
-| **Branch pattern** | `feature/<N>-<slug>`. |
+| **Branch pattern** | `feat/<N>-<slug>`. |
 | **Merge method** | Squash-merge, branch deleted afterwards. |
 | **Pinned runtimes** — every interpreter or SDK the project pins (a version file, a toolchain file, an SDK pin) | Read the pin files themselves. |
 | **Per-issue resources** — a port, a database name, anything derived from the issue number | None. |
@@ -134,7 +134,7 @@ project's `CLAUDE.md`.
 2. **Questions to settle before the first story.** If the project's `CLAUDE.md` keeps a list of questions to settle
    before the first story, and it still has items that are **not** marked parked or waiting for a named person, put
    them to the human as one batch — each with a recommended answer — then **this session** applies the answers to the
-   files the list names on a `feature/` branch in a worktree, opens the pull request, and **stops**; a human merges it.
+   files the list names on a `feat/` branch in a worktree, opens the pull request, and **stops**; a human merges it.
    No story is taken in that session. An item marked parked, or waiting for a named person, is skipped: it is resolved
    by the pull request that records that person's answer. This comes before step 3 because one of those questions may
    be the gate itself.
@@ -163,7 +163,7 @@ project's `CLAUDE.md`.
    labels in *What this skill reads from the project* that is missing, with `gh label create <name> --description
    "<one line>"` (a fresh repository carries only GitHub's defaults, so without this step every run would stall in
    step 8). Never rename or delete a label. Then snapshot what everyone else is doing — open issues with assignees,
-   open pull requests, remote `feature/*` branches. This is the whole coordination mechanism with the **team**. There
+   open pull requests, remote `feat/*` branches. This is the whole coordination mechanism with the **team**. There
    are no meetings.
 8. **Unlabelled issues.** Any open, unassigned, non-`epic` issue outside any planning-only label set the project
    reserves (if any), carrying none of `agent-ready`, `needs-human` or `outside-change`, is not eligible until a person
@@ -199,7 +199,7 @@ Claim, in this order — the order matters:
 
 1. `gh issue edit N --add-assignee @me` — **the assignee is the only atomic claim.**
 2. `gh issue edit N --add-label in-progress`
-3. Comment: claimed by run `<run id>`, branch `feature/N-<slug>`. Advisory only, and posted **second**, once the slug exists.
+3. Comment: claimed by run `<run id>`, branch `feat/N-<slug>`. Advisory only, and posted **second**, once the slug exists.
 4. Add the issue's entry to the in-flight file: the first claim fills its number into this run's issue-less entry, a
    further claim adds an entry of its own. From here the issue is listed as in flight until phase 5 clean-up or a
    `needs-human` release removes it.
@@ -239,7 +239,7 @@ next candidate.
 ## Phase 3 — Develop
 
 ```
-git -C <main checkout> worktree add <wt root>/<N>-<slug> -b feature/<N>-<slug>
+git -C <main checkout> worktree add <wt root>/<N>-<slug> -b feat/<N>-<slug>
 ```
 
 `<wt root>` is the worktree root the project's `CLAUDE.md` names (default `C:\wt` on Windows, `~/wt` elsewhere).

@@ -88,7 +88,7 @@ or changes a screen implements the prototype's screen, never a layout of its own
    in parallel with the split, so that agents building a screen have a design to follow instead of inventing a
    layout each."* Then ask once (clickable options, the recommendation first):
    - **Draft it in parallel (recommended)** — spawn `ux-prototype-<slug>` with the brief in
-     `references/ux-prototype.md`. It works in its own worktree on `feature/ux-prototype-<slug>` (or the
+     `references/ux-prototype.md`. It works in its own worktree on `feat/ux-prototype-<slug>` (or the
      project's own branch pattern), writes
      `docs/ux/prototypes/<slug>/` (one self-contained HTML click-through plus a `README.md` listing the screens), opens
      a pull request **a human merges**, and returns the pull request link and the screen list. The split carries on
@@ -245,7 +245,7 @@ File in dependency order, so every blocker exists before the issue it blocks:
    the background, as its own command, never chained. Its footer confirms the body sections and native relations agree.
 6. **Ask once, after the batch:** "Should we update the PRD with this too?" — one line per change the interview made
    to the product (naming the PRD section), only when there is one. "No" ends it; "yes" → spawn `prd-update-<slug>`
-   with the exact lines and sections: it works in its own worktree on `feature/prd-update-<slug>` (or the project's
+   with the exact lines and sections: it works in its own worktree on `feat/prd-update-<slug>` (or the project's
    own branch pattern), commits only the PRD and the changelog line, opens a `docs(prd)` pull request a human merges,
    and returns its link. Never pushed to `main`.
 7. **Close-out, ten lines or fewer:** epics and stories filed (counts per level against the developer count), which

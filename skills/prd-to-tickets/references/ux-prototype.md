@@ -26,7 +26,7 @@ not describe (a gap in the PRD is reported back, not filled in), or anything a s
 1. Read the PRD in full and the project's `CLAUDE.md` (the worktree root, the working language, any named design
    system). List the screens and the PRD section of each **before** writing any HTML; that list becomes `README.md`.
 2. Create a worktree outside the project at `<worktree root>/ux-prototype-<slug>` on branch
-   `feature/ux-prototype-<slug>` (or the project's own branch pattern) from `origin/main`. Never work in the main checkout; never stash; never switch branches.
+   `feat/ux-prototype-<slug>` (or the project's own branch pattern) from `origin/main`. Never work in the main checkout; never stash; never switch branches.
 3. Write the two files. Open `index.html` once (a headless browser if one is available, else read it back) and
    check every navigation link lands on a section and every section has the fields the README promises.
 4. Commit only those files: `docs(ux): add the UX prototype for <PRD name>`, with the attribution trailer the session
