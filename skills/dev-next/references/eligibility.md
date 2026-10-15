@@ -5,7 +5,7 @@
 ```
 gh issue list --state open --limit 100 --json number,title,labels,assignees,body
 gh pr list --state open --json number,headRefName
-git ls-remote --heads origin "feature/*"
+git ls-remote --heads origin "feat/*"
 gh api repos/{owner}/{repo}/issues/N/dependencies/blocked_by --jq 'map(.number)'   # per candidate: native blockers
 ```
 
@@ -26,8 +26,8 @@ gh issue view N --json title,body,labels,comments
 | **Not** labelled `outside-change` | It touches a repository this team does not own; a human drives it to a pull request for that repository's reviewer. |
 | **Not** carrying any planning-only label set the project reserves (if any) | Planning tickets belong to the planning process, not to development. |
 | No assignee | The assignee is the claim. Someone owns it. |
-| No open pull request with head `feature/N-*` | Work is already in flight. |
-| No remote branch `feature/N-*` | A run may have crashed mid-flight; do not trample it. |
+| No open pull request with head `feat/N-*` | Work is already in flight. |
+| No remote branch `feat/N-*` | A run may have crashed mid-flight; do not trample it. |
 | Every blocker is **CLOSED** — in the body **and** in GitHub's native relation | Not "nearly done". Closed. Either place blocks. |
 
 Blockers come from two places and the union counts. The body: take every `#N` on the lines under a `### Blocked by`

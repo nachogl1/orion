@@ -12,7 +12,7 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
 **Your environment — nobody else's:**
 
 - Worktree: `<wt root>/<N>-<slug>` — work **only** here. Never touch the main checkout, never touch another worktree.
-- Branch: `feature/<N>-<slug>`, already created and checked out.
+- Branch: `feat/<N>-<slug>`, already created and checked out.
 - Runtimes: use the exact interpreter and SDK paths in this brief (`<runtime paths>`), never the plain command on PATH —
   it may be another version on this machine.
 - Any per-issue resource the project's `CLAUDE.md` derives from the issue number (a database name, a port) is yours

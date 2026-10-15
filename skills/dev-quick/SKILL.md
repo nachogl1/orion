@@ -101,7 +101,7 @@ A question grounded in the code is answerable; a question asked blind gets a gue
    - An **open, unassigned issue already covers it** → do not file a second one. Say which issue it is, by name, and
      run the interview of phase 2 on *that* issue's body instead; the answers go onto it under
      `## Decisions (agent-ready)`, its labels are fixed (phase 4 step 3), and phase 5 hands *it* over.
-   - An **open issue is already assigned, has a `feature/<N>-*` branch or an open pull request** → someone is on it.
+   - An **open issue is already assigned, has a `feat/<N>-*` branch or an open pull request** → someone is on it.
      Stop and say who, by name. Never claim or edit it.
    - A **closed issue** covered it once → it does not now; say so in one line and carry on (never defer to a closed issue).
    - The **code already does it** → say so, show where, and stop. No issue.
@@ -205,7 +205,7 @@ that argument. This session is now `/dev-next`'s orchestrator and follows that f
   A stop there (a `TBD` gate command, a red install on `main`) is reported in one line; the issue stays filed and
   `agent-ready`, and the person runs `/dev-next #<N>` later.
 - Its phase 2 asks nothing: the issue was `agent-ready` before that run started, and its decisions are on the issue.
-- Claim, worktree on `feature/<N>-<slug>`, `dev-N`, fresh `review-N` per round, the merge slot, merge on green CI,
+- Claim, worktree on `feat/<N>-<slug>`, `dev-N`, fresh `review-N` per round, the merge slot, merge on green CI,
   close, clean-up, the audit report on `audit/<login>`, the harvest count and the close-out — **all of it is
   `/dev-next`'s, unchanged.** This skill adds no step, skips no step, and never does one of them by hand.
 

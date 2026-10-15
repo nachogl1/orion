@@ -110,7 +110,7 @@ PRD wins on product, the rules files win on process.
   merged by a human. Never auto-merge beyond that.
 - **Squash-merge only, then delete the branch** (`--delete-branch` breaks on a worktree; see
   `.claude/skills/dev-next/references/merge-and-ci.md`). One commit on `main` per pull request.
-- **Work in a worktree on `feature/<slug>`** (`feature/<issue>-<slug>` when the branch serves one issue). A pull
+- **Work in a worktree on `feat/<slug>`** (`feat/<issue>-<slug>` when the branch serves one issue). A pull
   request may cover one issue or several related ones. Never work in the main checkout. **One exemption:** the
   per-developer branch `audit/<login>` that `/dev-next` writes run reports to is pushed directly, has no pull request
   and never merges into `main` (`.claude/skills/dev-next/references/audit.md`).

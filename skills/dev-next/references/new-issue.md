@@ -32,7 +32,7 @@ End with a process footer:
 
 ```
 ---
-Process: claim by assigning yourself; start only when every issue under `### Blocked by` is CLOSED; worktree, `feature/<issue>-<slug>`, fresh-agent review, merge on green, evidence table in the PR.
+Process: claim by assigning yourself; start only when every issue under `### Blocked by` is CLOSED; worktree, `feat/<issue>-<slug>`, fresh-agent review, merge on green, evidence table in the PR.
 ```
 
 Write the body to a UTF-8 file and pass `--body-file` (PowerShell adds a byte-order mark; bash heredocs break on
