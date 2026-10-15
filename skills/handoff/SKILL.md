@@ -1,8 +1,7 @@
 ---
 name: handoff
-description: ORION - Compact the current conversation into a handoff document for another agent to pick up. Captures the ephemeral knowledge that lives only in the chat — the goal, current state, decisions and their rationale, dead-ends, open questions, and next steps — while REFERENCING (never re-pasting) artifacts already written down (specs, plans, ADRs, issues, commits, diffs). Asks the user where to save the file — deliberately OUTSIDE the current workspace — and redacts secrets/PII before writing. If arguments are given, they describe what the next session will focus on and the document is tailored to that. Explicit-invocation only (never auto-triggered). Use when the user says "/handoff", "hand this off", "write a handoff for the next session", or "compact this conversation for another agent".
+description: ORION - Compact the current conversation into a handoff document for another agent to pick up. Captures the ephemeral knowledge that lives only in the chat — the goal, current state, decisions and their rationale, dead-ends, open questions, and next steps — while REFERENCING (never re-pasting) artifacts already written down (specs, plans, ADRs, issues, commits, diffs). Asks the user where to save the file — deliberately OUTSIDE the current workspace — and redacts secrets/PII before writing. If arguments are given, they describe what the next session will focus on and the document is tailored to that. Use when the user says "/handoff", "hand this off", "write a handoff for the next session", or "compact this conversation for another agent".
 argument-hint: What will the next session be used for?
-disable-model-invocation: true
 ---
 
 # handoff
@@ -18,7 +17,7 @@ When a session gets long, is about to be compacted, or the work is being passed 
 
 ## When it runs
 
-This skill is **explicit-invocation only** (`disable-model-invocation: true`) — it never fires on its own. It runs only when the user types `/handoff` or clearly asks for a handoff. That is deliberate: writing a handoff is a decision the user makes, not something the agent should volunteer mid-task.
+It runs when the user types `/handoff` or asks for a handoff, and the model may also invoke it when the user clearly wants the conversation handed over to another session (for example when they say the context is nearly full and the work must continue elsewhere). The model never volunteers one mid-task without such a cue: writing a handoff is the user's decision.
 
 ## Arguments — what the next session is for
 
