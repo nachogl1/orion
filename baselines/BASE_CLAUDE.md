@@ -67,7 +67,9 @@ one), never restated in a rules file. Until PRD v1 exists the pre-PRDs there sta
 PRD wins on product, the rules files win on process.
 
 - **Every big change gets its own PRD first**, at `docs/PRDs/PRD<SummaryName>.md`, before any ticket or code for it
-  exists. Small fixes and tweaks need none.
+  exists. Small fixes and tweaks need none. **A PRD is never created automatically**: an agent that finds a change
+  big enough to need one stops and says so, writes a draft only when the person asks for it, and the draft counts as
+  the PRD only once the person has read it and approved it. No ticket and no code for that change until then.
 - **No real production data in the repository.** The project's `CLAUDE.md` names the sensitive data classes. Synthetic
   or de-identified fixtures only. **No personal data anywhere** — not in prompts, logs, tests, fixtures, issues or git
   history — and never run anything against production.
