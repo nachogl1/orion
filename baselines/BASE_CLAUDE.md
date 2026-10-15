@@ -22,7 +22,8 @@
 ## Work tracking
 
 - **GitHub Issues in the project's own repository are the only source of truth.** PRD → epic → story. Agents
-  implement **stories** only, never an epic. (`/dev-next` and `/harvest` drive GitHub Issues and nothing else.)
+  implement **stories** only, never an epic. (`/dev-next`, `/dev-quick` and `/harvest` drive GitHub Issues and
+  nothing else.)
 - **The assignee owns the issue.** Assign yourself *before* writing any code. Never work on, edit or unassign someone
   else's. Two claims can land in the same second, so re-read after claiming: a second assignee, or an earlier
   "claimed by run …" comment from another run, means the earlier claim wins. The later run deletes its claim comment,
@@ -36,7 +37,9 @@
   before they collide (merged into one, or one blocks the other).
 - **Every new issue, whoever files it, follows `.claude/skills/dev-next/references/new-issue.md`**: body headings,
   labels, the native parent and blocking links with their read-back checks. A person writing a ticket by hand follows
-  the same file; there is no separate issue template to keep in step.
+  the same file; there is no separate issue template to keep in step. **A change wanted now that has no ticket goes
+  through `/dev-quick`**: it interviews until nothing is left to ask, files the issue to that shape and hands it to
+  `/dev-next` — never built by hand in the chat.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
   `### PRD references`.
@@ -98,8 +101,8 @@ PRD wins on product, the rules files win on process.
 - **NEVER push to `main`.** Not a fix, not a typo, not "only a doc". Every change reaches `main` as a merged pull
   request from a `feat/<desc>` / `fix/<desc>` branch (or the project's own branch pattern). Nothing but you enforces
   this where branch protection is off.
-- **Who merges.** Only `/dev-next` merges its own pull requests, and only once the project's build and test commands
-  are filled in. Every other pull request — planning, scaffolding, documentation, anything outside the dev skill — is
+- **Who merges.** Only `/dev-next` merges its own pull requests (a `/dev-quick` run merges through it, nothing
+  else), and only once the project's build and test commands are filled in. Every other pull request — planning, scaffolding, documentation, anything outside the dev skill — is
   merged by a human. Never auto-merge beyond that.
 - **Squash-merge only, then delete the branch** (`--delete-branch` breaks on a worktree; see
   `.claude/skills/dev-next/references/merge-and-ci.md`). One commit on `main` per pull request.
