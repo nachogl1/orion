@@ -1,11 +1,11 @@
 ---
-name: handoff-orion
-description: Compact the current conversation into a handoff document for another agent to pick up. Captures the ephemeral knowledge that lives only in the chat — the goal, current state, decisions and their rationale, dead-ends, open questions, and next steps — while REFERENCING (never re-pasting) artifacts already written down (specs, plans, ADRs, issues, commits, diffs). Asks the user where to save the file — deliberately OUTSIDE the current workspace — and redacts secrets/PII before writing. If arguments are given, they describe what the next session will focus on and the document is tailored to that. Explicit-invocation only (never auto-triggered). Use when the user says "/handoff-orion", "hand this off", "write a handoff for the next session", or "compact this conversation for another agent".
+name: handoff
+description: ORION - Compact the current conversation into a handoff document for another agent to pick up. Captures the ephemeral knowledge that lives only in the chat — the goal, current state, decisions and their rationale, dead-ends, open questions, and next steps — while REFERENCING (never re-pasting) artifacts already written down (specs, plans, ADRs, issues, commits, diffs). Asks the user where to save the file — deliberately OUTSIDE the current workspace — and redacts secrets/PII before writing. If arguments are given, they describe what the next session will focus on and the document is tailored to that. Explicit-invocation only (never auto-triggered). Use when the user says "/handoff", "hand this off", "write a handoff for the next session", or "compact this conversation for another agent".
 argument-hint: What will the next session be used for?
 disable-model-invocation: true
 ---
 
-# handoff-orion
+# handoff
 
 > [!NOTE]
 > **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (the copy-to-a-bumped-`-vN` rule applies only to the `sequential-bmad-github-orion-vN` pipeline skills; see the repo's `CLAUDE.md`).
@@ -18,13 +18,13 @@ When a session gets long, is about to be compacted, or the work is being passed 
 
 ## When it runs
 
-This skill is **explicit-invocation only** (`disable-model-invocation: true`) — it never fires on its own. It runs only when the user types `/handoff-orion` or clearly asks for a handoff. That is deliberate: writing a handoff is a decision the user makes, not something the agent should volunteer mid-task.
+This skill is **explicit-invocation only** (`disable-model-invocation: true`) — it never fires on its own. It runs only when the user types `/handoff` or clearly asks for a handoff. That is deliberate: writing a handoff is a decision the user makes, not something the agent should volunteer mid-task.
 
 ## Arguments — what the next session is for
 
 The slash command takes free-text arguments describing **what the next session will focus on** (the `argument-hint` is *"What will the next session be used for?"*).
 
-- **Args present** — treat them as the next session's objective and *tailor the whole document to it*: lead with that objective, and bias "Current state", "Next steps", and "Pointers" toward what that specific follow-on work needs. Example: `/handoff-orion finish the auth refactor and get CI green` → the doc foregrounds the auth work and the failing checks.
+- **Args present** — treat them as the next session's objective and *tailor the whole document to it*: lead with that objective, and bias "Current state", "Next steps", and "Pointers" toward what that specific follow-on work needs. Example: `/handoff finish the auth refactor and get CI green` → the doc foregrounds the auth work and the failing checks.
 - **No args** — the handoff is general: "continue the work described below." Still capture everything, just without a narrowed focus.
 
 ## Step 1 — Read the situation (gather, don't duplicate)
