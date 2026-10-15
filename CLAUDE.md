@@ -52,6 +52,7 @@ The root `README.md` is a short, non-technical overview and install guide for pe
 ## Conventions for changes here
 
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
+- **Every skill's `description` starts with `ORION - `** (the word, a space, a hyphen, a space), e.g. `description: ORION - Pick up the next GitHub issue …`. The prefix marks the skill as orion-managed in the user's skill list, so it is told apart from the project's own skills at a glance. Every new skill added to `skills/` must carry it, keep it when rewording a description, and the verification pass below checks it.
 - **Skills are self-contained by design** — they're copied standalone into the project's `.claude/skills/`, so they can't reference orion repo files. Shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is therefore *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
 - Keep `orion.ps1` pure-ASCII and Windows-PowerShell-5.1-compatible; keep `orion.sh` free of GNU-only flags (it runs under Git Bash, macOS bash and Linux).
 - Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary`) and end with the required `Co-Authored-By` trailer.
@@ -80,5 +81,6 @@ The root `README.md` is a short, non-technical overview and install guide for pe
 ## Verification (no build/test suite)
 
 - After editing a `.md` skill file, confirm it renders without parse errors.
+- After adding or editing a skill, confirm every description still starts with the `ORION - ` prefix: `grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md` must print nothing (it lists the files that lack it).
 - After editing `orion.sh` / `orion.ps1`, run `bash -n orion.sh`, parse `orion.ps1` with PS 5.1, then run `./orion.sh init --project <empty tmp dir> --no-statusline`, `update --force`, `check --force` and `uninstall --yes` against it and confirm the tmp dir ends up as it started.
 - "Done" = the edited file is valid and that init/update/uninstall round trip is clean.
