@@ -19,12 +19,12 @@
 # What orion owns in a project (overwritten on update, removed on uninstall):
 #   .claude/skills/<skill>/           every folder carrying a `.orion-managed` marker
 #   .claude/orion/orion.sh            this script
-#   .claude/orion/ORION.md            the orion rules, imported by CLAUDE.md
+#   .claude/orion/BASE_CLAUDE.md      the mandatory rules, imported by CLAUDE.md
 #   .claude/orion/VERSION             commit the files came from
 #   .claude/orion/.orion-manifest     the list above
 # What orion creates ONCE and never touches again (yours):
-#   CLAUDE.md                         created from the template if missing; otherwise only the
-#                                     import line `@.claude/orion/ORION.md` is added
+#   CLAUDE.md                         created with the project-specific slots if missing; otherwise
+#                                     only the import line for BASE_CLAUDE.md is added at the top
 #   .claude/orion/config.json         updateMode: ask | auto | off, plus source/ref
 #   .claude/settings.json             one SessionStart hook entry is added (removed on uninstall)
 
@@ -33,7 +33,8 @@ set -euo pipefail
 ORION_DEFAULT_SOURCE="https://github.com/nachogl1/orion.git"
 ORION_DEFAULT_REF="main"
 MARKER=".orion-managed"
-IMPORT_LINE="@.claude/orion/ORION.md"
+IMPORT_LINE="Mandatory rules, owned and refreshed by orion (never edit the copy): @.claude/orion/BASE_CLAUDE.md"
+OLD_IMPORT_LINE="@.claude/orion/ORION.md"   # what orion wrote before the rules moved to BASE_CLAUDE.md
 HOOK_NEEDLE="/.claude/orion/orion.sh"
 HOOK_CMD='bash "${CLAUDE_PROJECT_DIR}/.claude/orion/orion.sh" check'
 CHECK_INTERVAL_SECONDS=86400
@@ -291,26 +292,85 @@ apply_core() {  # source ref
     mkdir -p "$dir"
     # orion.sh may be the script currently running: write beside, then mv (atomic).
     tmp="$dir/.orion.sh.new"; cp "$SRC_DIR/orion.sh" "$tmp"; chmod +x "$tmp"; mv -f "$tmp" "$dir/orion.sh"
-    cp "$SRC_DIR/baselines/ORION.md" "$dir/ORION.md"
+    cp "$SRC_DIR/baselines/BASE_CLAUDE.md" "$dir/BASE_CLAUDE.md"
+    [ -f "$dir/ORION.md" ] && { rm -f "$dir/ORION.md"; say "  -    .claude/orion/ORION.md (the rules now live in BASE_CLAUDE.md)"; }
     printf '%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/VERSION"
-    printf '%s\n' "orion.sh" "ORION.md" "VERSION" ".orion-manifest" > "$dir/.orion-manifest"
+    printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest" > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
         printf '{\n  "updateMode": "ask",\n  "source": "%s",\n  "ref": "%s"\n}\n' "$1" "$2" > "$dir/config.json"
         say "  +    .claude/orion/config.json (yours: updateMode ask | auto | off)"
     fi
-    say "  ~    .claude/orion/{orion.sh, ORION.md, VERSION} @ $(short "$SRC_SHA")"
+    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION} @ $(short "$SRC_SHA")"
+}
+
+# The project's own CLAUDE.md: created once with the project-specific slots the
+# mandatory rules rely on (see the last section of BASE_CLAUDE.md), never
+# overwritten. An existing CLAUDE.md only gets the import line at the top.
+write_claude_md_starter() {  # file
+    cat > "$1" <<EOF
+$IMPORT_LINE
+
+# CLAUDE.md — <project name>
+
+Project-specific facts the mandatory rules rely on. Fill every \`<angle-bracket>\` slot; delete a line the project
+has no use for. A rule written here must not contradict the mandatory rules.
+
+## Tracker
+
+- Tracker: <tool>. The one command that reads an issue with title, body, labels and comments: \`<command>\`.
+
+## Build and test commands
+
+| Purpose | Command |
+|---|---|
+| Build | \`TBD\` |
+| **The full suite** | \`TBD\` |
+| One file | \`TBD\` |
+| One test | \`TBD\` |
+| Typecheck / static analysis | \`TBD\` |
+| Lint | \`TBD\` |
+| Deterministic checks on generated output (if any) | \`TBD\` |
+| Dev server (if the review surface needs one) | \`TBD\` |
+
+## Stack and layout
+
+- Stack: **<language and version, pinned in <pin file>>**, **<test framework>**; CI runs on <runner>.
+- Layout: \`<application code path>\` and \`<test code path>\`. Skip-count baseline: <N>.
+
+## Worktrees
+
+- Worktree root (outside the project): \`<worktree root>\`. Port = \`<base port> + issue number\`, written to the
+  worktree's \`.env\` as \`<port variable>\`.
+
+## Boundaries
+
+- Deploys to: <environment>, from \`main\`.
+- External read-only repositories: <none, or list them with their work-item key format>.
+- Sensitive data classes that never enter the repository: <customer records, partner-owned schemas, …>.
+- Boundaries an agent must not move: <e.g. "AI is a build-time tool; nothing it produces executes at runtime">.
+- Working language for code, comments, commits, issues and docs: <language>.
+
+## Pending until PRD v1
+
+| # | File and section | Question | Decided by |
+|---|---|---|---|
+| P1 | \`CLAUDE.md\` build and test commands | <e.g. Which stack, and so which build/test/lint commands?> | <role> |
+EOF
 }
 
 apply_claude_md() {
     local f="$PROJECT/CLAUDE.md" tmp
     if [ ! -f "$f" ]; then
-        cp "$SRC_DIR/baselines/BASE_CLAUDE.md" "$f"
-        say "  +    CLAUDE.md (from the orion template - fill in the <angle-bracket> slots; it is yours now)"
+        write_claude_md_starter "$f"
+        say "  +    CLAUDE.md (project slots to fill in; it is yours now and imports the mandatory rules)"
+    elif grep -qxF "$OLD_IMPORT_LINE" "$f"; then
+        tmp=$(mktemp); sed "s|^$OLD_IMPORT_LINE\$|$IMPORT_LINE|" "$f" > "$tmp"; mv "$tmp" "$f"
+        say "  ~    CLAUDE.md (import line now points at BASE_CLAUDE.md; nothing else touched)"
     elif ! grep -qxF "$IMPORT_LINE" "$f"; then
         tmp=$(mktemp); { printf '%s\n\n' "$IMPORT_LINE"; cat "$f"; } > "$tmp"; mv "$tmp" "$f"
         say "  ~    CLAUDE.md (import line added at the top; nothing else touched)"
     else
-        say "  =    CLAUDE.md (already imports the orion rules)"
+        say "  =    CLAUDE.md (already imports the mandatory rules)"
     fi
 }
 
@@ -422,7 +482,7 @@ cmd_update() {
     settings_add_hook "$PROJECT/.claude/settings.json"
     if [ "$quiet" != "1" ]; then
         say "done. Review with 'git status' / 'git diff', then commit on a branch so your team gets it."
-        say "If .claude/orion/ORION.md changed, re-read CLAUDE.md for rules that now contradict it and fix them in the same commit."
+        say "If .claude/orion/BASE_CLAUDE.md changed, re-read CLAUDE.md for rules that now contradict it and fix them in the same commit."
     fi
 }
 
@@ -482,7 +542,7 @@ cmd_status() {
     done
     shopt -u nullglob
     say "skills:     $n orion-managed"
-    grep -qxF "$IMPORT_LINE" "$PROJECT/CLAUDE.md" 2>/dev/null && say "CLAUDE.md:  imports the orion rules" || say "CLAUDE.md:  does NOT import the orion rules (run: orion.sh update)"
+    grep -qxF "$IMPORT_LINE" "$PROJECT/CLAUDE.md" 2>/dev/null && say "CLAUDE.md:  imports the mandatory rules" || say "CLAUDE.md:  does NOT import the mandatory rules (run: orion.sh update)"
     grep -qF "$HOOK_NEEDLE" "$PROJECT/.claude/settings.json" 2>/dev/null && say "hook:       update check installed" || say "hook:       update check NOT installed"
 }
 
@@ -516,8 +576,8 @@ cmd_uninstall() {
     rm -f "$dir/config.json"
     rmdir "$dir" 2>/dev/null && say "  -    .claude/orion" || warn "left .claude/orion in place (it holds files orion did not create)"
     f="$PROJECT/CLAUDE.md"
-    if [ -f "$f" ] && grep -qxF "$IMPORT_LINE" "$f"; then
-        tmp=$(mktemp); grep -vxF "$IMPORT_LINE" "$f" | sed '1{/^$/d;}' > "$tmp"; mv "$tmp" "$f"
+    if [ -f "$f" ] && { grep -qxF "$IMPORT_LINE" "$f" || grep -qxF "$OLD_IMPORT_LINE" "$f"; }; then
+        tmp=$(mktemp); grep -vxF "$IMPORT_LINE" "$f" | grep -vxF "$OLD_IMPORT_LINE" | sed '1{/^$/d;}' > "$tmp"; mv "$tmp" "$f"
         say "  ~    CLAUDE.md (import line removed; your rules untouched)"
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"

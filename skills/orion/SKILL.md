@@ -19,7 +19,7 @@ the outcome in the user's preferred shape. All commands work on Windows too, thr
 |---|---|---|
 | `status` (default) | `bash .claude/orion/orion.sh status` | Report version, update mode and skill count in one line each. |
 | `check` | `bash .claude/orion/orion.sh check --force` | Empty output means up to date — say so. JSON output means a newer orion exists — say so and offer `update`. |
-| `update` | `bash .claude/orion/orion.sh update` | Summarise the changed files from `git status --short`. If `.claude/orion/ORION.md` changed (`git diff -- .claude/orion/ORION.md`), read the project's `CLAUDE.md` against it and list any rule that now contradicts it, with a proposed rewrite; the two files must never disagree. Remind the user to commit on a branch (never straight to `main`) so the team gets the update by pulling. |
+| `update` | `bash .claude/orion/orion.sh update` | Summarise the changed files from `git status --short`. If `.claude/orion/BASE_CLAUDE.md` changed (`git diff -- .claude/orion/BASE_CLAUDE.md`), read the project's `CLAUDE.md` against it and list any rule that now contradicts it, with a proposed rewrite; the two files must never disagree. Remind the user to commit on a branch (never straight to `main`) so the team gets the update by pulling. |
 | `uninstall` | **Ask first** with AskUserQuestion ("Remove everything orion owns from this repository? Your CLAUDE.md rules and your own skills stay."), then `bash .claude/orion/orion.sh uninstall --yes` | List what was removed. Remind the user to commit. |
 
 ## Rules

@@ -14,7 +14,7 @@ Once installed, it lives inside the project itself, so there is nothing for team
 ## What you get
 
 - **Skills** – ready-made abilities for the everyday tasks of a software project, which the assistant can run on request.
-- **Working rules** – a set of good practices added on top of your project's own instructions file (`CLAUDE.md`), so the assistant works the same careful way for everyone on the team. Your own rules stay yours and always win.
+- **Working rules** – a set of mandatory good practices your project's own instructions file (`CLAUDE.md`) imports, so the assistant works the same careful way for everyone on the team. Your `CLAUDE.md` holds the facts that are specific to your project and stays yours.
 - **A status bar** (optional, per computer) – a one-line display at the bottom of the assistant that shows useful live information such as time, cost and usage while you work.
 
 ## Install
