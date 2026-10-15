@@ -24,14 +24,26 @@ Nothing is installed at user level any more (the earlier user-level `install.ps1
 
 ## Install into a project
 
-Run **inside the project folder**, once, from any shell (a throwaway shallow clone, deleted right after; the repo is private, so plain `curl` to a raw file URL will not work — `git` uses your usual GitHub credentials):
+Run **inside the project folder**, once, from any shell — nothing to clone, the script fetches the latest orion itself:
 
 ```sh
 # macOS / Linux / Git Bash
-git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init && rm -rf /tmp/orion
+curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init
 ```
 ```powershell
 # Windows PowerShell
+irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
+```
+
+To pass options on PowerShell (e.g. `--statusline`), use the scriptblock form:
+`& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline`.
+
+Prefer not to pipe a download into a shell? Clone and run it from there — the result is identical:
+
+```sh
+git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init && rm -rf /tmp/orion
+```
+```powershell
 git clone -q --depth 1 https://github.com/nachogl1/orion.git $env:TEMP\orion; & $env:TEMP\orion\orion.ps1 init; Remove-Item -Recurse -Force $env:TEMP\orion
 ```
 
@@ -100,10 +112,10 @@ Besides skills, the repo ships a **Claude Code status line** as a baseline (`bas
 - installing it is **opt-in**: pass `--statusline` to `init`, or answer the y/N prompt during an interactive install. Each teammate decides for their own computer.
 
 ```sh
-git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init --statusline && rm -rf /tmp/orion
+curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init --statusline
 ```
 ```powershell
-git clone -q --depth 1 https://github.com/nachogl1/orion.git $env:TEMP\orion; & $env:TEMP\orion\orion.ps1 init --statusline; Remove-Item -Recurse -Force $env:TEMP\orion
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
 ```
 
 Requirements and details (jq required; gh and node optional): see [`baselines/statusline/README.md`](baselines/statusline/README.md).
