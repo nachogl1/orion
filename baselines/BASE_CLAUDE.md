@@ -6,7 +6,9 @@ This file is configuration. Changing a rule is a pull request with a reason.
 
 > Every `<angle-bracket>` value is a slot the project fills in. A bullet the project has no use for is deleted.
 > The first line imports the rules orion ships (`.claude/orion/ORION.md`, refreshed by `orion update`); everything
-> below is the project's own and wins over the imported file where they disagree.
+> below is the project's own. **The two must never contradict each other**: check a new or changed rule here against
+> the orion rules first, and after an `orion update` that changed them, re-read this file for conflicts and fix them in
+> the same commit. If a contradiction slips through, this file wins — a safety net, not a licence to override.
 
 ## 1 · Work tracking
 

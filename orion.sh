@@ -420,7 +420,10 @@ cmd_update() {
     apply_core "$source" "$ref"
     apply_claude_md
     settings_add_hook "$PROJECT/.claude/settings.json"
-    [ "$quiet" = "1" ] || say "done. Review with 'git status' / 'git diff', then commit on a branch so your team gets it."
+    if [ "$quiet" != "1" ]; then
+        say "done. Review with 'git status' / 'git diff', then commit on a branch so your team gets it."
+        say "If .claude/orion/ORION.md changed, re-read CLAUDE.md for rules that now contradict it and fix them in the same commit."
+    fi
 }
 
 # Session-start hook. Never fails the session: any problem -> silent exit 0.

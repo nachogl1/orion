@@ -2,7 +2,12 @@
 
 > **Owned by orion.** This file is copied into `.claude/orion/ORION.md` by `orion init` and **overwritten on every
 > `orion update`**. Do not edit it here: put the project's own rules in the project's `CLAUDE.md`, which imports this
-> file. **Where the two disagree, the project's `CLAUDE.md` wins** — these are defaults, not law.
+> file.
+>
+> **The two files must never contradict each other.** Before writing or changing a rule in the project's `CLAUDE.md`,
+> check it against this file: if it conflicts, drop it or rewrite it so both agree. After every `orion update` that
+> changed this file, re-read the project's `CLAUDE.md` for new conflicts and fix them in the same commit. If a
+> contradiction slips through anyway, the project's `CLAUDE.md` wins — a safety net, not a licence to override.
 
 ## Communication
 
