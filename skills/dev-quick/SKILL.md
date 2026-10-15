@@ -214,7 +214,7 @@ The issue is **not** handed over, and the run ends after phase 4 saying why, whe
 closed").
 
 **The second touchpoint is `/dev-next`'s close-out**, nothing of this skill's own: the ten lines per issue, the
-`Harvest due` line if any, and `For you in this session:` or `All good: …`.
+`Harvest due` and `QA due` lines if any, and `For you in this session:` or `All good: …`.
 
 ---
 

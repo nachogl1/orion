@@ -334,6 +334,10 @@ local transcripts age out — so it happens on every run from the first. It carr
 `deferred` list (phase 4), and only the `friction` and `lessons_learned` lines that meet the bar in `audit.md`
 (important or critical; a routine wait is not a line). The lists are usually empty.
 
+A `merged` issue also gets its QA record, `runs/<run id>/qa-<N>.json` on the same branch, from the dev agent's
+`QA checks` blocks and story (`audit.md`, *The QA record*): the checks a later `/harvest-qa` run drives against
+`main`, and the story it dedupes them by. Same commit as the run report; nothing else changes.
+
 Then count the one harvest pile: `deferred` entries + `friction` + `lessons_learned` lines across every developer's
 audit branch — fetch them first with `git fetch origin 'refs/heads/audit/*:refs/remotes/origin/audit/*'`, list reports
 with `git ls-tree -r --name-only origin/audit/<login> runs/`, read with `git show`, never check out — in runs whose run id
@@ -341,6 +345,12 @@ sorts after that login's `harvested_through` entry in `docs/harvest-state.json` 
 file's `carried` list (the file is written only by the `/harvest` skill; no file → everything is unharvested). At
 **10 or more** → the summary ends with the line `Harvest due: run /harvest`. Counting only; this skill never runs the
 harvest.
+
+Then count the QA pile the same way: `runs/<run id>/qa-<N>.json` files across every audit branch in runs newer than
+that login's `tested_through` entry in `docs/harvest-qa-state.json` on `main`, plus that file's `carried` list (the
+file is written only by `/harvest-qa`; no file → every record is untested). At **5 or more** → the summary ends with
+the line `QA due: run /harvest-qa`, after the `Harvest due` line if both apply. Counting only; this skill never runs
+the QA.
 
 Then probe for drift between the issues and the PRD — **mechanical only, from data this run already holds**, never a
 sub-agent and never a judgement. Three signs, any one of which is enough: (a) the issue map's footer, when `issue-map`
@@ -351,22 +361,22 @@ both `agent-ready` and `needs-human`, or is in no open epic's sub-issue list
 `docs/PRDs/` changed on `main` since the bookmark `docs/reconcile-state.json` records
 (`git log --oneline <reconciled_at>..origin/main -- docs/PRDs/` prints anything; no bookmark and at least one PRD →
 counts as changed, once, until a first reconcile writes it). Any sign → the summary ends with the line
-`Drift found: run /reconcile-issue-map`, after the `Harvest due` line if both apply. Probing only; this skill never
+`Drift found: run /reconcile-issue-map`, after the `Harvest due` and `QA due` lines if they apply. Probing only; this skill never
 reconciles and never edits an issue for it.
 
 Then print **ten lines per issue, no more** (the second touchpoint): issue and title · what shipped · pull request link · suite result ·
 CI result · anything labelled `needs-human` and why · what is on deck next.
 
-The run then ends with a **close-out**, always last, after the `Harvest due` and `Drift found` lines if there are any.
+The run then ends with a **close-out**, always last, after the `Harvest due`, `QA due` and `Drift found` lines if there are any.
 It tells the human whether anything in this session still waits on them:
 
 - **Something waits on them** → `For you in this session:` followed by a numbered list, one action per line, most
   urgent first — a question left on a `needs-human` issue, a branch and worktree left for a human, a pull request left
-  open, red or pending CI, a merge slot still held, a failed audit write, `Harvest due`, `Drift found`. Each line names
+  open, red or pending CI, a merge slot still held, a failed audit write, `Harvest due`, `QA due`, `Drift found`. Each line names
   the thing in plain words and says what to do.
 - **Nothing waits on them** → exactly: `All good: everything merged, nothing to report, nothing left for you. You can
   close this session.` Only when every claimed issue merged and closed, no pull request is open, the in-flight entries
-  and the merge slot are released, the audit was written and there is neither a `Harvest due` nor a `Drift found` line.
+  and the merge slot are released, the audit was written and there is no `Harvest due`, `QA due` or `Drift found` line.
 
 The close-out only offers; the human closes the session, never the skill.
 
@@ -404,5 +414,5 @@ The close-out only offers; the human closes the session, never the skill.
 | `references/review-agent.md` | phase 4 |
 | `references/new-issue.md` | phase 4, whenever a `Critical:` line becomes an issue |
 | `references/merge-and-ci.md` | phase 5 |
-| `references/audit.md` | phase 6 |
+| `references/audit.md` | phase 6 — the run report and the QA record |
 | `references/shell-traps.md` | whenever a shell command behaves strangely |

@@ -106,8 +106,17 @@ records them in the audit report.
 Never argue a must-fix away in code comments — if you think one is wrong, say so in your report and the next fresh
 reviewer decides.
 
+**QA checks — the hand-over to `/harvest-qa`.** Nobody starts the product during the review; a later skill does, on
+`main`, from what you write here. For every acceptance criterion a person could see or do (a screen, a command, a
+request), one block: a `key` (`<seam>/<short flow name>`, the same key for the same flow every time), the criterion,
+the exact steps a stranger performs from a fresh start (made-up values only, never real data), and what they must see.
+Then a **story** of two to four sentences, in a user's words: what this issue changed, which screens, commands or
+flows it touched, and what earlier behaviour it replaced or removed — the QA skill uses it to tell a stale check from a
+real failure. A story with nothing a user could drive (a document, a library with no surface) says
+`QA checks: none — <why>` instead. The orchestrator writes the record; you never write a file for it.
+
 **If you cannot finish:** stop. Report `FAILED` (or `INHERITED RED`, above), what you tried, and the exact error. **Do not attempt your own recovery**,
 do not weaken a test to go green, and do not open a pull request. Leave the branch as it is.
 
 **Report back:** `DONE`, `FAILED` or `INHERITED RED`, the pull request URL, the suite result, any `Critical:` and
-`Defer:` lines, and at most five bullets. Nothing else.
+`Defer:` lines, the `QA checks` blocks and story (or `QA checks: none — <why>`), and at most five bullets. Nothing else.

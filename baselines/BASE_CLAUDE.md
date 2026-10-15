@@ -169,6 +169,13 @@ PRD wins on product, the rules files win on process.
   tickets or rule edits it made. It groups items touching the same area into one ticket (the fewer the better) and
   drops an item only when the human says so. `/dev-next` only counts: at **10 unharvested items** it ends its run
   with `Harvest due: run /harvest`.
+- **QA, later and on `main`.** Nobody drives the product during a story's review. Instead every merged story leaves a
+  QA record beside its run report on `audit/<login>`: the user-level checks for its acceptance criteria and a short
+  story of what it changed. `/harvest-qa` is run by a person, never by another skill: it reads the records newer than
+  its own bookmark on `main`, drops the ones a later story superseded or made obsolete, drives the rest against `main`
+  one agent at a time, files one `bug` issue per confirmed failure that no open issue covers, and ships its log in its
+  own pull request. A deduped record counts as tested. `/harvest` and `/harvest-qa` never read each other's files.
+  `/dev-next` only counts: at **5 untested records** it ends its run with `QA due: run /harvest-qa`.
 - **Reconciling.** `/reconcile-issue-map` is run by a person, never by another skill. It reads the PRDs, every issue
   with its native links, and the code on `main`, and lists every way they disagree — a PRD section no story covers
   or one changed after its stories were cut, a story the PRD never asked for or an outcome it never absorbed, a
@@ -191,6 +198,8 @@ PRD wins on product, the rules files win on process.
 - `/prd-to-tickets` turns a PRD under `docs/PRDs/` into epics and stories with the person present: existing open
   issues become blockers, never duplicates; both blocker forms are set and read back; nothing is filed `agent-ready`
   with a question left.
+- `/harvest-qa` drives the QA checks every merged story left behind against `main`, in sequential rounds until every
+  record is tested or deduped, and files a `bug` issue only for a failure reproduced twice that nothing open covers.
 - `/issue-map` draws the blocked-by graph of every issue, level by level, into `docs/issue_map/issue_map.html` — a
   local, never-committed snapshot that `/dev-next` rebuilds after every claim and merge. The issues stay the truth.
 - `/reconcile-issue-map` checks the issues, the PRDs and the code on `main` against each other and fixes the drift
@@ -203,7 +212,7 @@ Everything project-specific lives in the project's `CLAUDE.md`, never here. `ori
 when the project has none; otherwise add what is missing. A slot the project has no use for is deleted.
 
 - **Commands**: build, full suite, one file, one test, typecheck, lint, deterministic checks on generated output (if
-  any), dev server (if the review surface needs one) — one table, every row a real command or `TBD`.
+  any), dev server (how to start the product; the QA pass needs it) — one table, every row a real command or `TBD`.
 - **Stack and layout**: language and version with the file that pins it, test framework, application code path, test
   code path, skip-count baseline, CI runner.
 - **Worktrees**: the worktree root outside the project, the port rule (`<base port> + issue number`) and the env
