@@ -4,14 +4,13 @@
 # Segments (left to right):
 #   - session alive time (cyan)
 #   - context usage % (green/yellow/red)
-#   - git branch + state indicators (stashes / untracked / modified / ahead)
+#   - git branch + state words (stashed / untracked / modified / unpushed)
 #   - PR status for the current branch (cached, background-refreshed via `gh`)
 #   - cost: API-equivalent USD for the open session (green) + current
 #     calendar month to date across all projects (blue), aggregated from
 #     local transcripts by ccusage (cached, background-refreshed via `npx`)
 #   - model name (cyan)
 #   - reasoning effort (color-coded by level; omitted when unsupported)
-#   - jobs flag (bold yellow ⚑N when background jobs run; dim ⚑0 when idle)
 #   - subscription usage limits, rightmost: 5-hour window (bright magenta) and
 #     7-day window (bright blue), each "used % + time until it resets"
 #   - second line: current working directory
@@ -172,7 +171,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Git segment — branch + state indicators. The five git commands are cached
+# Git segment — branch + state words (never icons: a word needs no legend). The five git commands are cached
 # per cwd (10s TTL) so redraw storms don't relaunch git every time; on a stale
 # cache they are recomputed inline (git is local and fast enough once) and the
 # cache is rewritten. Cache layout: line 1 = branch, line 2 = indicators.
@@ -210,22 +209,22 @@ else
     _blu="\033[0;34m"   # blue    — ahead
     _rst="\033[0m"
 
-    # 1. Stashes (magenta ◆N) — always shown
+    # 1. Stashes (magenta stashed:N) — always shown
     stash_count=$(git -C "$cwd" --no-optional-locks stash list 2>/dev/null | wc -l | tr -d ' ')
-    git_indicators="${git_indicators} ${_mag}◆${stash_count:-0}${_rst}"
+    git_indicators="${git_indicators} ${_mag}stashed:${stash_count:-0}${_rst}"
 
-    # 2. Untracked files (yellow ◯N) — always shown
+    # 2. Untracked files (yellow untracked:N) — always shown
     untracked_count=$(git -C "$cwd" --no-optional-locks ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')
-    git_indicators="${git_indicators} ${_yel}◯${untracked_count:-0}${_rst}"
+    git_indicators="${git_indicators} ${_yel}untracked:${untracked_count:-0}${_rst}"
 
-    # 3. Uncommitted modifications — staged + unstaged tracked (red ●N) — always shown
+    # 3. Uncommitted modifications — staged + unstaged tracked (red modified:N) — always shown
     #    Count lines from `git status --porcelain` where the first two chars are NOT "??"
     mod_count=$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null | grep -v '^??' | wc -l | tr -d ' ')
-    git_indicators="${git_indicators} ${_red}●${mod_count:-0}${_rst}"
+    git_indicators="${git_indicators} ${_red}modified:${mod_count:-0}${_rst}"
 
-    # 4. Commits ahead of upstream (blue ▲N) — always shown; default to 0 when no upstream
+    # 4. Commits ahead of upstream, i.e. not pushed yet (blue unpushed:N) — always shown; default to 0 when no upstream
     ahead_count=$(git -C "$cwd" --no-optional-locks rev-list --count '@{u}..HEAD' 2>/dev/null)
-    git_indicators="${git_indicators} ${_blu}▲${ahead_count:-0}${_rst}"
+    git_indicators="${git_indicators} ${_blu}unpushed:${ahead_count:-0}${_rst}"
   fi
 
   _tmp="${git_cache}.tmp.$$"
@@ -367,61 +366,6 @@ if [ -n "$effort_level" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Jobs flag — a single leading indicator (⚑N) shown only when one or more
-# background jobs are active. Cached (20s TTL) and background-refreshed, same
-# non-blocking pattern as the PR/cost segments, so the status line never waits
-# on the `claude` CLI.
-#
-# Source: `claude agents --json` — dispatched/background agent sessions. The
-# current interactive session is excluded (kind == "interactive").
-#
-# NOTE: cloud routines created via `/schedule` are NOT counted here. They live
-# server-side and are only reachable through the CLI's internal authenticated
-# client — there is no supported, scriptable way to list them from a shell, and
-# hard-coding an undocumented internal endpoint would be fragile and unsafe for
-# a distributable status line. See statusline/README.md.
-# ---------------------------------------------------------------------------
-jobs_segment=""
-jobs_cache="$HOME/.cache/claude-statusline/jobs.txt"
-mkdir -p "$(dirname "$jobs_cache")" 2>/dev/null
-
-_jobs_fresh=false
-if [ -f "$jobs_cache" ]; then
-  _jmtime=$(stat -c %Y "$jobs_cache" 2>/dev/null)
-  if [ -z "$_jmtime" ]; then
-    _jmtime=$(stat -f %m "$jobs_cache" 2>/dev/null)
-  fi
-  if [ -n "$_jmtime" ] && [ "$(( $(date +%s) - _jmtime ))" -lt 20 ]; then
-    _jobs_fresh=true
-  fi
-fi
-
-if ! $_jobs_fresh && command -v claude >/dev/null 2>&1; then
-  # Bump mtime first so concurrent refreshes don't stampede the CLI, then
-  # recompute in the background (stale value keeps showing meanwhile).
-  touch "$jobs_cache" 2>/dev/null
-  (
-    _n=$(claude agents --json 2>/dev/null \
-      | jq -r '[.[] | select(.kind != "interactive")] | length' 2>/dev/null | tr -d '\r')
-    [ -n "$_n" ] || _n=0
-    _tmp="${jobs_cache}.tmp.$$"
-    printf '%s' "$_n" > "$_tmp" 2>/dev/null && mv "$_tmp" "$jobs_cache"
-  ) &
-  disown 2>/dev/null || true
-fi
-
-_jobs_n=""
-if [ -f "$jobs_cache" ]; then
-  _jobs_n=$(cat "$jobs_cache" 2>/dev/null)
-fi
-[ -n "$_jobs_n" ] || _jobs_n=0
-if [ "$_jobs_n" != "0" ]; then
-  jobs_segment="\033[1;33m⚑${_jobs_n}\033[0m"   # bold yellow ⚑N — jobs running
-else
-  jobs_segment="\033[0;90m⚑0\033[0m"            # dim ⚑0 — nothing running
-fi
-
-# ---------------------------------------------------------------------------
 # Usage-limit segments — the subscription rate-limit windows, read straight
 # from the stdin JSON (no external command, so these never block): the 5-hour
 # rolling window and the 7-day (weekly) window, each shown as "used % + time
@@ -491,10 +435,7 @@ fi
 if [ -n "$effort_segment" ]; then
   cost_suffix="${cost_suffix}  |  ${effort_segment}"
 fi
-if [ -n "$jobs_segment" ]; then
-  cost_suffix="${cost_suffix}  |  ${jobs_segment}"
-fi
-# Usage-limit windows sit rightmost of all, after the jobs flag
+# Usage-limit windows sit rightmost of all, after effort
 if [ -n "$usage_5h_segment" ]; then
   cost_suffix="${cost_suffix}  |  ${usage_5h_segment}"
 fi
