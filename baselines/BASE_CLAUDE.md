@@ -176,6 +176,8 @@ PRD wins on product, the rules files win on process.
 - Skills under `.claude/skills/` carrying an `.orion-managed` marker are orion's and are refreshed by `orion update`;
   the project's own skills (no marker) are never touched.
 - `/orion` manages the installation: `status`, `check`, `update`, `uninstall`.
+- `/issue-map` draws the blocked-by graph of every issue, level by level, into `docs/issue_map/issue_map.html` — a
+  local, never-committed snapshot that `/dev-next` rebuilds after every claim and merge. The issues stay the truth.
 
 ## What the project's `CLAUDE.md` must state
 
