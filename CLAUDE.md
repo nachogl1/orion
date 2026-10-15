@@ -51,7 +51,7 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
 - **Skills are self-contained by design** — they're copied standalone into the user's skills dir, so they can't reference repo files. Shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is therefore *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
 - Keep `install.ps1` / `install.sh` (and the `uninstall.*` counterparts) pure-ASCII and Windows-PowerShell-5.1-compatible.
-- Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary` — see `CONTRIBUTING.md`) and end with the required `Co-Authored-By` trailer.
+- Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary`) and end with the required `Co-Authored-By` trailer.
 
 ## Planning & ticket creation
 
