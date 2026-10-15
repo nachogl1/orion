@@ -34,9 +34,10 @@ This applies even when a task's source material (a handoff note, a report, a tra
 
 See [`README.md`](README.md) — Skills / Status line / Install / How updates work. Key agent-specific facts:
 
-- Each `skills/<name>/` is **copied** into `~/.claude/skills/<name>/` (no longer junctioned/symlinked — Windows stopped handling junctioned skill folders reliably). The installer drops an `.orion-managed` marker file inside every copy so it can recognise and refresh its own copies; ownership/prune decisions key off that marker, not a link target. Because copies are independent, **editing the repo file does NOT update the installed skill — every update re-copies** (`install.ps1 -Update` / `install.sh --update`).
-- After adding a skill folder, run `install.ps1` / `install.sh` (no `-Update`) to copy it into the target dir.
-- `baselines/` holds starting points the user copies and then owns: `BASE_CLAUDE.md` (a starter project `CLAUDE.md`, copied into a project by hand; every project-specific value stays an `<angle-bracket>` slot) and `statusline/` (the status line, copied **once** to `~/.claude/statusline` by the installer on `-StatusLine` / `--statusline`, never re-copied by `-Update`, no `.orion-managed` marker). Edited in place in the repo.
+- orion is installed **into a project**, never at user level. `orion.sh` (bash; `orion.ps1` is only a Windows launcher that finds Git Bash and runs it) has the sub-commands `init | update | check | status | uninstall`. `init` copies each `skills/<name>/` into `<project>/.claude/skills/<name>/` with an `.orion-managed` marker, copies `baselines/ORION.md` → `<project>/.claude/orion/ORION.md`, the script itself and a `VERSION` file (commit SHA) into `<project>/.claude/orion/`, creates `<project>/CLAUDE.md` from `baselines/BASE_CLAUDE.md` if missing (otherwise only adds the `@.claude/orion/ORION.md` import line), creates `config.json` (`updateMode`: `ask`/`auto`/`off`) once, and adds one `SessionStart` hook (`orion.sh check`) to `<project>/.claude/settings.json`. Ownership keys off the marker and the `.orion-manifest` list: `update`/`uninstall` touch only those, never the project's `CLAUDE.md`, `config.json`, unmarked skills, or other settings.
+- **Editing the repo does NOT update any project — every project runs `orion update`** (offered at session start by the hook in `ask` mode). The project copy of `orion.sh` fetches orion with `git clone --depth 1` from the `source`/`ref` in its `config.json`; when `orion.sh` runs from inside this checkout it uses the checkout directly (handy for testing: `./orion.sh init --project <tmp-dir>`).
+- The `check` sub-command is a hook: it must stay silent on success, exit 0 on every failure, and print only the single-line `hookSpecificOutput` JSON when an update exists. Settings edits go through `jq` → `python3` → Windows PowerShell fallbacks; keep all three branches in step.
+- `baselines/` holds `ORION.md` (orion-owned rules, overwritten in projects on update — keep it generic, slot-free, and keep its "the project's CLAUDE.md wins" note), `BASE_CLAUDE.md` (the project `CLAUDE.md` template, copied once, every project-specific value an `<angle-bracket>` slot, first line the import) and `statusline/` (per-computer, copied **once** to `~/.claude/statusline` on `init --statusline`, never touched by `update`, no `.orion-managed` marker). Edited in place in the repo.
 - `SKILL.md` (uppercase) is the required entry-point file in every skill folder; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
 
 ## Filing issues — only when needed, dedupe first, and never defer to a dead issue
@@ -48,8 +49,8 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 ## Conventions for changes here
 
 - Skills are project-agnostic: detect build/test/stack commands and conventions from the target repo at run time; don't assume a stack.
-- **Skills are self-contained by design** — they're copied standalone into the user's skills dir, so they can't reference repo files. Shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is therefore *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
-- Keep `install.ps1` / `install.sh` (and the `uninstall.*` counterparts) pure-ASCII and Windows-PowerShell-5.1-compatible.
+- **Skills are self-contained by design** — they're copied standalone into the project's `.claude/skills/`, so they can't reference orion repo files. Shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is therefore *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
+- Keep `orion.ps1` pure-ASCII and Windows-PowerShell-5.1-compatible; keep `orion.sh` free of GNU-only flags (it runs under Git Bash, macOS bash and Linux).
 - **Every change updates `docs/CHANGELOG.md`.** Any commit or PR that adds, changes, removes, or updates something in this repo also adds **one short line** under the top `## Unreleased` section, in the matching `Added` / `Changed` / `Removed` / `Fixed` heading (newest first). Summarise, don't log: one line per user-visible change, not one per commit; merge related edits into a single line; skip typo fixes and metadata-only tweaks. The file is for people deciding whether to update, not a copy of `git log`.
 - Commit/push only when the user asks; branch off `main` for changes; commit messages follow **Conventional Commits** (`type(scope): imperative summary`) and end with the required `Co-Authored-By` trailer.
 
@@ -77,5 +78,5 @@ See [`README.md`](README.md) — Skills / Status line / Install / How updates wo
 ## Verification (no build/test suite)
 
 - After editing a `.md` skill file, confirm it renders without parse errors.
-- After editing `install.ps1` / `install.sh`, confirm pure-ASCII + PS 5.1 syntax.
-- "Done" = the edited file is valid and the installer re-copies clean.
+- After editing `orion.sh` / `orion.ps1`, run `bash -n orion.sh`, parse `orion.ps1` with PS 5.1, then run `./orion.sh init --project <empty tmp dir> --no-statusline`, `update --force`, `check --force` and `uninstall --yes` against it and confirm the tmp dir ends up as it started.
+- "Done" = the edited file is valid and that init/update/uninstall round trip is clean.

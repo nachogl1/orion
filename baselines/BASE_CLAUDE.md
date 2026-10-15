@@ -1,8 +1,12 @@
+@.claude/orion/ORION.md
+
 # CLAUDE.md — <project name>
 
 This file is configuration. Changing a rule is a pull request with a reason.
 
 > Every `<angle-bracket>` value is a slot the project fills in. A bullet the project has no use for is deleted.
+> The first line imports the rules orion ships (`.claude/orion/ORION.md`, refreshed by `orion update`); everything
+> below is the project's own and wins over the imported file where they disagree.
 
 ## 1 · Work tracking
 
@@ -92,13 +96,11 @@ on product, this file wins on process.
 - Worktrees live **outside the project**: `<worktree root>`. The in-flight file (`<worktree root>/in-flight.json`,
   never committed) lives beside them; format in `.claude/skills/dev-next/references/in-flight.md`.
 - Update a branch with `git merge origin/main` — **never rebase, never stash**.
-- Never force-push. Never `git add -A`. Never delete work you did not create.
-- Conventional Commits: `type(scope): summary`.
 
 ## 4 · Definition of done
 
 - **Full build and full suite green before the pull request opens.** Every new behaviour has a test.
-- **Never delete, skip or weaken a test. Never widen a timeout.** The skip count is baselined; a change to it fails.
+- **The skip count is baselined; a change to it fails.**
 - <**If the project produces generated output:** it is gated by evaluation, not by a passing build. Name the
   deterministic checks that must be green on every artefact, the evaluation harness, the file holding its baselined
   pass-rate threshold, and any record every artefact must carry. A run that cannot execute the evaluation is **red**,
@@ -159,13 +161,7 @@ or rule edits it made. It groups items touching the same area into one ticket (t
 item only when the human says so. `/dev-next` only counts: at **10 unharvested items** it ends its run with
 `Harvest due: run /harvest`.
 
-## 7 · Communication
-
-TLDR first. One-liners. Numbered steps, one action per line. End with exactly one next action.
-Never refer to a thing by its number alone — `issue #12 (parse the dataset section)`, `§5 (build and test commands)`,
-never a bare number. No preamble, no recap, no sign-off.
-
-## 8 · Pending until PRD v1
+## 7 · Pending until PRD v1
 
 Once `docs/PRDs/PRD.md` exists and this table is not empty, ask the human every open row as one batch (each with a
 recommended answer) before any other work, apply the answers to the files named, and delete the rows in the same pull

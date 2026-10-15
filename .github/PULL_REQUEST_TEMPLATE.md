@@ -7,7 +7,7 @@ Closes #<!-- issue number — open one first if none exists -->
 ## Type of change
 - [ ] New skill or skill version (`-vN`)
 - [ ] Edit to existing skill (in-place)
-- [ ] Installer (`install.ps1` / `install.sh`) change
+- [ ] Installer (`orion.sh` / `orion.ps1`) change
 - [ ] Status line / shared tooling change
 - [ ] Documentation only
 
