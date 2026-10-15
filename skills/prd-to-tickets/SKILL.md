@@ -1,6 +1,6 @@
 ---
 name: prd-to-tickets
-description: ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies; every story owns one folder or module; both blocker forms set (GitHub's native relation and the ### Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; existing open issues become blockers, never duplicates. Its first message checks docs/ux/prototypes/ for the screens the PRD describes and, when there is none, offers to draft one from the PRD in parallel so front-end stories have a design to follow. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".
+description: 'ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies; every story owns one folder or module; both blocker forms set (GitHub''s native relation and the Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; existing open issues become blockers, never duplicates. Its first message checks docs/ux/prototypes/ for the screens the PRD describes and, when there is none, offers to draft one from the PRD in parallel so front-end stories have a design to follow. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".'
 argument-hint: "<path to the PRD> [--developers N]"
 disable-model-invocation: true
 ---
@@ -36,7 +36,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 |---|---|
 | `/prd-to-tickets docs/PRDs/<name>.md` | Split this PRD. |
 | `/prd-to-tickets` | One PRD under `docs/PRDs/` → take it; several → ask which one (clickable options, newest first). |
-| `--developers N` | How many developers must stay busy in parallel once the scaffold is in. Absent → the PRD's own number, then the project's `CLAUDE.md`, then ask (phase 0 step 6). |
+| `--developers N` | How many developers must stay busy in parallel once the scaffold is in. Absent → the PRD's own number, then the project's `CLAUDE.md`, then ask (phase 2 step 1, after the UX check). |
 
 ## Roles
 
@@ -46,6 +46,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 | `inventory-<slug>` | sonnet | low | optional: maps every open issue and the repository's layout onto the PRD's sections and returns a bounded table (phase 2) |
 | `ux-prototype-<slug>` | opus | high | drafts the UX prototype from the PRD in its own worktree and opens its pull request (phase 1, `references/ux-prototype.md`) |
 | `plan-check-<slug>` | opus | xhigh | fresh context: reads the cut plan against the rules in phase 3 and returns PASS or every violation (phase 5) |
+| `prd-update-<slug>` | sonnet | low | only when the person says yes in phase 6 step 6: applies the agreed lines to the PRD in its own worktree and opens the `docs(prd)` pull request |
 
 `<slug>` is the PRD's file name without `PRD` and `.md`, lower-case, hyphenated. Name every sub-agent after what it
 does, keep the agent id each spawn returns, and ask each for a bounded result. A sub-agent works in its own worktree,
@@ -66,12 +67,10 @@ never stashes, never switches branches, commits only the files it touched, and o
    delete one.
 4. **Latest `main`, read only.** In the main checkout: `git checkout main` → `git fetch origin main` →
    `git merge --ff-only origin/main`. Dirty or cannot fast-forward → stop and print what is in the way; never stash,
-   never reset. This session creates no branch of its own.
+   never reset. This session creates no branch of its own; only its sub-agents do, each in its own worktree.
 5. **Locate the PRD** (arguments above) and read it in full. Note every section number or heading, so each story can
-   name the one it serves under `### References` and `### Goal`.
-6. **The developer count.** `--developers`, else a number the PRD states, else one the project's `CLAUDE.md` states,
-   else ask once (clickable options; recommend the number of people the person named, or the PRD's own team section).
-   This number is what phase 3's parallelism check is measured against.
+   name the one it serves under `### References` and `### Goal`. Nothing is asked of the person in this phase: the
+   first thing they hear is phase 1.
 
 ## Phase 1 — The UX check: the first thing the person hears
 
@@ -89,14 +88,16 @@ or changes a screen implements the prototype's screen, never a layout of its own
    in parallel with the split, so that agents building a screen have a design to follow instead of inventing a
    layout each."* Then ask once (clickable options, the recommendation first):
    - **Draft it in parallel (recommended)** — spawn `ux-prototype-<slug>` with the brief in
-     `references/ux-prototype.md`. It works in its own worktree on `feat/ux-prototype-<slug>`, writes
+     `references/ux-prototype.md`. It works in its own worktree on `feature/ux-prototype-<slug>` (or the
+     project's own branch pattern), writes
      `docs/ux/prototypes/<slug>/` (one self-contained HTML click-through plus a `README.md` listing the screens), opens
      a pull request **a human merges**, and returns the pull request link and the screen list. The split carries on
      while it works.
    - **The person provides it** — nothing is spawned; the person says where it will live.
    - **The PRD has no screens after all** — say so and continue without the front-end rules.
-4. **Whichever way, when the prototype does not exist on `main` yet, phase 3 files one `needs-human` story:
-   "UX prototype for <PRD name>"**, seam `docs/ux/prototypes/<slug>/`, under the PRD's front-end epic, with the
+4. **Whichever way, when the prototype does not exist on `main` yet, phase 3 cuts, and phase 6 files, one
+   `needs-human` story: "UX prototype for <PRD name>"**, seam `docs/ux/prototypes/<slug>/`, under the epic that
+   holds the most front-end stories (its own epic when none does), with the
    prototype pull request (or the person's promise) as its last comment, and **every front-end story is blocked by
    it**, in both blocker forms. It closes when the prototype is merged. That is what keeps a front-end agent from
    starting on a screen nobody has drawn.
@@ -107,11 +108,14 @@ A failure is reported in one line and the story stays `needs-human` with the per
 
 ## Phase 2 — Read the PRD and the backlog
 
-1. **From the PRD, extract into a scratch note** (never into the repository): the vocabulary, the scope and the
+1. **The developer count.** `--developers`, else a number the PRD states, else one the project's `CLAUDE.md` states,
+   else ask once (clickable options; recommend the number of people the person named, or the PRD's own team section).
+   This number is what phase 3's parallelism check is measured against.
+2. **From the PRD, extract into a scratch note** (never into the repository): the vocabulary, the scope and the
    do-not-build list, the acceptance bar, the build decisions already taken, the repositories the work touches that
    this team does not own, the screens (phase 1), the data types or interfaces several parts share (the **contracts**),
    and every question the PRD leaves open.
-2. **Inventory the backlog — mandatory, never skipped.**
+3. **Inventory the backlog — mandatory, never skipped.**
    `gh issue list --state open --limit 200 --json number,title,labels,assignees,body`, and
    `gh issue list --state open --label epic --json number,title`. For every open issue, decide which PRD section (if
    any) it already covers. A large backlog or an unfamiliar repository may go to `inventory-<slug>` with a bounded
@@ -122,7 +126,7 @@ A failure is reported in one line and the story stays `needs-human` with the per
    - **An open epic already matches a PRD area → reuse it** as the parent; a new epic is created only when none fits.
    - **A closed issue** covered something once → it does not now; cut the story (never defer to a closed issue).
    - **Code on `main` already does it** → no story; say so in the plan under "already done".
-3. **Check the layout against the PRD.** `ls` the application and test paths. A project with no code yet needs a
+4. **Check the layout against the PRD.** `ls` the application and test paths. A project with no code yet needs a
    **scaffold story** (the project skeleton, the build, the test runner, the gate commands filled into `CLAUDE.md`);
    a project that already builds and tests does not.
 
@@ -180,9 +184,10 @@ Epic → story is a **native sub-issue**, never a text list.
 "blocked by" relation (what people see). Existing open issues from phase 2 appear here like any other blocker.
 
 **The parallelism check — do it on paper before anything is filed.** Assign every story its level (0 when nothing
-blocks it, else one more than its highest blocker; an existing open blocker counts at the level it would have).
-Then walk the levels: at level 1 and every level below it, the number of stories that become unblocked at once must
-be **at least the developer count** while later levels still hold work. A level that leaves developers idle is
+blocks it, else one more than its highest blocker; an existing open blocker counts at the level it would have). The
+**contract level** is the lowest level that is not the scaffold: 1 when there is a scaffold, 0 when there is none.
+Then walk the levels: from the contract level on, the number of stories that become unblocked at once must be
+**at least the developer count** while later levels still hold work. A level that leaves developers idle is
 re-cut: split a seam that is really two, promote a shared piece to a contract story, or drop a blocker that is not a
 real dependency. Write the per-level counts into the plan; the person sees them.
 
@@ -239,8 +244,10 @@ File in dependency order, so every blocker exists before the issue it blocks:
 5. **Rebuild the issue map** when `.claude/skills/issue-map/` is installed: run its generator with no arguments in
    the background, as its own command, never chained. Its footer confirms the body sections and native relations agree.
 6. **Ask once, after the batch:** "Should we update the PRD with this too?" — one line per change the interview made
-   to the product (naming the PRD section), only when there is one. "No" ends it; "yes" → a `docs(prd)` pull request
-   on a `feat/` branch in a worktree, merged by a human; never pushed to `main`.
+   to the product (naming the PRD section), only when there is one. "No" ends it; "yes" → spawn `prd-update-<slug>`
+   with the exact lines and sections: it works in its own worktree on `feature/prd-update-<slug>` (or the project's
+   own branch pattern), commits only the PRD and the changelog line, opens a `docs(prd)` pull request a human merges,
+   and returns its link. Never pushed to `main`.
 7. **Close-out, ten lines or fewer:** epics and stories filed (counts per level against the developer count), which
    story `/dev-next` takes first (the scaffold, or the contract stories when there is no scaffold), every
    `needs-human` item with who acts and what, every `outside-change` with who drives it, the prototype pull request
@@ -250,8 +257,8 @@ File in dependency order, so every blocker exists before the issue it blocks:
 
 ## Rules that are not negotiable
 
-0. **Never push to `main`.** This session writes nothing to the repository; the prototype and a PRD update each land
-   as a pull request a human merges.
+0. **Never push to `main`.** This session writes nothing to the repository; the prototype and a PRD update are each
+   written by a sub-agent in its own worktree and land as a pull request a human merges.
 1. **Nothing is filed `agent-ready` with a question left.** `agent-ready` and `needs-human` never sit together.
 2. **`outside-change` never travels alone**: always `needs-human`, always `### External reference`, never built here.
 3. **Both blocker forms, always, read back.** The body section for agents, the native relation for people.
