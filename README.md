@@ -9,7 +9,13 @@
 
 **orion is a framework you install into your own project** to help you build software better and faster with [Claude Code](https://claude.com/claude-code), Anthropic's AI coding assistant.
 
-Once installed, it gives the assistant a shared set of working rules and ready-made abilities for the everyday tasks of a software project, so every person on the team gets the same, consistent help from day one. It lives inside the project itself, so there is nothing for teammates to set up: whoever clones the project gets orion with it, and improvements arrive with a normal update.
+Once installed, it lives inside the project itself, so there is nothing for teammates to set up: whoever clones the project gets orion with it, and improvements arrive with a normal update.
+
+## What you get
+
+- **Skills** – ready-made abilities for the everyday tasks of a software project, which the assistant can run on request.
+- **Working rules** – a set of good practices added on top of your project's own instructions file (`CLAUDE.md`), so the assistant works the same careful way for everyone on the team. Your own rules stay yours and always win.
+- **A status bar** (optional, per computer) – a one-line display at the bottom of the assistant that shows useful live information such as time, cost and usage while you work.
 
 ## Install
 
@@ -35,6 +41,8 @@ irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
 That is all. The command fetches the latest orion, puts it into your project and tells you what it added. Save (commit) those files to your project so your teammates get them too.
 
 Prefer to let the assistant do it? Open Claude Code in your project and say *"set up orion in this project"*.
+
+The status bar is not installed by default, because it is a personal setting rather than part of the project. If you want it, add `--statusline` to the end of the Mac/Linux command above, or answer *yes* when the installer asks.
 
 ## Keeping it up to date
 
