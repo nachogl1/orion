@@ -5,7 +5,7 @@
 # Usage:
 #   ./install.sh                       # interactive install
 #   ./install.sh --target claude --schedule daily
-#   ./install.sh --statusline          # also configure the orion status line
+#   ./install.sh --statusline          # also install + enable the status line baseline (once; yours after)
 #   ./install.sh --force               # overwrite non-orion entries without asking
 #   ./install.sh --update              # called by cron; pull + re-copy all skills
 #   ./install.sh --help
@@ -116,74 +116,68 @@ echo ""
 echo "[$added added, $updated updated, $pruned pruned, $skipped skipped] -> $TARGET_DIR"
 
 # ---------------------------------------------------------------------------
-# Status line - copy ./statusline to ~/.claude/statusline-orion (same copy +
-# marker pattern as skills, so --update re-copies it), then optionally point the
-# statusLine setting in ~/.claude/settings.json at it (opt-in; never in --update).
+# Status line (baseline) - copy ./baselines/statusline to ~/.claude/statusline
+# ONCE, then optionally point the statusLine setting in ~/.claude/settings.json
+# at it. The copy is the user's from then on: --update never touches it, and a
+# re-install leaves an existing copy alone unless --force is given. A
+# `.orion-baseline` marker only records where the copy came from.
 # ---------------------------------------------------------------------------
-STATUS_SOURCE="$REPO_ROOT/statusline"
-STATUS_LINK="$HOME/.claude/statusline-orion"
+STATUS_SOURCE="$REPO_ROOT/baselines/statusline"
+STATUS_DEST="$HOME/.claude/statusline"
+STATUS_MARKER=".orion-baseline"
+LEGACY_DEST="$HOME/.claude/statusline-orion"
 
-if [ -d "$STATUS_SOURCE" ]; then
-    link_ok=0
-    status_is_ours=0
-    [ -f "$STATUS_LINK/$MARKER" ] && status_is_ours=1
-    if [ -e "$STATUS_LINK" ] && [ "$status_is_ours" != "1" ]; then
-        if [ "$UPDATE" = "1" ]; then
-            echo "  skip statusline-orion (exists, not ours)"
-        else
-            do_replace="$FORCE"
-            if [ "$do_replace" != "1" ]; then
-                read -r -p "  !  statusline-orion exists and is not an orion copy. Overwrite? [y/N] " resp
-                [[ "$resp" =~ ^[Yy]$ ]] && do_replace=1
-            fi
-            if [ "$do_replace" = "1" ]; then
-                copy_managed "$STATUS_SOURCE" "$STATUS_LINK"
-                echo "  +    statusline-orion"
-                link_ok=1
-            else
-                echo "  skip statusline-orion"
-            fi
-        fi
-    else
-        copy_managed "$STATUS_SOURCE" "$STATUS_LINK"
-        if [ "$status_is_ours" = "1" ]; then
-            echo "  ~    statusline-orion (updated)"
-        else
-            echo "  +    statusline-orion"
-        fi
-        link_ok=1
+if [ -d "$STATUS_SOURCE" ] && [ "$UPDATE" != "1" ]; then
+    # Pre-baseline installs kept a managed copy at statusline-orion; retire it.
+    if [ -f "$LEGACY_DEST/$MARKER" ]; then
+        rm -rf "$LEGACY_DEST"
+        echo "  -    statusline-orion (old managed copy; the status line is now a baseline)"
     fi
 
-    if [ "$link_ok" = "1" ] && [ "$UPDATE" != "1" ]; then
-        configure="$STATUSLINE"
-        if [ "$configure" != "1" ] && [ "$FORCE" != "1" ]; then
-            read -r -p "Configure the orion status line in ~/.claude/settings.json? [y/N] " resp
-            [[ "$resp" =~ ^[Yy]$ ]] && configure=1
-        fi
-        if [ "$configure" = "1" ]; then
-            settings="$HOME/.claude/settings.json"
-            sl_cmd="bash \"$STATUS_LINK/statusline.sh\""
-            mkdir -p "$HOME/.claude"
-            if [ -f "$settings" ]; then
-                tmp=$(mktemp)
-                jq --arg cmd "$sl_cmd" '.statusLine = {type: "command", command: $cmd}' "$settings" > "$tmp" && mv "$tmp" "$settings"
+    want="$STATUSLINE"
+    if [ "$want" != "1" ] && [ "$FORCE" != "1" ]; then
+        read -r -p "Install the orion status line baseline to ~/.claude/statusline and enable it in ~/.claude/settings.json? [y/N] " resp
+        [[ "$resp" =~ ^[Yy]$ ]] && want=1
+    fi
+    if [ "$want" = "1" ]; then
+        exists=0
+        [ -f "$STATUS_DEST/statusline.sh" ] && exists=1
+        if [ "$exists" = "1" ] && [ "$FORCE" != "1" ]; then
+            echo "  =    statusline (already installed - yours to edit; delete the folder or pass --force to re-seed from the baseline)"
+        else
+            rm -rf "$STATUS_DEST"
+            mkdir -p "$STATUS_DEST"
+            cp -R "$STATUS_SOURCE"/. "$STATUS_DEST"
+            printf '%s' "$STATUS_SOURCE" > "$STATUS_DEST/$STATUS_MARKER"
+            if [ "$exists" = "1" ]; then
+                echo "  ~    statusline (re-seeded from the baseline)"
             else
-                jq -n --arg cmd "$sl_cmd" '{statusLine: {type: "command", command: $cmd}}' > "$settings"
+                echo "  +    statusline"
             fi
-            echo "statusLine configured in $settings"
-
-            # Pre-warm the month-to-date cost cache (the file the status line
-            # actually reads) so the first render shows the real figure instead
-            # of the "$..." placeholder. Without this the in-script background
-            # refresh leaves it pending until the first npx ccusage run finishes.
-            # Best-effort: needs node/npx.
-            echo "Warming the month-to-date cost cache (one-time, needs node/npx)..."
-            ( since=$(date +%Y%m01)
-              cache="$HOME/.cache/claude-statusline/cost-mtd.txt"
-              mkdir -p "$(dirname "$cache")" 2>/dev/null
-              total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r '.totals.totalCost // empty')
-              [ -n "$total" ] && printf '%.2f' "$total" > "$cache" && echo "  cost cache: $total" ) || true
         fi
+
+        settings="$HOME/.claude/settings.json"
+        sl_cmd="bash \"$STATUS_DEST/statusline.sh\""
+        mkdir -p "$HOME/.claude"
+        if [ -f "$settings" ]; then
+            tmp=$(mktemp)
+            jq --arg cmd "$sl_cmd" '.statusLine = {type: "command", command: $cmd}' "$settings" > "$tmp" && mv "$tmp" "$settings"
+        else
+            jq -n --arg cmd "$sl_cmd" '{statusLine: {type: "command", command: $cmd}}' > "$settings"
+        fi
+        echo "statusLine configured in $settings"
+
+        # Pre-warm the month-to-date cost cache (the file the status line
+        # actually reads) so the first render shows the real figure instead
+        # of the "$..." placeholder. Without this the in-script background
+        # refresh leaves it pending until the first npx ccusage run finishes.
+        # Best-effort: needs node/npx.
+        echo "Warming the month-to-date cost cache (one-time, needs node/npx)..."
+        ( since=$(date +%Y%m01)
+          cache="$HOME/.cache/claude-statusline/cost-mtd.txt"
+          mkdir -p "$(dirname "$cache")" 2>/dev/null
+          total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r '.totals.totalCost // empty')
+          [ -n "$total" ] && printf '%.2f' "$total" > "$cache" && echo "  cost cache: $total" ) || true
     fi
 fi
 

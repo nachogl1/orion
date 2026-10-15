@@ -39,7 +39,7 @@ cd orion
 The installer:
 
 1. Copies each skill in `./skills/` into the agent's skills directory (default: Claude Code → `~/.claude/skills/`), marking each copy `.orion-managed`.
-2. Offers the optional [status line](#status-line-optional) with a y/N prompt (skipped when running with `-Force` / `--force`, or pre-answered with `-StatusLine` / `--statusline`).
+2. Offers the optional [status line baseline](#status-line-baseline-optional) with a y/N prompt (skipped when running with `-Force` / `--force`, or pre-answered with `-StatusLine` / `--statusline`).
 3. Registers a scheduled auto-pull **only if you ask for it** via `-Schedule` / `--schedule` (default: **none** — manual updates are recommended).
 
 Non-interactive form (no scheduled task registered):
@@ -103,20 +103,20 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 
 ## Base CLAUDE.md baseline
 
-[`baselines/BASE_CLAUDE.md`](baselines/BASE_CLAUDE.md) is a starting `CLAUDE.md` for a new project run the orion way:
+`baselines/` holds starting points you copy and then own. [`baselines/BASE_CLAUDE.md`](baselines/BASE_CLAUDE.md) is a starting `CLAUDE.md` for a new project run the orion way:
 tracker-driven stories, worktree-per-issue, fresh-agent review, merge on green, one audit pile harvested with a human.
 Copy it to `<repo>/CLAUDE.md` and fill every `<angle-bracket>` slot (tracker, stack, commands, worktree root); delete
 the bullets the project has no use for. It is not installed by the installer — it is copied into a project by hand.
 
-## Status line (optional)
+## Status line baseline (optional)
 
-Besides skills, the repo ships a shared **Claude Code status line** (`statusline/`) you can opt into. One line, live in every session:
+Besides skills, the repo ships a **Claude Code status line** as a baseline (`baselines/statusline/`): install it if you want it, then it is yours to change. One line, live in every session:
 
 > `1h23m` | `ctx: 42.5%` | `[branch] ◆0 ◯1 ●2 ▲1` | `#12 ok` | **`$1.23`** `$345.67` | `Opus` | `effort:high` | `⚑0` | `5h:23% ↻2h14m` | `7d:41% ↻3d5h`
 
 - session alive time, context-usage % (color-coded), git branch + state indicators, PR status for the current branch (cached, background-refreshed), **cost**: API-equivalent USD for the **open session** (green) plus the **current calendar month to date across all projects** (blue, computed from local transcripts via [ccusage](https://github.com/ryoppippi/ccusage)), the **model name**, the **reasoning-effort level** (when the model exposes one), a **jobs flag** (`⚑N` when background agent sessions are running), and — rightmost, each in its own colour — the **subscription usage limits**: how much of the **5-hour** and **7-day** window is used and how long until each refreshes (subscription sessions only).
-- installed with the same copy + `.orion-managed` marker mechanism as skills (`~/.claude/statusline-orion`), so `-Update` / `--update` re-copies status-line improvements too.
-- activating it (writing the `statusLine` entry into `~/.claude/settings.json`) is **opt-in**: pass `-StatusLine` / `--statusline` to the installer, or answer the y/N prompt during an interactive install.
+- **a baseline, not a managed copy**: the installer copies the folder **once** to `~/.claude/statusline` and writes the `statusLine` entry into `~/.claude/settings.json`. After that the copy is yours — edit it freely; `-Update` / `--update` never touches it. To reset to the baseline, delete the folder or pass `-Force` / `--force` with the switch below.
+- installing it is **opt-in**: pass `-StatusLine` / `--statusline` to the installer, or answer the y/N prompt during an interactive install.
 
 ```powershell
 .\install.ps1 -StatusLine            # Windows
@@ -125,7 +125,7 @@ Besides skills, the repo ships a shared **Claude Code status line** (`statusline
 ./install.sh --statusline             # macOS / Linux
 ```
 
-Requirements and details (jq required; gh and node optional): see [`statusline/README.md`](statusline/README.md).
+Requirements and details (jq required; gh and node optional): see [`baselines/statusline/README.md`](baselines/statusline/README.md).
 
 ## Add a new skill
 
@@ -142,14 +142,14 @@ Requirements and details (jq required; gh and node optional): see [`statusline/R
 ./uninstall.sh                    # macOS / Linux
 ```
 
-Removes the managed copies (skills and status line — any folder carrying the `.orion-managed` marker), removes the `statusLine` entry from `~/.claude/settings.json` if it points at our copy, and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
+Removes the managed skill copies (any folder carrying the `.orion-managed` marker), removes the `statusLine` entry from `~/.claude/settings.json` if it points at the baseline copy (the `~/.claude/statusline` folder itself is left for you to delete, since it may carry your edits), and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
 
 ## Contributing
 
 The working rules for changes to this repo live in [`CLAUDE.md`](CLAUDE.md) — read it before contributing (it's written for AI agents working in the repo, but the rules bind humans equally). The short version:
 
 - **Distribution safety (highest-priority rule).** Everything here is publicly distributable. Never introduce anything that identifies a specific person, team, company, product, private repo, or machine — in prose, code, examples, placeholders, **and git metadata (commit messages, PR titles, PR bodies)**. Use runtime-resolved placeholders (`<repo-name>`, `<gh-login>`, `#<N>`, `~/.claude`) instead; skills detect everything project-specific from the target repo at run time. Self-check your diff *and* your commit/PR text before pushing.
-- **Versioning.** All current skills (and the status line) are edited in place. Skills carrying a `-vN` suffix are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README.
+- **Versioning.** All current skills (and the baselines) are edited in place. Skills carrying a `-vN` suffix are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README.
 - **Issues.** Before filing one, dedupe first — search open issues *and* the code; never point at a **closed** issue as the reason to skip work.
 - **PR/commit hygiene.** Branch off `main`; commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`, e.g. `fix(installer): guard junction delete`); keep installer scripts pure-ASCII and Windows-PowerShell-5.1-compatible; keep PR bodies as generic as the code they describe.
 

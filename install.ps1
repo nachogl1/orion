@@ -28,9 +28,11 @@
   overwrites entries that are not ours (no `.orion-managed` marker).
 
 .PARAMETER StatusLine
-  Also configure the orion status line in ~/.claude/settings.json (points the
-  statusLine setting at the copied statusline script). Without this switch the
-  interactive install offers it as a y/N prompt; -Update never touches settings.
+  Also install the status line baseline (copies ./baselines/statusline to
+  ~/.claude/statusline once - the copy is yours to edit afterwards) and point
+  the statusLine setting in ~/.claude/settings.json at it. Without this switch
+  the interactive install offers it as a y/N prompt. -Update never touches it;
+  -StatusLine -Force re-seeds an existing copy from the baseline.
 
 .PARAMETER Help
   Show this usage and exit.
@@ -146,61 +148,56 @@ Write-Host ""
 Write-Host "[$added added, $updated updated, $pruned pruned, $skipped skipped] -> $targetDir"
 
 # ---------------------------------------------------------------------------
-# Status line - copy ./statusline to ~/.claude/statusline-orion (same copy +
-# marker pattern as skills, so -Update re-copies it), then optionally point the
-# statusLine setting in ~/.claude/settings.json at it (opt-in; never in -Update).
+# Status line (baseline) - copy ./baselines/statusline to ~/.claude/statusline
+# ONCE, then optionally point the statusLine setting in ~/.claude/settings.json
+# at it. The copy is the user's from then on: -Update never touches it, and a
+# re-install leaves an existing copy alone unless -Force is given. A
+# `.orion-baseline` marker only records where the copy came from.
 # ---------------------------------------------------------------------------
-$statusSource = Join-Path $repoRoot 'statusline'
-$statusLink   = Join-Path $HOME '.claude\statusline-orion'
+$statusSource = Join-Path $repoRoot 'baselines\statusline'
+$statusDest   = Join-Path $HOME '.claude\statusline'
+$statusMarker = '.orion-baseline'
+$legacyDest   = Join-Path $HOME '.claude\statusline-orion'
 
-if (Test-Path $statusSource) {
-    $linkOk = $false
-    $statusIsOurs = (Test-Path $statusLink) -and (Test-Path -LiteralPath (Join-Path $statusLink $markerName))
-    if ((Test-Path $statusLink) -and -not $statusIsOurs) {
-        if ($Update) {
-            Write-Host "  skip statusline-orion (exists, not ours)"
-        } else {
-            $doReplace = $Force
-            if (-not $doReplace) {
-                $resp = Read-Host "  !  statusline-orion exists and is not an orion copy. Overwrite? [y/N]"
-                $doReplace = $resp -match '^[Yy]'
-            }
-            if ($doReplace) {
-                Copy-Managed -Source $statusSource -Dest $statusLink
-                Write-Host "  +    statusline-orion"
-                $linkOk = $true
-            } else {
-                Write-Host "  skip statusline-orion"
-            }
-        }
-    } else {
-        Copy-Managed -Source $statusSource -Dest $statusLink
-        if ($statusIsOurs) { Write-Host "  ~    statusline-orion (updated)" }
-        else               { Write-Host "  +    statusline-orion" }
-        $linkOk = $true
+if ((Test-Path $statusSource) -and -not $Update) {
+    # Pre-baseline installs kept a managed copy at statusline-orion; retire it.
+    if ((Test-Path $legacyDest) -and (Test-Path -LiteralPath (Join-Path $legacyDest $markerName))) {
+        Remove-Item -LiteralPath $legacyDest -Recurse -Force
+        Write-Host "  -    statusline-orion (old managed copy; the status line is now a baseline)"
     }
 
-    if ($linkOk -and -not $Update) {
-        $configure = $StatusLine
-        if (-not $configure -and -not $Force) {
-            $resp = Read-Host "Configure the orion status line in ~/.claude/settings.json? [y/N]"
-            $configure = $resp -match '^[Yy]'
+    $want = $StatusLine
+    if (-not $want -and -not $Force) {
+        $resp = Read-Host "Install the orion status line baseline to ~/.claude/statusline and enable it in ~/.claude/settings.json? [y/N]"
+        $want = $resp -match '^[Yy]'
+    }
+    if ($want) {
+        $exists = Test-Path (Join-Path $statusDest 'statusline.sh')
+        if ($exists -and -not $Force) {
+            Write-Host "  =    statusline (already installed - yours to edit; delete the folder or pass -Force to re-seed from the baseline)"
+        } else {
+            if (Test-Path $statusDest) { Remove-Item -LiteralPath $statusDest -Recurse -Force }
+            New-Item -ItemType Directory -Path $statusDest -Force | Out-Null
+            Copy-Item -Path (Join-Path $statusSource '*') -Destination $statusDest -Recurse -Force
+            Set-Content -LiteralPath (Join-Path $statusDest $statusMarker) -Value $statusSource -NoNewline -Encoding ASCII
+            if ($exists) { Write-Host "  ~    statusline (re-seeded from the baseline)" }
+            else         { Write-Host "  +    statusline" }
         }
-        if ($configure) {
-            $settingsPath = Join-Path $HOME '.claude\settings.json'
-            $slScript = (Join-Path $statusLink 'statusline.sh') -replace '\\','/'
-            $settings = $null
-            if (Test-Path $settingsPath) {
-                try {
-                    $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
-                } catch {
-                    Write-Host "  !  $settingsPath is not valid JSON - skipping statusLine configuration."
-                    Write-Host "     Fix (or delete) the file, then re-run .\install.ps1 -StatusLine"
-                }
-            } else {
-                $settings = New-Object PSCustomObject
+
+        $settingsPath = Join-Path $HOME '.claude\settings.json'
+        $slScript = (Join-Path $statusDest 'statusline.sh') -replace '\\','/'
+        $settings = $null
+        if (Test-Path $settingsPath) {
+            try {
+                $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
+            } catch {
+                Write-Host "  !  $settingsPath is not valid JSON - skipping statusLine configuration."
+                Write-Host "     Fix (or delete) the file, then re-run .\install.ps1 -StatusLine"
             }
-            if ($null -ne $settings) {
+        } else {
+            $settings = New-Object PSCustomObject
+        }
+        if ($null -ne $settings) {
             $slValue = [PSCustomObject]@{ type = 'command'; command = "bash `"$slScript`"" }
             if ($settings.PSObject.Properties['statusLine']) {
                 $settings.statusLine = $slValue
@@ -226,7 +223,6 @@ total=$(npx -y ccusage daily --json --since "$since" 2>/dev/null | jq -r ".total
 [ -n "$total" ] && printf "%.2f" "$total" > "$cache" && echo "  cost cache: $total"
 '@
             try { $warm | bash 2>$null } catch { }
-            }
         }
     }
 }

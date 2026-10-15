@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# orion status line for Claude Code
+# orion status line for Claude Code (baseline)
 #
 # Segments (left to right):
 #   - session alive time (cyan)
@@ -20,8 +20,9 @@
 # node/npx (month-to-date cost segment — shows "$..." until available).
 # Caches live under ~/.cache/claude-statusline/.
 #
-# Install: copied to ~/.claude/statusline-orion by this repo's installer; see
-# statusline/README.md for the settings.json entry that activates it.
+# Install: the repo installer copies this folder ONCE to ~/.claude/statusline
+# (`-StatusLine` / `--statusline`). That copy is yours: edit it freely, it is
+# never overwritten by an update. See baselines/statusline/README.md.
 
 input=$(cat)
 
