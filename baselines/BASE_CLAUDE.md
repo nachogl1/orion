@@ -117,6 +117,10 @@ on product, this file wins on process.
   merge runs it on the merged branch. Never both.
 - **Never merge on red or pending.** "No checks reported" is red. Poll for the check run first: the host can take minutes.
 - **A story that changes user-visible behaviour updates the run-book** (`docs/runbook.md`) in the same pull request.
+- **Every pull request adds its change to `docs/CHANGELOG.md`**, newest first, in the same pull request: one line per
+  change saying what changed and why it matters, nothing more. No prose, no restating the diff, no entry that only
+  repeats another one. A pull request that changes nothing a reader of the changelog would care about (typo, CI
+  plumbing) still gets its line, kept to a few words.
 
 ## 5 · Build and test commands
 
