@@ -6,7 +6,8 @@
 # only per-computer piece is the optional status line.
 #
 # Usage (run inside the project, or pass --project <dir>):
-#   orion.sh init      [--source <git url|path>] [--ref <branch>] [--statusline|--no-statusline] [--force]
+#   orion.sh init      [--source <git url|path>] [--ref <branch>] [--update-mode ask|auto|off]
+#                      [--statusline|--no-statusline] [--force]
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
 #   orion.sh check     [--force]        # session-start hook: is a newer orion available? (once a day)
 #   orion.sh status                     # what is installed, which version, which update mode
@@ -25,7 +26,7 @@
 # What orion creates ONCE and never touches again (yours):
 #   CLAUDE.md                         created with the project-specific slots if missing; otherwise
 #                                     only the import line for BASE_CLAUDE.md is added at the top
-#   .claude/orion/config.json         updateMode: ask | auto | off, plus source/ref
+#   .claude/orion/config.json         updateMode: ask | auto | off (chosen during init), plus source/ref
 #   .claude/settings.json             one SessionStart hook entry is added (removed on uninstall)
 
 set -euo pipefail
@@ -287,8 +288,8 @@ apply_skills() {  # mode(init|update) force(0|1)
     say "  skills: $added added, $updated updated, $pruned removed, $skipped skipped"
 }
 
-apply_core() {  # source ref
-    local dir="$PROJECT/.claude/orion" tmp
+apply_core() {  # source ref update-mode
+    local dir="$PROJECT/.claude/orion" tmp mode="${3:-ask}"
     mkdir -p "$dir"
     # orion.sh may be the script currently running: write beside, then mv (atomic).
     tmp="$dir/.orion.sh.new"; cp "$SRC_DIR/orion.sh" "$tmp"; chmod +x "$tmp"; mv -f "$tmp" "$dir/orion.sh"
@@ -297,8 +298,8 @@ apply_core() {  # source ref
     printf '%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/VERSION"
     printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest" > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
-        printf '{\n  "updateMode": "ask",\n  "source": "%s",\n  "ref": "%s"\n}\n' "$1" "$2" > "$dir/config.json"
-        say "  +    .claude/orion/config.json (yours: updateMode ask | auto | off)"
+        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s"\n}\n' "$mode" "$1" "$2" > "$dir/config.json"
+        say "  +    .claude/orion/config.json (yours: updateMode $mode; edit to ask | auto | off)"
     fi
     say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION} @ $(short "$SRC_SHA")"
 }
@@ -417,11 +418,12 @@ install_statusline() {  # force
 # commands
 # --------------------------------------------------------------------------
 cmd_init() {
-    local source="$ORION_DEFAULT_SOURCE" ref="$ORION_DEFAULT_REF" force=0 statusline="prompt" project="" resp
+    local source="$ORION_DEFAULT_SOURCE" ref="$ORION_DEFAULT_REF" force=0 statusline="prompt" project="" resp mode=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --source) source="$2"; shift 2 ;;
             --ref) ref="$2"; shift 2 ;;
+            --update-mode) mode="$2"; shift 2 ;;
             --project) project="$2"; shift 2 ;;
             --force) force=1; shift ;;
             --statusline) statusline=yes; shift ;;
@@ -435,11 +437,21 @@ cmd_init() {
     if [ -f "$cfg" ]; then
         source="$(config_get "$cfg" source "$source")"; ref="$(config_get "$cfg" ref "$ref")"
     fi
+    case "$mode" in ""|ask|auto|off) ;; *) die "--update-mode must be ask, auto or off (got: $mode)" ;; esac
     say "orion init -> $PROJECT"
+    # config.json is written once and never touched again, so the update mode is chosen here.
+    if [ -z "$mode" ] && [ ! -f "$cfg" ] && is_tty; then
+        say "When a newer orion exists, what should happen at session start?"
+        say "  1) ask   - offer the update and let you say yes or no (default)"
+        say "  2) auto  - update by itself and tell you in one line"
+        say "  3) off   - never check"
+        read -r -p "Choose [1/2/3] (Enter = ask): " resp
+        case "$resp" in 2|auto) mode=auto ;; 3|off) mode=off ;; *) mode=ask ;; esac
+    fi
     fetch_source "$source" "$ref"
     retire_user_level_copies
     apply_skills init "$force"
-    apply_core "$source" "$ref"
+    apply_core "$source" "$ref" "${mode:-ask}"
     apply_claude_md
     settings_add_hook "$PROJECT/.claude/settings.json"
     if [ "$statusline" = "prompt" ]; then
