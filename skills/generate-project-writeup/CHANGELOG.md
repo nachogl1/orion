@@ -1,9 +1,11 @@
-# Changelog — generate-project-writeup-orion
+# Changelog — generate-project-writeup
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
 
 ## Unreleased
 
+- **Renamed to `generate-project-writeup`** (the `-orion` suffix is dropped) and the
+  description now starts with `ORION -` so the origin stays visible in skill listings.
 - **COCOMO phase split disambiguated.** The nominal 7/17/25/22/22/7 split listed six
   percentages against four phase names; the six waterfall buckets are now named
   (Plans & Requirements / Product Design / Detailed Design / Code & Unit Test /
@@ -58,7 +60,7 @@ This skill has **no `-vN` convention** — it is edited in place. Record notable
   (`~/Downloads/<repo-name>-project-writeup-<YYYY-MM-DD>.docx`).
 - **Audience: leadership / commercial stakeholders** — a closure/delivery write-up that marks
   a project as done, in clear business English (not a technical successor handover — that's
-  `project-handover-orion`).
+  `project-handover`).
 - **Economics-first, transparent, and honest.** Headlines a cost comparison: a defensible
   *traditional team × duration × blended-rate* baseline vs. the **actual observed delivery**
   (FTE × calendar months), with money/time/% savings. Uses the **COCOMO II Post-Architecture

@@ -1,6 +1,11 @@
-# Changelog — project-handover-orion
+# Changelog — project-handover
 
 This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
+
+## Renamed to `project-handover`
+
+- The `-orion` suffix is dropped and the description now starts with `ORION -` so the
+  origin stays visible in skill listings.
 
 ## Diagrams are HTML/CSS, not ASCII
 

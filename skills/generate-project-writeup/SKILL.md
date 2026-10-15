@@ -1,14 +1,14 @@
 ---
-name: generate-project-writeup-orion
-description: "Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to summarise the work delivered to date. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user by NAMING the real contributors — both the embedded business-unit (BU) developers/owners and the central/shared specialist delivery-team developers — with the headcount and team-origin split derived from those named lists (git author lists over/under-count bots, AI-agent commits, and part-timers). It also ALWAYS confirms the project's start and end dates with the user and shows the total elapsed duration. NEUTRAL ON COMPLETION: it describes what has been delivered without claiming the project is finished to completion or production-ready, and equally without stating it is unfinished. Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads (deleting any sidecar/temporary files it creates once the .docx is rendered); it never edits the repo and never commits. Use when the user says '/generate-project-writeup-orion', 'generate a project write-up', 'write up a project summary report', 'project summary / status report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document summarising a project for leadership."
+name: generate-project-writeup
+description: "ORION - Generate a single polished Microsoft Word (.docx) PROJECT WRITE-UP / SUMMARY REPORT for the current repository, dropped into the user's Downloads folder, written for LEADERSHIP / COMMERCIAL STAKEHOLDERS to summarise the work delivered to date. It leads with an economic case — a transparent cost comparison (a defensible traditional team x duration x blended-rate baseline, cross-referenced to the COCOMO II Post-Architecture phase model) against the ACTUAL observed delivery, headlining the savings and time-to-market compression of an AI-assisted build. The contributor count and full-time/part-time FTE split that drive the cost math are ALWAYS confirmed with the user by NAMING the real contributors — both the embedded business-unit (BU) developers/owners and the central/shared specialist delivery-team developers — with the headcount and team-origin split derived from those named lists (git author lists over/under-count bots, AI-agent commits, and part-timers). It also ALWAYS confirms the project's start and end dates with the user and shows the total elapsed duration. NEUTRAL ON COMPLETION: it describes what has been delivered without claiming the project is finished to completion or production-ready, and equally without stating it is unfinished. Up front it also asks the user for an RFA or other supporting documents (business case, original pre-build estimate, rate card, revenue figures) so the economic baseline and value sections are populated from real, cited data rather than guesses. After the financial summary it assembles: project overview (what it is, the problem solved, the solution), scale-of-work quantitative metrics measured from the real repo (LOC split prod vs test, commits, duration, modules, models, endpoints, tests, docs), technical architecture (backend/frontend/infra stack tables with rationale), architecture patterns, security implementation, core features, an 'invisible excellence' section (testing, code quality, design system), a traditional-vs-modern comparison, value delivered (risk reduction + OPEX saving; revenue only if a business case is supplied), and a documentation inventory. Detects the project's stack and conventions from its own files at run time — assumes no stack. Renders the .docx via a bundled zero-dependency Python generator (no pandoc / python-docx / Word install required), with pandoc and HTML fallbacks. INVENTS NO NUMBERS — every metric is measured or marked 'not measured'. STRICTLY READ-ONLY: it reads git + repo files and writes ONE .docx to Downloads (deleting any sidecar/temporary files it creates once the .docx is rendered); it never edits the repo and never commits. Use when the user says '/generate-project-writeup', 'generate a project write-up', 'write up a project summary report', 'project summary / status report for this project', 'project delivery summary for leadership', 'AI-assisted development summary', or wants a single shareable Word document summarising a project for leadership."
 user_invocable: true
 ---
 
-# generate-project-writeup-orion
+# generate-project-writeup
 
 > [!NOTE]
 > **Editing this skill?** This skill has **no `-vN` convention** — edit it in place
-> (like `project-handover-orion` / `handoff-orion`). Keep everything in the skill
+> (like `project-handover` / `handoff`). Keep everything in the skill
 > files **general** (see the Distribution-safety gate at the bottom) — this repo is
 > publicly distributable. The *report* it generates about a user's repo is a local
 > artifact in their Downloads and may name their project, people, and figures; the
@@ -27,12 +27,12 @@ The output lives at
 
 ## When to invoke
 
-User says `/generate-project-writeup-orion`, asks to **write up / summarise a project**,
+User says `/generate-project-writeup`, asks to **write up / summarise a project**,
 wants a **delivery or project-summary report for leadership**, an **AI-assisted
 development summary**, or a single shareable **Word document summarising the work delivered
 so far**.
 
-> Not to be confused with `project-handover-orion` (a *technical* handover to a
+> Not to be confused with `project-handover` (a *technical* handover to a
 > successor developer, HTML, dark theme) — **this** skill is an *executive/commercial
 > project write-up*, Word format, economics-first.
 
@@ -422,5 +422,5 @@ the skill files** — no person/org/product/codename/repo/stack/rate/locale/path
 prose, examples, or the generator. The **generated report** about a user's repo is a **local
 artifact** (in their Downloads) and may name their project, people, business unit, rates, and
 figures — that's expected; it is never committed back into this repo. What must stay general
-is everything under `skills/generate-project-writeup-orion/` itself (including any example JSON
+is everything under `skills/generate-project-writeup/` itself (including any example JSON
 or rates in `build_docx.py` — keep them neutral placeholders).

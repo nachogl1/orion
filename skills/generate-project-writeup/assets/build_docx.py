@@ -3,7 +3,7 @@
 """
 build_docx.py — zero-dependency JSON -> Microsoft Word (.docx) generator.
 
-Part of the orion skill `generate-project-writeup-orion`. Turns a structured JSON
+Part of the orion skill `generate-project-writeup`. Turns a structured JSON
 "report data" file into a styled .docx using ONLY the Python standard library
 (zipfile + string templating of OOXML). No python-docx, no pandoc, no Word
 install required — runs on any machine with Python 3.8+.

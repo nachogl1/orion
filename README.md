@@ -53,7 +53,7 @@ Non-interactive form (no scheduled task registered):
 
 ### After install
 
-Open any project in Claude Code and type `/handoff-orion` — the skill should start by asking where to save the handoff document.
+Open any project in Claude Code and type `/handoff` — the skill should start by asking where to save the handoff document.
 
 ## How updates work
 
@@ -96,10 +96,10 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 
 | Skill | What it does |
 |---|---|
-| **project-handover-orion** | Generates a plain-language, code-internals-free HTML handover document for stakeholders and new joiners, with a dated epics-and-stories snapshot. Strictly read-only. |
-| **generate-project-writeup-orion** | Generates a leadership-facing Word (`.docx`) project write-up that leads with a transparent traditional-vs-actual cost comparison; every metric measured or marked "not measured." Strictly read-only. |
-| **handoff-orion** | Distils the current conversation into a single markdown handoff document a fresh agent can continue from — goal, state, decisions + rationale, dead-ends, open questions, next steps — referencing existing artifacts by path/URL instead of copying them. Saves outside the workspace to a location you pick, redacts secrets/PII, and tailors to what the next session is for. Explicit-invocation only; no git changes. |
-| **wayfinder-orion** | Charts a chunk of work too big for one agent session as a shared *map* issue plus typed decision tickets on the repo's tracker (detected at run time) — destination first, sharp questions become tickets, blurry ones stay written-down "fog" until they sharpen, anything past the destination is ruled out of scope. Resolves one ticket per session and records the decision back onto the map. Planning only; it produces decisions, not the deliverable. Adapted from the MIT-licensed [`wayfinder`](https://github.com/mattpocock/skills) skill. |
+| **project-handover** | Generates a plain-language, code-internals-free HTML handover document for stakeholders and new joiners, with a dated epics-and-stories snapshot. Strictly read-only. |
+| **generate-project-writeup** | Generates a leadership-facing Word (`.docx`) project write-up that leads with a transparent traditional-vs-actual cost comparison; every metric measured or marked "not measured." Strictly read-only. |
+| **handoff** | Distils the current conversation into a single markdown handoff document a fresh agent can continue from — goal, state, decisions + rationale, dead-ends, open questions, next steps — referencing existing artifacts by path/URL instead of copying them. Saves outside the workspace to a location you pick, redacts secrets/PII, and tailors to what the next session is for. Explicit-invocation only; no git changes. |
+| **wayfinder** | Charts a chunk of work too big for one agent session as a shared *map* issue plus typed decision tickets on the repo's tracker (detected at run time) — destination first, sharp questions become tickets, blurry ones stay written-down "fog" until they sharpen, anything past the destination is ruled out of scope. Resolves one ticket per session and records the decision back onto the map. Planning only; it produces decisions, not the deliverable. Adapted from the MIT-licensed [`wayfinder`](https://github.com/mattpocock/skills) skill. |
 
 ## Status line (optional)
 
