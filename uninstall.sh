@@ -33,17 +33,21 @@ if [ -d "$TARGET_DIR" ]; then
     done
 fi
 
-# Status line: remove our copy and, if the statusLine setting points at it, the setting
-STATUS_LINK="$HOME/.claude/statusline-orion"
-if [ -f "$STATUS_LINK/$MARKER" ]; then
-    rm -rf "$STATUS_LINK"
-    echo "  -    statusline-orion"
-elif [ -e "$STATUS_LINK" ]; then
-    echo "  skip statusline-orion (not an orion copy)"
+# Status line: the baseline copy at ~/.claude/statusline is the user's (they may
+# have edited it), so it is left in place; only the settings entry pointing at
+# it is removed. A pre-baseline managed copy (statusline-orion) is removed.
+LEGACY_DEST="$HOME/.claude/statusline-orion"
+if [ -f "$LEGACY_DEST/$MARKER" ]; then
+    rm -rf "$LEGACY_DEST"
+    echo "  -    statusline-orion (old managed copy)"
+fi
+STATUS_DEST="$HOME/.claude/statusline"
+if [ -f "$STATUS_DEST/.orion-baseline" ]; then
+    echo "  =    statusline left in place (your copy of the baseline; delete $STATUS_DEST by hand if unwanted)"
 fi
 settings="$HOME/.claude/settings.json"
 if [ -f "$settings" ] && command -v jq >/dev/null 2>&1; then
-    if jq -e '.statusLine.command // "" | contains("statusline-orion")' "$settings" >/dev/null 2>&1; then
+    if jq -e '.statusLine.command // "" | test("statusline-orion|/\\.claude/statusline/statusline\\.sh")' "$settings" >/dev/null 2>&1; then
         tmp=$(mktemp)
         jq 'del(.statusLine)' "$settings" > "$tmp" && mv "$tmp" "$settings"
         echo "statusLine setting removed from $settings"

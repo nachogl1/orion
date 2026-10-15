@@ -35,9 +35,8 @@ This applies even when a task's source material (a handoff note, a report, a tra
 See [`README.md`](README.md) — Skills / Status line / Install / How updates work. Key agent-specific facts:
 
 - Each `skills/<name>/` is **copied** into `~/.claude/skills/<name>/` (no longer junctioned/symlinked — Windows stopped handling junctioned skill folders reliably). The installer drops an `.orion-managed` marker file inside every copy so it can recognise and refresh its own copies; ownership/prune decisions key off that marker, not a link target. Because copies are independent, **editing the repo file does NOT update the installed skill — every update re-copies** (`install.ps1 -Update` / `install.sh --update`).
-- The `statusline/` folder is copied the same way to `~/.claude/statusline-orion` (also `.orion-managed`-marked); activating it is opt-in (installer `-StatusLine` / `--statusline`). No `-vN` convention — edited in place.
 - After adding a skill folder, run `install.ps1` / `install.sh` (no `-Update`) to copy it into the target dir.
-- `baselines/` holds files a user copies into a project by hand (currently `BASE_CLAUDE.md`, a starter project `CLAUDE.md`). The installer does not touch it. Edited in place; every project-specific value stays an `<angle-bracket>` slot.
+- `baselines/` holds starting points the user copies and then owns: `BASE_CLAUDE.md` (a starter project `CLAUDE.md`, copied into a project by hand; every project-specific value stays an `<angle-bracket>` slot) and `statusline/` (the status line, copied **once** to `~/.claude/statusline` by the installer on `-StatusLine` / `--statusline`, never re-copied by `-Update`, no `.orion-managed` marker). Edited in place in the repo.
 - `SKILL.md` (uppercase) is the required entry-point file in every skill folder; longer skills also carry `README.md`, `PREREQUISITES.md`, `CHANGELOG.md`, and a `prompts/` folder.
 
 ## Filing issues — only when needed, dedupe first, and never defer to a dead issue

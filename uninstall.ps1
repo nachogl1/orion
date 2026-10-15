@@ -28,15 +28,17 @@ if (Test-Path $targetDir) {
     }
 }
 
-# Status line: remove our copy and, if the statusLine setting points at it, the setting
-$statusLink = Join-Path $HOME '.claude\statusline-orion'
-if (Test-Path $statusLink) {
-    if (Test-Path -LiteralPath (Join-Path $statusLink $markerName)) {
-        Remove-Item -LiteralPath $statusLink -Recurse -Force
-        Write-Host "  -    statusline-orion"
-    } else {
-        Write-Host "  skip statusline-orion (not an orion copy)"
-    }
+# Status line: the baseline copy at ~/.claude/statusline is the user's (they may
+# have edited it), so it is left in place; only the settings entry pointing at
+# it is removed. A pre-baseline managed copy (statusline-orion) is removed.
+$legacyDest = Join-Path $HOME '.claude\statusline-orion'
+if (Test-Path -LiteralPath (Join-Path $legacyDest $markerName)) {
+    Remove-Item -LiteralPath $legacyDest -Recurse -Force
+    Write-Host "  -    statusline-orion (old managed copy)"
+}
+$statusDest = Join-Path $HOME '.claude\statusline'
+if (Test-Path -LiteralPath (Join-Path $statusDest '.orion-baseline')) {
+    Write-Host "  =    statusline left in place (your copy of the baseline; delete $statusDest by hand if unwanted)"
 }
 $settingsPath = Join-Path $HOME '.claude\settings.json'
 if (Test-Path $settingsPath) {
@@ -47,7 +49,7 @@ if (Test-Path $settingsPath) {
         Write-Host "  !  $settingsPath is not valid JSON - leaving it untouched."
     }
     if ($null -ne $settings -and $settings.PSObject.Properties['statusLine'] -and `
-        "$($settings.statusLine.command)" -match 'statusline-orion') {
+        "$($settings.statusLine.command)" -match 'statusline-orion|/\.claude/statusline/statusline\.sh') {
         $settings.PSObject.Properties.Remove('statusLine')
         # WriteAllText -> UTF-8 without BOM (a BOM breaks Claude Code's JSON parse)
         [System.IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json -Depth 100))

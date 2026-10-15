@@ -1,6 +1,6 @@
-# orion status line
+# orion status line (baseline)
 
-A shared [Claude Code status line](https://docs.anthropic.com/en/docs/claude-code/statusline) showing, on one line:
+A starting-point [Claude Code status line](https://docs.anthropic.com/en/docs/claude-code/statusline) showing, on one line:
 
 | Segment | Color | Source |
 |---|---|---|
@@ -34,7 +34,7 @@ Cache files live under `~/.cache/claude-statusline/` — delete the folder to fo
 
 ## Install
 
-The repo installers **copy** this folder to `~/.claude/statusline-orion` (marked `.orion-managed`, like skills), so `-Update` / `--update` re-copies the status line like any skill (a plain `git pull` is not enough — the install must re-copy). Activating it in `~/.claude/settings.json` is **opt-in**:
+This is a **baseline**: the installer copies this folder **once** to `~/.claude/statusline` and points `statusLine` in `~/.claude/settings.json` at it. From then on the copy is **yours** — edit it freely. `-Update` / `--update` never touches it, and a re-install leaves it alone. To start again from the baseline, delete the folder (or pass `-Force` / `--force` together with the status-line switch). Installing is **opt-in**:
 
 ```powershell
 .\install.ps1 -StatusLine          # Windows
@@ -45,13 +45,13 @@ The repo installers **copy** this folder to `~/.claude/statusline-orion` (marked
 
 (The interactive installer also offers it as a y/N prompt.)
 
-Or configure manually — point `statusLine` at the copied script in `~/.claude/settings.json`:
+Or configure manually — copy the folder wherever you like and point `statusLine` at the script in `~/.claude/settings.json`:
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "bash \"<absolute path to home>/.claude/statusline-orion/statusline.sh\""
+    "command": "bash \"<absolute path to home>/.claude/statusline/statusline.sh\""
   }
 }
 ```
@@ -60,4 +60,4 @@ Or configure manually — point `statusLine` at the copied script in `~/.claude/
 
 ## Uninstall
 
-`uninstall.ps1` / `uninstall.sh` remove the managed copy and, if the `statusLine` setting points at it, remove that setting too.
+`uninstall.ps1` / `uninstall.sh` remove the `statusLine` setting if it points at the copy, but leave `~/.claude/statusline` in place (it is yours and may carry your edits) — delete the folder by hand if you no longer want it. A pre-baseline managed copy at `~/.claude/statusline-orion` is removed.
