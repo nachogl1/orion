@@ -21,29 +21,28 @@
 
 ## Work tracking
 
-- **The tracker named in the project's `CLAUDE.md` is the only source of truth.** PRD → epic → story. Agents implement
-  **stories** only, never an epic.
+- **GitHub Issues in the project's own repository are the only source of truth.** PRD → epic → story. Agents
+  implement **stories** only, never an epic. (`/dev-next` and `/harvest` drive GitHub Issues and nothing else.)
 - **The assignee owns the issue.** Assign yourself *before* writing any code. Never work on, edit or unassign someone
   else's. Two claims can land in the same second, so re-read after claiming: a second assignee, or an earlier
   "claimed by run …" comment from another run, means the earlier claim wins. The later run deletes its claim comment,
   drops its in-flight entry, unassigns itself only when the other assignee is a different login (two of your own
   terminals share one assignee, which stays), and takes the next issue.
 - **Blocked means blocked in either place.** An issue waits until every blocker is CLOSED — not "nearly done" —
-  whether listed under a `### Blocked by` heading in the body or set as the tracker's native blocking relation.
+  whether listed under a `### Blocked by` heading in the body or set as GitHub's native "blocked by" relation.
   Whoever writes a ticket sets **both**: the native relation for people, the body section for agents.
-- **Epic → story is the tracker's native parent/child link**, never a plain text list.
+- **Epic → story is a native GitHub sub-issue**, never a plain text list.
 - **Every story names the folder or module it owns** under `### Seam`, so two stories on one folder are spotted
   before they collide (merged into one, or one blocks the other).
 - **Every new issue, whoever files it, follows `.claude/skills/dev-next/references/new-issue.md`**: body headings,
-  labels, the native parent and blocking links with their read-back checks. A person starts from the tracker's story
-  template, which pre-fills the same shape.
+  labels, the native parent and blocking links with their read-back checks. A person writing a ticket by hand follows
+  the same file; there is no separate issue template to keep in step.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
   `### PRD references`.
-- **Read an issue only with the one command the project's `CLAUDE.md` names** (title, body, labels and comments).
-  Shorter forms drop the body.
+- **Read an issue only with `gh issue view <N> --json title,body,labels,comments`.** Shorter forms drop the body.
 - Labels: `epic` `story` `agent-ready` `needs-human` `in-progress` `outside-change` `bug`, plus the `wayfinder:*` set
-  the planning skill owns.
+  the planning skill owns. `/dev-next` creates any of the seven that are missing in its preflight.
   - `agent-ready`: nothing is left to ask. An agent claims it, builds it, gets a fresh-agent review and merges with no
     human. **An issue with none of `agent-ready`, `needs-human` or `outside-change` is not taken automatically**:
     `/dev-next` stops in preflight and asks the human what it is. A label given then earns one ready-check before
@@ -149,7 +148,7 @@ PRD wins on product, the rules files win on process.
 - **Smallest change that works:** what was asked and no more. No refactors of untouched code, no speculative
   abstractions. **Stay on the issue you claimed.** A side-fix belongs in the pull request only if it is small, safe
   **and** in a file you are already changing.
-- **Deferred findings:** small, safe **and** in a file already being changed → fix now. Critical → a tracker issue,
+- **Deferred findings:** small, safe **and** in a file already being changed → fix now. Critical → a GitHub issue,
   linked from the pull request. Everything else goes to the run's report, written once, never filed "to be safe": a
   backlog nobody drains is worse than no backlog. Before filing any issue, search the code and the open issues for
   something that already covers it; never defer to a **closed** issue.
@@ -180,7 +179,6 @@ PRD wins on product, the rules files win on process.
 Everything project-specific lives in the project's `CLAUDE.md`, never here. `orion init` seeds it with these slots
 when the project has none; otherwise add what is missing. A slot the project has no use for is deleted.
 
-- **Tracker**: which one, and the single command that reads an issue with title, body, labels and comments.
 - **Commands**: build, full suite, one file, one test, typecheck, lint, deterministic checks on generated output (if
   any), dev server (if the review surface needs one) — one table, every row a real command or `TBD`.
 - **Stack and layout**: language and version with the file that pins it, test framework, application code path, test

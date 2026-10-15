@@ -316,10 +316,6 @@ $IMPORT_LINE
 Project-specific facts the mandatory rules rely on. Fill every \`<angle-bracket>\` slot; delete a line the project
 has no use for. A rule written here must not contradict the mandatory rules.
 
-## Tracker
-
-- Tracker: <tool>. The one command that reads an issue with title, body, labels and comments: \`<command>\`.
-
 ## Build and test commands
 
 | Purpose | Command |
