@@ -31,6 +31,9 @@
 - **Epic → story is the tracker's native parent/child link**, never a plain text list.
 - **Every story names the folder or module it owns** under `### Seam`, so two stories on one folder are spotted
   before they collide (merged into one, or one blocks the other).
+- **Every new issue, whoever files it, follows `.claude/skills/dev-next/references/new-issue.md`**: body headings,
+  labels, the native parent and blocking links with their read-back checks. A person starts from the tracker's story
+  template, which pre-fills the same shape.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
   `### PRD references`.
@@ -39,8 +42,8 @@
 - Labels: `epic` `story` `agent-ready` `needs-human` `in-progress` `outside-change` `bug`, plus the `wayfinder:*` set
   the planning skill owns.
   - `agent-ready`: nothing is left to ask. An agent claims it, builds it, gets a fresh-agent review and merges with no
-    human. **An issue with none of `agent-ready`, `needs-human` or `outside-change` is not taken automatically**: the
-    dev skill stops in preflight and asks the human what it is. A label given then earns one ready-check before
+    human. **An issue with none of `agent-ready`, `needs-human` or `outside-change` is not taken automatically**:
+    `/dev-next` stops in preflight and asks the human what it is. A label given then earns one ready-check before
     building.
   - `needs-human`: a person must act or decide first, then flips it to `agent-ready` — or the ticket is human-only
     work for good. The reason is the issue's **last comment**. Labelling `needs-human` removes `agent-ready`; the two
@@ -93,14 +96,18 @@ PRD wins on product, the rules files win on process.
 - **NEVER push to `main`.** Not a fix, not a typo, not "only a doc". Every change reaches `main` as a merged pull
   request from a `feat/<desc>` / `fix/<desc>` branch (or the project's own branch pattern). Nothing but you enforces
   this where branch protection is off.
-- **Who merges.** Only the autonomous dev skill merges its own pull requests, and only once the project's build and
-  test commands are filled in. Every other pull request — planning, scaffolding, documentation, anything outside the
-  dev skill — is merged by a human. Never auto-merge beyond that.
-- **Squash-merge only, then delete the branch.** One commit on `main` per pull request.
+- **Who merges.** Only `/dev-next` merges its own pull requests, and only once the project's build and test commands
+  are filled in. Every other pull request — planning, scaffolding, documentation, anything outside the dev skill — is
+  merged by a human. Never auto-merge beyond that.
+- **Squash-merge only, then delete the branch** (`--delete-branch` breaks on a worktree; see
+  `.claude/skills/dev-next/references/merge-and-ci.md`). One commit on `main` per pull request.
 - **Work in a worktree on `feature/<slug>`** (`feature/<issue>-<slug>` when the branch serves one issue). A pull
-  request may cover one issue or several related ones. Never work in the main checkout. Worktrees live **outside the
-  project**, at the root the project's `CLAUDE.md` names. **One exemption:** the per-developer branch `audit/<login>`
-  that autonomous runs write their reports to is pushed directly, has no pull request and never merges into `main`.
+  request may cover one issue or several related ones. Never work in the main checkout. **One exemption:** the
+  per-developer branch `audit/<login>` that `/dev-next` writes run reports to is pushed directly, has no pull request
+  and never merges into `main` (`.claude/skills/dev-next/references/audit.md`).
+- Worktrees live **outside the project**, at the root the project's `CLAUDE.md` names. The in-flight file
+  (`<worktree root>/in-flight.json`, never committed) lives beside them; format in
+  `.claude/skills/dev-next/references/in-flight.md`.
 - Update a branch with `git merge origin/main` — **never rebase, never stash**. Never force-push, never bypass hooks
   (`--no-verify`), never `git add -A`, never rebase or stash someone else's work, never delete work you did not create.
 - Never merge on red or pending checks; "no checks reported" counts as red — poll for the check run first, the host can
@@ -118,7 +125,7 @@ PRD wins on product, the rules files win on process.
 - **When something fails twice, stop and find the root cause** instead of retrying.
 - **The gate, before any pull request opens:** build → lint → typecheck → full suite, with exactly the commands the
   project's `CLAUDE.md` lists (the same chain as CI). A command still reading `TBD` means the stack decision has not
-  landed and no autonomous run may start.
+  landed and `/dev-next` cannot run.
 - **If the project produces generated output, it is gated by evaluation, not by a passing build.** The project's
   `CLAUDE.md` names the deterministic checks, the evaluation harness and its baselined threshold. A run that cannot
   execute the evaluation is **red**, never "not applicable".
@@ -143,10 +150,16 @@ PRD wins on product, the rules files win on process.
   linked from the pull request. Everything else goes to the run's report, written once, never filed "to be safe": a
   backlog nobody drains is worse than no backlog. Before filing any issue, search the code and the open issues for
   something that already covers it; never defer to a **closed** issue.
-- **One report per autonomous run**, pushed to `audit/<login>`, with three lists: product problems left for later,
-  things that slowed the run down, and tips for the next run. Named by date and time so they sort in order. A person
-  harvests them — never another skill — groups items touching the same area into one ticket (the fewer the better),
-  drops an item only when the human says so, and ships the harvest in its own pull request.
+- **One pile.** Every `/dev-next` story ends with one report file for that run, pushed to `audit/<login>` — a
+  per-developer branch that collects reports and never merges into `main`. Each report has three lists: product
+  problems left for later, things that slowed the run down, and tips for the next run. Reports are named by date and
+  time, so they sort in order.
+- **Harvesting.** `/harvest` is run by a person, never by another skill. A bookmark file on `main` records, per
+  developer, the newest report already harvested; the harvest reads only newer reports, works through them with the
+  human one item at a time, then moves the mark forward and ships it in its own pull request together with any
+  tickets or rule edits it made. It groups items touching the same area into one ticket (the fewer the better) and
+  drops an item only when the human says so. `/dev-next` only counts: at **10 unharvested items** it ends its run
+  with `Harvest due: run /harvest`.
 - **Sub-agents:** name each one after what it does (`review-auth-tests`, never `agent-3`); mechanical work runs on a
   cheap model at low effort, hard decisions and reviews on the top model; every spawn prompt asks for a bounded result
   (a verdict plus a few bullets, never an essay). A sub-agent never uses `git stash` and never switches branches — it

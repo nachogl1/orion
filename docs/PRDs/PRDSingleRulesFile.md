@@ -20,7 +20,7 @@ belonged in.
 ## Out of scope
 
 - Merging the project's `CLAUDE.md` on update. It is the project's own file and is never overwritten.
-- Rules that belong to one project or one skill the project does not have.
+- Rules that belong to one project only.
 
 ## Acceptance
 
