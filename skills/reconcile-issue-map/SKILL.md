@@ -2,7 +2,6 @@
 name: reconcile-issue-map
 description: 'ORION - Check that the GitHub issues (the issue map: epics, stories, blockers, labels, order) and the PRDs under docs/PRDs/ still describe the same product, and that both still match what is on main, then fix the drift with the person present. It finds a story nothing in the PRD asks for, a PRD section no story covers, a PRD changed after its stories were cut, a closed story the PRD never absorbed, a story with no epic, blockers that disagree between the body and GitHub''s native relation, two open stories on one folder, a label pair that cannot coexist, and an order that cannot be built. Every finding is explained as if the person had never heard of the project, with how much it matters; nothing is edited, filed, accepted or dropped without their word. Works with GitHub Issues only, like dev-next. Use when the user types /reconcile-issue-map, asks "are the issues still in line with the PRD", "is the backlog up to date", "does the issue map still match the product", or when a /dev-next run ended with `Drift found: run /reconcile-issue-map`.'
 argument-hint: "(none) | <path to one PRD> | --since <yyyy-mm-dd>"
-disable-model-invocation: true
 ---
 
 # /reconcile-issue-map

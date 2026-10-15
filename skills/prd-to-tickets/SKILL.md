@@ -1,8 +1,7 @@
 ---
 name: prd-to-tickets
 description: 'ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies; every story owns one folder or module; both blocker forms set (GitHub''s native relation and the Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; existing open issues become blockers, never duplicates. Its first message checks docs/ux/prototypes/ for the screens the PRD describes and, when there is none, offers to draft one from the PRD in parallel so front-end stories have a design to follow. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".'
-argument-hint: "<path to the PRD> [--developers N]"
-disable-model-invocation: true
+argument-hint: "<path to the PRD> --developers N"
 ---
 
 # /prd-to-tickets
@@ -36,7 +35,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 |---|---|
 | `/prd-to-tickets docs/PRDs/<name>.md` | Split this PRD. |
 | `/prd-to-tickets` | One PRD under `docs/PRDs/` → take it; several → ask which one (clickable options, newest first). |
-| `--developers N` | How many developers must stay busy in parallel once the scaffold is in. Absent → the PRD's own number, then the project's `CLAUDE.md`, then ask (phase 2 step 1, after the UX check). |
+| `--developers N` | How many developers must stay busy in parallel once the scaffold is in. **The person states it explicitly, every run**: as this argument, or in answer to the question in phase 2 step 1 (after the UX check). It is never taken silently from the PRD or the project's `CLAUDE.md`; those numbers only shape the recommended option of that question. |
 
 ## Roles
 
@@ -108,9 +107,11 @@ A failure is reported in one line and the story stays `needs-human` with the per
 
 ## Phase 2 — Read the PRD and the backlog
 
-1. **The developer count.** `--developers`, else a number the PRD states, else one the project's `CLAUDE.md` states,
-   else ask once (clickable options; recommend the number of people the person named, or the PRD's own team section).
-   This number is what phase 3's parallelism check is measured against.
+1. **The developer count, stated explicitly by the person.** `--developers N` given → use it. Not given → ask once
+   (clickable options; recommend the number the PRD's own team section or the project's `CLAUDE.md` states when there
+   is one, else the number of people the person named) and wait for the answer. Never take the number from the PRD or
+   `CLAUDE.md` without the person confirming it: that number is what phase 3's parallelism check is measured against,
+   and a wrong one cuts the backlog for the wrong team.
 2. **From the PRD, extract into a scratch note** (never into the repository): the vocabulary, the scope and the
    do-not-build list, the acceptance bar, the build decisions already taken, the repositories the work touches that
    this team does not own, the screens (phase 1), the data types or interfaces several parts share (the **contracts**),
