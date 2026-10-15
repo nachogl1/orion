@@ -13,8 +13,8 @@
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
 #   orion.sh help
 #
-# First-time bootstrap, no clone needed (run inside the project):
-#   curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init
+# First-time bootstrap (run inside the project; a throwaway shallow clone):
+#   git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init && rm -rf /tmp/orion
 #
 # What orion owns in a project (overwritten on update, removed on uninstall):
 #   .claude/skills/<skill>/           every folder carrying a `.orion-managed` marker

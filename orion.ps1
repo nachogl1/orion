@@ -3,9 +3,9 @@
 # orion needs Git for Windows: its Git Bash runs orion.sh, and git fetches updates.
 # (Claude Code itself uses Git Bash for its shell on Windows, so you most likely have it.)
 #
-# First-time bootstrap, no clone needed (run inside the project, in PowerShell):
-#   irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex            # = init
-#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
+# First-time bootstrap (run inside the project, in PowerShell; a throwaway shallow clone):
+#   git clone -q --depth 1 https://github.com/nachogl1/orion.git $env:TEMP\orion; & $env:TEMP\orion\orion.ps1 init; Remove-Item -Recurse -Force $env:TEMP\orion
+#   (the raw-URL form 'irm .../orion.ps1 | iex' only works if the repo is public)
 #
 # From a clone of this repo:
 #   .\orion.ps1 init [--statusline] [--force]

@@ -24,15 +24,15 @@ Nothing is installed at user level any more (the earlier user-level `install.ps1
 
 ## Install into a project
 
-Run **inside the project folder**, once, from any shell:
+Run **inside the project folder**, once, from any shell (a throwaway shallow clone, deleted right after; the repo is private, so plain `curl` to a raw file URL will not work — `git` uses your usual GitHub credentials):
 
 ```sh
 # macOS / Linux / Git Bash
-curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init
+git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init && rm -rf /tmp/orion
 ```
 ```powershell
 # Windows PowerShell
-irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
+git clone -q --depth 1 https://github.com/nachogl1/orion.git $env:TEMP\orion; & $env:TEMP\orion\orion.ps1 init; Remove-Item -Recurse -Force $env:TEMP\orion
 ```
 
 Or from a clone of this repo: `./orion.sh init --project <path-to-project>` (Windows: `.\orion.ps1 init --project <path>`). You can also simply tell Claude *"set up orion in this project"* and it runs the same command.
@@ -100,10 +100,10 @@ Besides skills, the repo ships a **Claude Code status line** as a baseline (`bas
 - installing it is **opt-in**: pass `--statusline` to `init`, or answer the y/N prompt during an interactive install. Each teammate decides for their own computer.
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init --statusline
+git clone -q --depth 1 https://github.com/nachogl1/orion.git /tmp/orion && /tmp/orion/orion.sh init --statusline && rm -rf /tmp/orion
 ```
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
+git clone -q --depth 1 https://github.com/nachogl1/orion.git $env:TEMP\orion; & $env:TEMP\orion\orion.ps1 init --statusline; Remove-Item -Recurse -Force $env:TEMP\orion
 ```
 
 Requirements and details (jq required; gh and node optional): see [`baselines/statusline/README.md`](baselines/statusline/README.md).
