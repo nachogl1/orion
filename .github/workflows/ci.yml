@@ -21,10 +21,10 @@ jobs:
       - name: Full suite (init / update / check / uninstall round trip)
         run: |
           d=$(mktemp -d)
-          ./orion.sh init --project "$d" --no-statusline --update-mode ask
-          ./orion.sh update --project "$d" --force
-          ./orion.sh check --project "$d" --force
-          ./orion.sh uninstall --project "$d" --yes
+          bash orion.sh init --project "$d" --no-statusline --update-mode ask
+          bash orion.sh update --project "$d" --force
+          bash orion.sh check --project "$d" --force
+          bash orion.sh uninstall --project "$d" --yes
           # uninstall keeps the starter CLAUDE.md and an empty settings.json on purpose;
           # the check is that nothing orion owns is left behind
           if [ -e "$d/.claude/orion" ] || [ -e "$d/.claude/skills" ] || grep -qi orion "$d/CLAUDE.md" "$d/.claude/settings.json"; then
