@@ -83,3 +83,5 @@ ticket, not a tolerance.
   nobody can tell later when or why it was filed. No pull request open yet → add the link to its body when it opens.
 - A session with a person present that keeps a requirements document asks once, after its batch of tickets: **"Should
   we update the requirements document with this too?"** The dev skill's `Critical:` filing runs unattended and never asks.
+- The issue map (`/issue-map`) draws the new issue, its epic link and its blockers on its next run; a body section
+  and a native relation that disagree show up in the map's footer as a mismatch.
