@@ -32,6 +32,12 @@ bites, usually mid-session, with no pointer back to the install.
   check run right after an in-session `init` does not trigger a second one. `init`'s own closing message names the
   skill for the person at the terminal. `uninstall` removes the marker.
 - The skill's report is short and in chat: what is still wrong, what was fixed, what was only noted, one next step.
+- **Open to new skills without editing the check.** Neither `verify` nor the skill names a skill: both walk every
+  folder under `.claude/skills/` and every skill the rules file refers to. A skill that needs something from the
+  project or the machine ships a `VERIFY.md` beside its `SKILL.md` — a table of read-only checks with what to do on
+  failure — and `/orion-verify` runs every `VERIFY.md` it finds, orion's and the project's own, within fixed limits
+  (read-only, nothing fixed without a yes beyond the mechanical fixes of orion's own files, an unrunnable check is
+  unverified, never passed). `verify` lists the skills that carry one. `dev-next` and `issue-map` ship the first two.
 
 ## Out of scope
 
@@ -42,7 +48,8 @@ bites, usually mid-session, with no pointer back to the install.
 
 ## Acceptance
 
-- `skills/orion-verify/SKILL.md` exists, is self-contained, and carries no project, person, company or stack names.
+- `skills/orion-verify/SKILL.md` exists, is self-contained, carries no project, person, company or stack names, and
+  names no skill; `verify` on a fresh install lists `dev-next` and `issue-map` under `skill-checks`.
 - `bash -n orion.sh` is clean; `./orion.sh init --project <empty tmp dir> --no-statusline` installs `orion-verify`
   beside the other skills and ends by naming it; the first `check` after that prints the single-line
   `hookSpecificOutput` JSON asking for the skill and the second is silent; `verify` on the fresh install exits 0 with
