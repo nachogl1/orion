@@ -1,6 +1,6 @@
 ---
 name: project-handover
-description: "ORION - Generate a single self-contained dark-themed HTML PROJECT HANDOVER document for the current repository, dropped into the user's Downloads folder, written for a BROAD audience — clients and stakeholders as well as a brand-new joiner — assuming zero knowledge of the tech stack and zero knowledge of the domain, explained in plain language, summarised and clear (every stack/domain term defined on first use). NEUTRAL TONE: the document is addressed to nobody, by nobody — no 'I', no named author, no named successor, no departing-engineer framing or personal ownership. NO CODE INTERNALS: it describes the project at the level of general product behaviour, modules, and features — it never names classes or describes how classes/code wire together (code is often agent-generated and that detail is neither known nor stable). NO STALE-PRONE CONTENT: it deliberately omits open PRs, open branches, work-in-progress, and 'what to pick up next' — anything that flips within a day. The one status it carries is a DATED epics-and-stories snapshot: it lists every epic and every story with a short plain description and a done/not-done badge (green = done, red = not done). The doc is a scrolling reference page with a sticky table-of-contents: cover, TL;DR/overview, product & domain context, architecture & mental model WITH conceptual diagrams built as styled HTML/CSS (boxes + labelled arrows — never ASCII art) of the general components/modules and how they broadly interconnect plus a request/data-flow diagram for one core user action (all at product/behaviour level, no class or file names), how it's built & run (auto-detected setup/build/test/run, kept technical but module/feature-level), the full epics & stories listing with badges, and a glossary. Detects the project's stack and its backlog source (BMAD story docs / GitHub Issues / Jira — whichever it actually uses) at run time; assumes no stack. PRODUCT DEPTH: to make the product & domain section genuinely rich it can lean on the companion create-up-to-speed-report-orion skill's exhaustive product discovery, distilling that material back into plain, neutral, product-level language (stripping the file paths, code internals, and ownership framing that onboarding deck allows). STRICTLY READ-ONLY: it reads git + repo files + the tracker and writes its handover HTML file to Downloads (any onboarding deck produced while enriching is a separate by-product, also read-only); it never edits the repo and never commits. Use when the user says '/project-handover', 'create a handover', 'hand this project over', or wants a single shareable HTML file that explains the project and the delivery state of its epics and stories."
+description: "ORION - Generate a single self-contained dark-themed HTML PROJECT HANDOVER document for the current repository, dropped into the user's Downloads folder, written for a BROAD audience — clients and stakeholders as well as a brand-new joiner — assuming zero knowledge of the tech stack and zero knowledge of the domain, explained in plain language, summarised and clear (every stack/domain term defined on first use). NEUTRAL TONE: the document is addressed to nobody, by nobody — no 'I', no named author, no named successor, no departing-engineer framing or personal ownership. NO CODE INTERNALS: it describes the project at the level of general product behaviour, modules, and features — it never names classes or describes how classes/code wire together (code is often agent-generated and that detail is neither known nor stable). NO STALE-PRONE CONTENT: it deliberately omits open PRs, open branches, work-in-progress, and 'what to pick up next' — anything that flips within a day. The one status it carries is a DATED epics-and-stories snapshot: it lists every epic and every story with a short plain description and a done/not-done badge (green = done, red = not done). The doc is a scrolling reference page with a sticky table-of-contents: cover, TL;DR/overview, product & domain context, architecture & mental model WITH conceptual diagrams built as styled HTML/CSS (boxes + labelled arrows — never ASCII art) of the general components/modules and how they broadly interconnect plus a request/data-flow diagram for one core user action (all at product/behaviour level, no class or file names), how it's built & run (auto-detected setup/build/test/run, kept technical but module/feature-level), the full epics & stories listing with badges, and a glossary. Detects the project's stack and its backlog source (BMAD story docs / GitHub Issues / Jira — whichever it actually uses) at run time; assumes no stack. PRODUCT DEPTH: it runs its own exhaustive product discovery (problem solved, users, domain vocabulary, end-to-end user journeys, this repository's role) and distils it into plain, neutral, product-level language. STRICTLY READ-ONLY: it reads git + repo files + the tracker and writes its handover HTML file to Downloads; it never edits the repo and never commits. Use when the user says '/project-handover', 'create a handover', 'hand this project over', or wants a single shareable HTML file that explains the project and the delivery state of its epics and stories."
 user_invocable: true
 ---
 
@@ -62,21 +62,16 @@ state of its epics and stories.
   Issues, or Jira, whichever it actually uses (detect at run time)** — for the epics, the
   stories, and their done/not-done status. **Do not invent.** Mark anything not tracked as
   "not tracked."
-- **Go deep on product & domain — borrow from the onboarding skill.** The product &
-  domain section should read as a substantial, example-led explanation, not a thin
-  paragraph. To get there, draw on the companion **create-up-to-speed-report-orion**
-  skill's exhaustive product discovery (the problem it solves, who uses it, the domain
-  vocabulary, the core end-to-end user journeys, what this repository is responsible for) —
-  then **distill that material into the handover's voice**: strip every file path, class
-  name, and code internal; drop the deck's ownership / personal framing (its
-  mine/team/pending colour-coding and "MINE" tags, its single-junior-reader address); and
-  rewrite plainly for a broad, client-facing audience. The depth is borrowed; the
-  handover's rules still win (see Step 2b).
+- **Go deep on product & domain.** The product & domain section should read as a
+  substantial, example-led explanation, not a thin paragraph. To get there, run an
+  exhaustive product discovery (the problem it solves, who uses it, the domain vocabulary,
+  the core end-to-end user journeys, what this repository is responsible for) — then
+  **distill that material into the handover's voice**: strip every file path, class name,
+  and code internal; keep it impersonal (no ownership or personal framing); and rewrite
+  plainly for a broad, client-facing audience (see Step 2b).
 - **Strictly read-only.** The skill reads git, repo files, and the tracker, and writes
   exactly **one handover HTML file to Downloads**. It **never edits the repo, never
-  commits, never pushes.** (The companion onboarding skill it may invoke for product depth
-  is itself read-only — it only writes its own deck to Downloads — so the handover stays
-  read-only with respect to the repo.)
+  commits, never pushes.**
 - **Assume no stack.** Detect build/test/run commands, layout, and the backlog source from
   the project's own files at run time. Never carry another project's stack or vocabulary
   over.
@@ -93,9 +88,6 @@ state of its epics and stories.
   If none is present, the epics-and-stories section degrades to whatever structured units
   exist and marks the rest "not tracked."
 - **GitHub / Jira** — optional, used only to read epic/story status when present.
-- **Companion skill (optional, for product depth).** The product & domain enrichment
-  (Step 2b) uses the **create-up-to-speed-report-orion** skill when it's available. If it
-  isn't installed, fall back to this skill's own Step 2 discovery — never block on it.
 - **No personal inputs.** The skill does **not** ask for or use an author identity, a
   departing-engineer email, or a successor name — the document is impersonal.
 
@@ -136,37 +128,33 @@ Synthesize: **product & domain** (what problem it solves, who uses it, vocabular
 and how they broadly interconnect — behaviour, not code), and the **dev environment**
 (setup/build/test/run, conventions).
 
-### Step 2b — Deepen the product & domain (via create-up-to-speed-report-orion)
+### Step 2b — Deepen the product & domain
 
 The handover's **Product & domain context (§3)**, its **TL;DR (§2)**, and its
-**Glossary (§7)** should carry real depth — not a thin paragraph. To get there, **lean on
-the companion `create-up-to-speed-report-orion` skill's product discovery**, then fold the
-result back into the handover under the handover's own rules.
+**Glossary (§7)** should carry real depth — not a thin paragraph. To get there, run a
+deliberate product discovery pass, then fold the result into the handover under the
+handover's own rules.
 
-1. **Run the companion discovery.** Invoke **`create-up-to-speed-report-orion`** (or, if
-   you only need the content, run the equivalent of its Step 1 "Discover the project" plus
-   its "Product & this repo's role" reading) to build a far richer picture: the problem the
-   product solves, who uses it, the domain vocabulary, the core **end-to-end user
-   journeys**, the personas, and what this repository is responsible for within the wider
-   system. That skill is itself **read-only** (it only writes its own deck to Downloads),
-   so using it keeps the handover read-only with respect to the repo.
-2. **Distill, then re-filter through the handover's rules.** The onboarding deck is allowed
-   things the handover forbids — it **cites file paths and code, colour-codes ownership
-   (mine / team / pending), tags steps "MINE", and addresses a single junior reader.**
-   **None of that may reach the handover.** Translate every borrowed point into
-   **product / behaviour language** (no class names, no file paths, no code wiring), drop
-   all ownership / personal framing so it reads **neutrally — by nobody, to nobody** — and
-   rewrite plainly for a **broad, client-facing** audience.
+1. **Run the product discovery.** Read the README, any product/PRD/architecture docs,
+   user-facing routes/screens/commands, domain models, and the backlog's epic titles to
+   build a far richer picture: the problem the product solves, who uses it, the domain
+   vocabulary, the core **end-to-end user journeys**, the personas, and what this
+   repository is responsible for within the wider system. Reading only — nothing is
+   written to the repo.
+2. **Distill, then re-filter through the handover's rules.** Discovery notes will
+   naturally cite file paths, code, and who-owns-what. **None of that may reach the
+   handover.** Translate every point into **product / behaviour language** (no class
+   names, no file paths, no code wiring), drop all ownership / personal framing so it
+   reads **neutrally — by nobody, to nobody** — and rewrite plainly for a **broad,
+   client-facing** audience.
 3. **Fold it into §2 / §3 / §7.** Use the deepened material to enrich the **TL;DR (§2)**,
    the **Product & domain context (§3)** — now a proper, example-led explanation of what
    the product does, who it's for, the problem it solves, the core user journeys in plain
    terms, and the domain words a newcomer would stumble on — and the **Glossary (§7)**.
    Keep every example at the **feature / behaviour** level (a real screen, a real user
    journey, a real capability), never "see `<file>`".
-4. **One handover file.** The handover still emits exactly **one** handover HTML document.
-   If running the companion skill produced its own onboarding deck in Downloads, that is a
-   **separate by-product** — mention it to the user, but it is not part of the handover
-   output, and the handover never embeds or links machine-specific paths into itself.
+4. **One handover file.** The handover emits exactly **one** handover HTML document and
+   never embeds or links machine-specific paths into itself.
 
 ### Step 3 — Gather the epics & stories + their status
 
@@ -350,12 +338,8 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 - **No architecture/PRD docs** — describe the architecture from entry points at the
   **module / feature / behaviour** level (still no class names, still no paths); keep the
   diagrams conceptual.
-- **Companion skill unavailable** — if `create-up-to-speed-report-orion` isn't installed,
-  don't block: fall back to this skill's own Step 2 discovery for the product & domain
-  section. The Step 2b enrichment is a depth booster, not a hard dependency.
-- **Onboarding-deck framing leaking in** — the companion deck cites file paths and code,
-  colour-codes ownership (mine / team / pending), tags steps "MINE", and speaks to one
-  junior reader. **None of that may survive into the handover.** Translate to
+- **Discovery framing leaking in** — discovery notes cite file paths and code and
+  name who owns what. **None of that may survive into the handover.** Translate to
   product / behaviour language, strip the ownership / personal voice, and keep it neutral and
   client-facing before it reaches §2 / §3 / §7.
 - **Multi-language docs** — translate to English on first use, keep the original term in
