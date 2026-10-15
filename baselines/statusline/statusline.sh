@@ -3,9 +3,10 @@
 #
 # Segments (left to right):
 #   - session alive time (cyan)
+#   - session or agent name (bold white; the agent's name when run with
+#     --agent, else the session's name from --name, /rename or its AI title)
 #   - context usage % (green/yellow/red)
 #   - git branch + state words (stashed / untracked / modified / unpushed)
-#   - PR status for the current branch (cached, background-refreshed via `gh`)
 #   - cost: API-equivalent USD for the open session (green) + current
 #     calendar month to date across all projects (blue), aggregated from
 #     local transcripts by ccusage (cached, background-refreshed via `npx`)
@@ -15,7 +16,7 @@
 #     7-day window (bright blue), each "used % + time until it resets"
 #   - second line: current working directory
 #
-# Requirements: bash (Git Bash on Windows), jq. Optional: gh (PR segment),
+# Requirements: bash (Git Bash on Windows), jq. Optional:
 # node/npx (month-to-date cost segment — shows "$..." until available).
 # Caches live under ~/.cache/claude-statusline/.
 #
@@ -32,6 +33,8 @@ _fields=$(echo "$input" | jq -r '
   (.context_window.used_percentage // ""),
   (.cwd // ""),
   (.transcript_path // ""),
+  (.session_name // ""),
+  (.agent.name // ""),
   (.model.display_name // ""),
   (.effort.level // ""),
   (.cost.total_cost_usd // ""),
@@ -44,6 +47,8 @@ _fields=$(echo "$input" | jq -r '
   read -r used_pct
   read -r cwd
   read -r transcript_path
+  read -r session_name
+  read -r agent_name
   read -r model_name
   read -r effort_level
   read -r session_cost
@@ -91,11 +96,25 @@ if [ -n "$transcript_path" ] && [ -f "$transcript_path" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Name segment — who this bar belongs to, so parallel sessions are told apart.
+# The agent's name wins when Claude Code runs with --agent; otherwise the
+# session's name (set with --name or /rename, or the AI-generated title).
+# Both come from the stdin JSON and are absent until one exists, in which
+# case the segment is omitted rather than faked.
+# ---------------------------------------------------------------------------
+name_segment=""
+if [ -n "$agent_name" ]; then
+  name_segment="[1;37m${agent_name}[0m"
+elif [ -n "$session_name" ]; then
+  name_segment="[1;37m${session_name}[0m"
+fi
+
+# ---------------------------------------------------------------------------
 # Cost segment — API-equivalent USD for this session (from stdin JSON) plus a
 # current-calendar-month-to-date total aggregated from local transcripts by
 # ccusage (e.g. on Jun 23 it sums Jun 1 → Jun 23, resetting on the 1st).
 # The month figure is cached (10-min TTL) and refreshed in the background — same
-# pattern as the PR segment — so the status line never blocks on npx.
+# non-blocking pattern as the other cached segments — so it never waits on npx.
 # ---------------------------------------------------------------------------
 cost_segment=""
 if [ -n "$session_cost" ]; then
@@ -231,116 +250,11 @@ else
   printf '%s\n%s\n' "$git_branch" "$git_indicators" > "$_tmp" 2>/dev/null && mv "$_tmp" "$git_cache"
 fi
 
-# Build git segment (branch + indicators, no PR yet)
+# Build git segment (branch + state words)
 if [ -n "$git_branch" ]; then
   git_segment="[$git_branch]  | ${git_indicators# }"
 else
   git_segment=""
-fi
-
-# ---------------------------------------------------------------------------
-# PR segment — only when inside a git repo and `gh` is available
-# ---------------------------------------------------------------------------
-pr_segment=""
-if [ -n "$git_branch" ] && command -v gh >/dev/null 2>&1; then
-
-  # Sanitize branch name for use as a cache-file suffix
-  safe_branch=$(printf '%s' "$git_branch" | tr -cs 'A-Za-z0-9._-' '_')
-  cache_dir="$HOME/.cache/claude-statusline"
-  cache_file="$cache_dir/pr-${safe_branch}.txt"
-
-  # Helper: compute the formatted PR string from `gh` JSON output
-  _compute_pr_string() {
-    local _cwd="$1"
-    local _gh_json
-    # NOTE: `gh` has no `-C <dir>` flag (that's git). The caller already cd's into
-    # the repo before invoking this, so a plain `gh pr view` resolves the branch.
-    _gh_json=$(gh pr view --json number,state,isDraft,reviewDecision,statusCheckRollup 2>/dev/null)
-
-    if [ $? -ne 0 ] || [ -z "$_gh_json" ]; then
-      # No PR for this branch
-      printf '\033[0;90mno PR\033[0m'
-      return
-    fi
-
-    local _num _state _draft
-    # tr strips the \r native-Windows jq appends (a bare \r resets the cursor
-    # to column 0 mid-line and corrupts the rendered status line)
-    _num=$(printf '%s' "$_gh_json" | jq -r '.number' | tr -d '\r')
-    _state=$(printf '%s' "$_gh_json" | jq -r '.state' | tr -d '\r')
-    _draft=$(printf '%s' "$_gh_json" | jq -r '.isDraft' | tr -d '\r')
-
-    if [ "$_state" = "MERGED" ]; then
-      printf '\033[0;35m#%s merged\033[0m' "$_num"
-      return
-    fi
-
-    if [ "$_state" = "CLOSED" ]; then
-      printf '\033[0;31m#%s closed\033[0m' "$_num"
-      return
-    fi
-
-    if [ "$_draft" = "true" ]; then
-      printf '\033[0;90m#%s draft\033[0m' "$_num"
-      return
-    fi
-
-    # PR is open — inspect status checks
-    # statusCheckRollup items have a .conclusion (when done) or .state (when pending)
-    local _checks
-    _checks=$(printf '%s' "$_gh_json" | jq -r '
-      .statusCheckRollup[]?
-      | if .conclusion != null and .conclusion != "" then .conclusion else .state end
-    ' 2>/dev/null | tr -d '\r')
-
-    if printf '%s' "$_checks" | grep -qiE '^(FAILURE|ERROR|CANCELLED|TIMED_OUT)$'; then
-      printf '\033[0;31m#%s fail\033[0m' "$_num"
-    elif printf '%s' "$_checks" | grep -qiE '^(PENDING|IN_PROGRESS|QUEUED)$'; then
-      printf '\033[0;33m#%s wait\033[0m' "$_num"
-    else
-      printf '\033[0;32m#%s ok\033[0m' "$_num"
-    fi
-  }
-
-  # Create cache dir if needed (silently)
-  mkdir -p "$cache_dir" 2>/dev/null
-
-  _cache_fresh=false
-  if [ -f "$cache_file" ]; then
-    # Check mtime — stat -c %Y on Linux/Git-Bash, stat -f %m on macOS/BSD
-    _mtime=$(stat -c %Y "$cache_file" 2>/dev/null)
-    if [ -z "$_mtime" ]; then
-      _mtime=$(stat -f %m "$cache_file" 2>/dev/null)
-    fi
-    if [ -n "$_mtime" ]; then
-      _now=$(date +%s)
-      _age=$(( _now - _mtime ))
-      if [ "$_age" -lt 300 ]; then
-        _cache_fresh=true
-      fi
-    fi
-  fi
-
-  if $_cache_fresh; then
-    # Cache hit — read directly
-    pr_segment=$(cat "$cache_file")
-  else
-    # Cache miss or stale — show placeholder or stale value, refresh in background
-    if [ -f "$cache_file" ]; then
-      pr_segment=$(cat "$cache_file")   # show stale while refreshing
-    else
-      pr_segment="\033[0;90mpr ...\033[0m"  # first-time placeholder
-    fi
-
-    # Background refresh: cd to repo dir, compute, write atomically
-    (
-      cd "$cwd" 2>/dev/null || exit
-      _fresh=$(_compute_pr_string "$cwd")
-      _tmp="${cache_file}.tmp.$$"
-      printf '%s' "$_fresh" > "$_tmp" && mv "$_tmp" "$cache_file"
-    ) &
-    disown 2>/dev/null || true
-  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -449,12 +363,12 @@ else
   prefix=""
 fi
 
+if [ -n "$name_segment" ]; then
+  prefix="${prefix}${name_segment}  |  "
+fi
+
 if [ -n "$git_segment" ]; then
-  if [ -n "$pr_segment" ]; then
-    line1="${prefix}${ctx_segment}  |  ${git_segment}  |  ${pr_segment}${cost_suffix}"
-  else
-    line1="${prefix}${ctx_segment}  |  ${git_segment}${cost_suffix}"
-  fi
+  line1="${prefix}${ctx_segment}  |  ${git_segment}${cost_suffix}"
 else
   line1="${prefix}${ctx_segment}${cost_suffix}"
 fi

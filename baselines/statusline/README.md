@@ -5,9 +5,9 @@ A starting-point [Claude Code status line](https://docs.anthropic.com/en/docs/cl
 | Segment | Color | Source |
 |---|---|---|
 | Session alive time (`1h23m`) | cyan | transcript file creation time |
+| Session or agent name (`my-feature`) | bold white | `agent.name` when Claude Code runs with `--agent`, else `session_name` (set with `--name` or `/rename`, or the AI-generated title) from the stdin JSON; omitted until one exists |
 | Context usage (`ctx: 42.5%`) | green / yellow ≥70% / red ≥90% | Claude Code stdin JSON |
 | Git branch + state (`[branch] stashed:0 untracked:2 modified:5 unpushed:1`) | per-word (magenta / yellow / red / blue) | `git` in the session's cwd — stashes, untracked files, uncommitted changes, commits not pushed yet |
-| PR status for the branch (`#12 ok` / `wait` / `fail` / `draft` / `merged` / `no PR`) | per-state | `gh pr view`, cached 5 min, refreshed in background |
 | **Session cost** (`$1.23`) | green | `cost.total_cost_usd` from Claude Code stdin JSON |
 | **Month-to-date cost** (`$345.67`) | blue | [ccusage](https://github.com/ryoppippi/ccusage) over local transcripts, current calendar month to date (resets on the 1st), cached 10 min, refreshed in background |
 | **Model** (`Opus`) | cyan | `model.display_name` from Claude Code stdin JSON |
@@ -24,7 +24,6 @@ Both cost figures are **API-equivalent USD** — what the usage would cost at AP
 ## Requirements
 
 - `bash` (on Windows: Git Bash, normally present with Git) and `jq` — required.
-- `gh` (GitHub CLI) — optional; without it the PR segment is omitted.
 - `node`/`npx` — optional; powers the month-to-date cost segment via `npx -y ccusage`. Without it the segment shows `$...`.
 
 Cache files live under `~/.cache/claude-statusline/` — delete the folder to force a refresh.
