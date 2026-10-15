@@ -650,7 +650,7 @@ cmd_verify() {
     PROJECT="$(resolve_project "$project")"
     local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" skills="$PROJECT/.claude/skills"
     local claude="$PROJECT/CLAUDE.md" settings="$PROJECT/.claude/settings.json" base="$PROJECT/.claude/orion/BASE_CLAUDE.md"
-    local f n mode entry name sname ours names="" dups="" ref p slots
+    local f n mode entry name sname ours names="" dups="" checks="" ref p slots
     rm -f "$(cache_file verify-pending)" 2>/dev/null || true
     say "orion verify -> $PROJECT"
 
@@ -720,10 +720,17 @@ cmd_verify() {
             fi
             [ -n "$sname" ] && { case " $names " in *" $sname "*) dups="$dups $sname" ;; esac; names="$names $sname"; }
             [ -d "$HOME/.claude/skills/$name" ] && v_warn skill-shadow "$name also exists at user level (~/.claude/skills/$name); two skills with one name are ambiguous - remove one"
+            # a skill may ship its own post-install checks; the /orion-verify skill runs them
+            if [ -f "${entry%/}/VERIFY.md" ]; then
+                if [ -s "${entry%/}/VERIFY.md" ]; then checks="$checks $name"
+                else v_warn skill-checks "$name ships an empty VERIFY.md (fill it or delete it)"; fi
+            fi
         done
         shopt -u nullglob
         [ -n "$dups" ] && v_fail skill-duplicate "two skill folders declare the same name:$dups (fix: rename or remove one)"
         [ -z "$dups" ] && v_ok skills "every skill under .claude/skills has a SKILL.md whose name matches its folder"
+        if [ -n "$checks" ]; then v_ok skill-checks "skills shipping their own VERIFY.md, run by /orion-verify:$checks"
+        else v_ok skill-checks "no skill ships a VERIFY.md of its own"; fi
     else
         v_fail skills ".claude/skills is missing (fix: bash .claude/orion/orion.sh update --force)"
     fi
