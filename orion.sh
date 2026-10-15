@@ -9,7 +9,7 @@
 #   orion.sh init      [--source <git url|path>] [--ref <branch>] [--update-mode ask|auto|off]
 #                      [--statusline|--no-statusline] [--force]
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
-#   orion.sh check     [--force]        # session-start hook: is a newer orion available? (once a day)
+#   orion.sh check     [--force]        # session-start hook: newer orion? too many branches? (once a day each)
 #   orion.sh verify                     # mechanical post-install checks, one line per finding, no fixes
 #   orion.sh status                     # what is installed, which version, which update mode
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
@@ -31,7 +31,9 @@
 # What orion creates ONCE and never touches again (yours):
 #   CLAUDE.md                         created with the project-specific slots if missing; otherwise
 #                                     only the import line for BASE_CLAUDE.md is added at the top
-#   .claude/orion/config.json         updateMode: ask | auto | off (chosen during init), plus source/ref
+#   .claude/orion/config.json         updateMode: ask | auto | off (chosen during init), source/ref, and
+#                                     branchLimit (default 20, or off): the branch count at which the
+#                                     session-start hook offers /clear-git-resources
 #   .claude/settings.json             one SessionStart hook entry is added (removed on uninstall)
 
 set -euo pipefail
@@ -44,6 +46,7 @@ OLD_IMPORT_LINE="@.claude/orion/ORION.md"   # what orion wrote before the rules 
 HOOK_NEEDLE="/.claude/orion/orion.sh"
 HOOK_CMD='bash "${CLAUDE_PROJECT_DIR}/.claude/orion/orion.sh" check'
 CHECK_INTERVAL_SECONDS=86400
+BRANCH_LIMIT_DEFAULT=20
 
 # --------------------------------------------------------------------------
 # helpers
@@ -52,7 +55,7 @@ say()  { printf '%s\n' "$*"; }
 warn() { printf 'orion: %s\n' "$*" >&2; }
 die()  { warn "$*"; exit 1; }
 
-usage() { sed -n '2,35p' "$0" 2>/dev/null || true; exit 0; }
+usage() { sed -n '2,37p' "$0" 2>/dev/null || true; exit 0; }
 
 # The documented install is `curl ... | bash`, so stdin is the script itself: a question is still possible
 # when the terminal can be opened directly (/dev/tty), which is what ask() reads from in that case.
@@ -79,13 +82,20 @@ resolve_project() {
     ( cd "$p" && pwd )
 }
 
-# Read a flat string value from config.json without jq.
+# Read a flat value from config.json without jq: a quoted string, or else a bare number.
 config_get() {  # file key default
     local v=""
     if [ -f "$1" ]; then
         v=$(sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$1" | head -n1)
+        [ -n "$v" ] || v=$(sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$1" | head -n1)
     fi
     printf '%s' "${v:-$3}"
+}
+
+# The branch count the /clear-git-resources hook and scanner share: local branches plus
+# remote-tracking branches, HEAD excluded, read from the local ref store (no network).
+branch_count() {  # project-dir
+    git -C "$1" for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null | grep -vc '/HEAD$' || true
 }
 
 version_sha() { sed -n '1p' "$1" 2>/dev/null || true; }
@@ -330,8 +340,8 @@ apply_core() {  # source ref update-mode
     printf '%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/VERSION"
     printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest" > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
-        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s"\n}\n' "$mode" "$1" "$2" > "$dir/config.json"
-        say "  +    .claude/orion/config.json (yours: updateMode $mode; edit to ask | auto | off)"
+        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s\n}\n' "$mode" "$1" "$2" "$BRANCH_LIMIT_DEFAULT" > "$dir/config.json"
+        say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT, a number or off)"
     fi
     say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION} @ $(short "$SRC_SHA")"
 }
@@ -543,7 +553,7 @@ cmd_check() {
         esac
     done
     PROJECT="$(resolve_project "$project")" || exit 0
-    local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" mode source ref current latest stamp now last ctx pending
+    local dir="$PROJECT/.claude/orion" now ctx tidy pending
     [ -f "$dir/VERSION" ] || exit 0
     # A fresh init leaves a one-shot marker: ask for the post-install check instead of an update.
     pending="$(cache_file verify-pending)"
@@ -555,31 +565,59 @@ cmd_check() {
         fi
         exit 0
     fi
-    mode="$(config_get "$cfg" updateMode ask)"
-    [ "$mode" = "off" ] && exit 0
-    stamp="$(cache_file last-check)"
     now=$(date +%s)
-    if [ "$force" != "1" ] && [ -f "$stamp" ]; then
+    ctx="$(check_update_ctx "$force" "$now")"
+    tidy="$(check_branches_ctx "$force" "$now")"
+    if [ -n "$ctx" ] && [ -n "$tidy" ]; then ctx="$ctx After that: $tidy"; else ctx="$ctx$tidy"; fi
+    [ -n "$ctx" ] || exit 0
+    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
+}
+
+# The daily update check. Prints the context for Claude Code, or nothing when there is nothing to say.
+check_update_ctx() {  # force now
+    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest stamp last
+    mode="$(config_get "$cfg" updateMode ask)"
+    [ "$mode" = "off" ] && return 0
+    stamp="$(cache_file last-check)"
+    if [ "$1" != "1" ] && [ -f "$stamp" ]; then
         last=$(cat "$stamp" 2>/dev/null || echo 0)
-        [ $((now - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && exit 0
+        [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
     fi
-    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$now" > "$stamp" || true
+    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
     current="$(version_sha "$dir/VERSION")"
     latest="$(latest_sha "$source" "$ref")"
-    [ -n "$latest" ] || exit 0
-    [ "$latest" = "$current" ] && exit 0
+    [ -n "$latest" ] || return 0
+    [ "$latest" = "$current" ] && return 0
     case "$mode" in
         auto)
             if cmd_update --project "$PROJECT" --quiet >/dev/null 2>&1; then
-                ctx="orion (the repo-level utility framework in .claude/orion) was updated automatically from $(short "$current") to $(short "$latest"), as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
+                printf '%s' "orion (the repo-level utility framework in .claude/orion) was updated automatically from $(short "$current") to $(short "$latest"), as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
             else
-                ctx="orion tried to update itself automatically ($(short "$current") -> $(short "$latest")) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
+                printf '%s' "orion tried to update itself automatically ($(short "$current") -> $(short "$latest")) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
             fi ;;
         *)
-            ctx="A newer orion is available for this project ($(short "$current") -> $(short "$latest")). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
+            printf '%s' "A newer orion is available for this project ($(short "$current") -> $(short "$latest")). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
     esac
-    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
+}
+
+# The daily branch-count check behind /clear-git-resources: only when that skill is installed, only
+# from the local ref store (no network), silent below the limit. Prints the context or nothing.
+check_branches_ctx() {  # force now
+    local cfg="$PROJECT/.claude/orion/config.json" limit stamp last n
+    [ -f "$PROJECT/.claude/skills/clear-git-resources/SKILL.md" ] || return 0
+    have git || return 0
+    limit="$(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")"
+    case "$limit" in off|0) return 0 ;; *[!0-9]*|"") limit="$BRANCH_LIMIT_DEFAULT" ;; esac
+    stamp="$(cache_file branches-check)"
+    if [ "$1" != "1" ] && [ -f "$stamp" ]; then
+        last=$(cat "$stamp" 2>/dev/null || echo 0)
+        [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
+    fi
+    n="$(branch_count "$PROJECT")"
+    [ "${n:-0}" -ge "$limit" ] 2>/dev/null || return 0
+    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
+    printf '%s' "This project has $n git branches (local plus remote-tracking), at or above the limit of $limit set as branchLimit in .claude/orion/config.json. Before anything else, ask the user with the AskUserQuestion tool whether to tidy up now (options: 'Show me what can go' recommended, 'Not now'). If they say yes, run the /clear-git-resources skill (.claude/skills/clear-git-resources/SKILL.md) exactly as written: it lists the stale worktrees, branches and leftover files in plain words and deletes only what the user agrees to. If they say no, continue with their request and do not mention it again this session."
 }
 
 cmd_status() {
@@ -592,6 +630,7 @@ cmd_status() {
     say "version:    $(short "$(version_sha "$dir/VERSION")") ($(sed -n '2p' "$dir/VERSION") @ $(sed -n '3p' "$dir/VERSION"))"
     say "source:     $(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"
     say "updateMode: $(config_get "$cfg" updateMode ask)   (edit .claude/orion/config.json: ask | auto | off)"
+    say "branchLimit: $(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")   (branches now: $(branch_count "$PROJECT"); the hook offers /clear-git-resources at the limit; a number or off)"
     shopt -s nullglob
     for entry in "$PROJECT"/.claude/skills/*/; do
         [ -f "${entry%/}/$MARKER" ] && { say "skill:      $(basename "$entry")"; n=$((n+1)); }
@@ -667,6 +706,12 @@ cmd_verify() {
     mode="$(config_get "$cfg" updateMode ask)"
     case "$mode" in ask|auto|off) v_ok config-update-mode "updateMode is '$mode'" ;;
         *) v_fail config-update-mode "updateMode is '$mode' in .claude/orion/config.json; must be ask, auto or off" ;; esac
+    mode="$(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")"
+    case "$mode" in
+        off) v_ok config-branch-limit "branchLimit is off (the hook never offers /clear-git-resources)" ;;
+        ""|*[!0-9]*) v_fail config-branch-limit "branchLimit is '$mode' in .claude/orion/config.json; must be a whole number or off" ;;
+        *) v_ok config-branch-limit "branchLimit is $mode (branches now: $(branch_count "$PROJECT"))" ;;
+    esac
     [ ! -f "$cfg" ] || json_valid "$cfg" || v_fail config-json ".claude/orion/config.json is not valid JSON"
 
     # 2. CLAUDE.md and the rules it imports
