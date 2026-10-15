@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/orion-twinkle.gif" alt="orion — a collection of general-purpose Claude Code skills" width="520"/>
+  <img src="assets/orion-twinkle.gif" alt="orion — a repo-level utility framework for Claude Code projects" width="520"/>
 </p>
 
 # orion
@@ -10,85 +10,72 @@
 >
 > **These skills are under constant improvement and are provided as-is — errors, unexpected behaviour, and breaking changes can and do occur.** Use them at your own risk, keep your work committed/backed up before running anything that touches your repo, and verify the results.
 
-A collection of general-purpose [Claude Code](https://claude.com/claude-code) skills.
+A **repo-level utility framework** for [Claude Code](https://claude.com/claude-code) projects: a set of general-purpose skills, a baseline of working rules, and an optional status line, installed **into the project** and committed, so a team shares one setup and gets updates by pulling.
 
-The installer **copies** each `skills/<name>/` folder into the agent's user skills directory (default `~/.claude/skills/`) and drops an `.orion-managed` marker so later runs can tell its own copies apart from your other skills. Copies are used instead of junctions/symlinks (Windows no longer treats junctioned skill folders reliably), so the user-level skill is a real copy — **`git pull` alone does not propagate; every update re-copies the skill content.** **Updates are manual**: run the installer with `-Update` / `--update` (or just ask Claude to do it for you) to pull *and* re-copy the latest skills. An optional scheduled auto-pull is available but disabled by default — see "How updates work" for the tradeoff.
+Nothing is installed at user level any more (the earlier user-level `install.ps1` / `install.sh` copies are retired by `init`). The only per-computer piece is the optional status line.
 
 > Work-specific skills (anything that references a specific product, team, or internal workflow) live only on the machines that need them — not in this repo. This keeps the repo safely shareable: no product names, no team identifiers, no internal paths.
 
 ## Prerequisites
 
-- **Git** — to clone the repo.
-- **Claude Code** — installed and run once (creates `~/.claude/skills/`).
-- **PowerShell 5.1+** (Windows) or **Bash** (macOS / Linux) — for the installers.
-- **jq** — only if you enable the optional status line.
+- **Git** — fetches orion and its updates. On Windows this means **Git for Windows**, whose Git Bash runs the script (Claude Code uses it too).
+- **Claude Code** — installed and run once in the project.
+- **jq** — only if you enable the optional status line. (Settings edits use `jq`, falling back to `python3`, then Windows PowerShell.)
 
-## Install
+## Install into a project
+
+Run **inside the project folder**, once, from any shell:
 
 ```sh
-git clone https://github.com/nachogl1/orion.git
-cd orion
-
-# Windows
-.\install.ps1
-
-# macOS / Linux
-./install.sh
+# macOS / Linux / Git Bash
+curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init
 ```
-
-The installer:
-
-1. Copies each skill in `./skills/` into the agent's skills directory (default: Claude Code → `~/.claude/skills/`), marking each copy `.orion-managed`.
-2. Offers the optional [status line baseline](#status-line-baseline-optional) with a y/N prompt (skipped when running with `-Force` / `--force`, or pre-answered with `-StatusLine` / `--statusline`).
-3. Registers a scheduled auto-pull **only if you ask for it** via `-Schedule` / `--schedule` (default: **none** — manual updates are recommended).
-
-Non-interactive form (no scheduled task registered):
-
 ```powershell
-.\install.ps1 -Force                         # Windows
-```
-```sh
-./install.sh --force                          # macOS / Linux
+# Windows PowerShell
+irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
 ```
 
-### After install
+Or from a clone of this repo: `./orion.sh init --project <path-to-project>` (Windows: `.\orion.ps1 init --project <path>`). You can also simply tell Claude *"set up orion in this project"* and it runs the same command.
 
-Open any project in Claude Code and type `/handoff` — the skill should start by asking where to save the handoff document.
+`init` does five things, then tells you to review and commit:
+
+| What | Where it lands | Who owns it afterwards |
+|---|---|---|
+| Every skill in `skills/` | `.claude/skills/<name>/` with an `.orion-managed` marker | orion (refreshed by `update`) |
+| The rules baseline [`baselines/ORION.md`](baselines/ORION.md) | `.claude/orion/ORION.md` | orion (refreshed by `update`) |
+| The manager script + version file | `.claude/orion/orion.sh`, `.claude/orion/VERSION` | orion (refreshed by `update`) |
+| A project `CLAUDE.md` | created from [`baselines/BASE_CLAUDE.md`](baselines/BASE_CLAUDE.md) if missing; an existing one only gets the import line `@.claude/orion/ORION.md` at the top | **you** — never touched again |
+| The update check | one `SessionStart` hook in `.claude/settings.json`, and `.claude/orion/config.json` (`updateMode`) | **you** |
+
+Commit the result on a branch. **Teammates need no install step**: Claude Code reads project skills and `CLAUDE.md` straight from the repo, so a clone or pull is enough.
+
+Options: `--statusline` / `--no-statusline` (otherwise a y/N prompt when interactive; piped installs default to no), `--force` (overwrite a same-named skill that is not an orion copy, and re-seed the status line), `--source <git url|path>` / `--ref <branch>` (use a fork).
+
+### Rules: orion's and yours
+
+`.claude/orion/ORION.md` holds the general working rules orion ships (communication, git guardrails, definition of done). It is overwritten on every update, so **do not edit it**. Your project's rules live in `CLAUDE.md`, which imports it on its first line; **where the two disagree, your `CLAUDE.md` wins** (the baseline says so explicitly). The template `CLAUDE.md` is a starting point for a project run the orion way — fill every `<angle-bracket>` slot, delete the bullets you have no use for.
 
 ## How updates work
 
-Updates are manual. The user-level skills are **copies**, so a plain `git pull` is not enough — you must run the installer's update pass, which pulls *and* re-copies:
+Each project updates on its own, with one command. Whoever runs it commits, and the team gets it by pulling.
 
-```powershell
-.\install.ps1 -Update          # Windows
-```
-```sh
-./install.sh --update           # macOS / Linux
-```
+1. **Automatic check.** The `SessionStart` hook runs `orion.sh check`, at most once a day per project, and compares `.claude/orion/VERSION` with the latest commit of orion's `main` (`git ls-remote`, no API, no token). It never blocks or fails a session.
+2. **One-click update.** When a newer orion exists, Claude asks at the start of the session whether to update now. Yes runs `orion.sh update`; no is remembered for that session.
+3. **Your choice of mode** — `updateMode` in `.claude/orion/config.json`:
 
-…or just tell Claude something like *"update orion"* / *"pull the latest skills"* — Claude will run the update for you.
-
-That one command handles all four change types:
-
-| Change in the repo | What `-Update` does |
+| `updateMode` | Behaviour |
 |---|---|
-| Edit an existing skill | `git pull`, then re-copies the folder over the managed copy. |
-| Add a new skill | `git pull` brings the folder; the copy step adds it to the target dir. |
-| Remove a skill | `git pull` deletes the folder; the prune step removes the orphaned managed copy. |
-| Rename a skill | Both — prune removes the old-name copy, the copy step creates the new-name one. |
+| `ask` (default) | Claude offers the update at session start. |
+| `auto` | The hook applies the update silently and Claude tells you what changed; you still review and commit. |
+| `off` | Never checks. Run `/orion update` (or `bash .claude/orion/orion.sh update`) when you want it. |
 
-### Why manual instead of scheduled?
+`update` re-copies only what orion owns: marked skills (added, refreshed, or removed when orion no longer ships them), `ORION.md`, `orion.sh`, `VERSION`. Skills without the marker, your `CLAUDE.md`, your `config.json` and the rest of `settings.json` are never touched.
 
-Auto-pulling executable skill content is a supply-chain risk: anything pushed to `origin/main` runs as you, on every machine, with no review. Manual updates give you a "did I really want this?" moment and let you choose when to take the change.
+The `/orion` skill (shipped with the rest) wraps all of this from inside Claude Code: `/orion status`, `/orion check`, `/orion update`, `/orion uninstall`.
 
-If you still want it, register the scheduled task explicitly:
+### Why "ask" and not "auto" by default?
 
-```powershell
-.\install.ps1 -Schedule daily          # Windows (09:00 local)
-```
-```sh
-./install.sh --schedule daily           # macOS / Linux (cron 0 9 * * *)
-```
+Auto-applying executable skill content is a supply-chain risk: anything pushed to orion's `main` would land in your project with no review. `ask` gives you a "did I really want this?" moment; switch to `auto` only for repos where you accept that.
 
 ## Skills
 
@@ -100,29 +87,23 @@ Each row is a one-line summary — the full behaviour contract lives in each ski
 | **generate-project-writeup** | Generates a leadership-facing Word (`.docx`) project write-up that leads with a transparent traditional-vs-actual cost comparison; every metric measured or marked "not measured." Strictly read-only. |
 | **handoff** | Distils the current conversation into a single markdown handoff document a fresh agent can continue from — goal, state, decisions + rationale, dead-ends, open questions, next steps — referencing existing artifacts by path/URL instead of copying them. Saves outside the workspace to a location you pick, redacts secrets/PII, and tailors to what the next session is for. Explicit-invocation only; no git changes. |
 | **wayfinder** | Charts a chunk of work too big for one agent session as a shared *map* issue plus typed decision tickets on the repo's tracker (detected at run time) — destination first, sharp questions become tickets, blurry ones stay written-down "fog" until they sharpen, anything past the destination is ruled out of scope. Resolves one ticket per session and records the decision back onto the map. Planning only; it produces decisions, not the deliverable. Adapted from the MIT-licensed [`wayfinder`](https://github.com/mattpocock/skills) skill. |
+| **orion** | Manages the orion installation in the current repository: `status`, `check`, `update`, `uninstall`. Thin wrapper around `.claude/orion/orion.sh`. |
 
-## Base CLAUDE.md baseline
-
-`baselines/` holds starting points you copy and then own. [`baselines/BASE_CLAUDE.md`](baselines/BASE_CLAUDE.md) is a starting `CLAUDE.md` for a new project run the orion way:
-tracker-driven stories, worktree-per-issue, fresh-agent review, merge on green, one audit pile harvested with a human.
-Copy it to `<repo>/CLAUDE.md` and fill every `<angle-bracket>` slot (tracker, stack, commands, worktree root); delete
-the bullets the project has no use for. It is not installed by the installer — it is copied into a project by hand.
-
-## Status line baseline (optional)
+## Status line baseline (optional, per computer)
 
 Besides skills, the repo ships a **Claude Code status line** as a baseline (`baselines/statusline/`): install it if you want it, then it is yours to change. One line, live in every session:
 
 > `1h23m` | `ctx: 42.5%` | `[branch] ◆0 ◯1 ●2 ▲1` | `#12 ok` | **`$1.23`** `$345.67` | `Opus` | `effort:high` | `⚑0` | `5h:23% ↻2h14m` | `7d:41% ↻3d5h`
 
 - session alive time, context-usage % (color-coded), git branch + state indicators, PR status for the current branch (cached, background-refreshed), **cost**: API-equivalent USD for the **open session** (green) plus the **current calendar month to date across all projects** (blue, computed from local transcripts via [ccusage](https://github.com/ryoppippi/ccusage)), the **model name**, the **reasoning-effort level** (when the model exposes one), a **jobs flag** (`⚑N` when background agent sessions are running), and — rightmost, each in its own colour — the **subscription usage limits**: how much of the **5-hour** and **7-day** window is used and how long until each refreshes (subscription sessions only).
-- **a baseline, not a managed copy**: the installer copies the folder **once** to `~/.claude/statusline` and writes the `statusLine` entry into `~/.claude/settings.json`. After that the copy is yours — edit it freely; `-Update` / `--update` never touches it. To reset to the baseline, delete the folder or pass `-Force` / `--force` with the switch below.
-- installing it is **opt-in**: pass `-StatusLine` / `--statusline` to the installer, or answer the y/N prompt during an interactive install.
+- **a baseline, not a managed copy**: it is a per-computer setting, so `init` copies the folder **once** to `~/.claude/statusline` and writes the `statusLine` entry into `~/.claude/settings.json`. After that the copy is yours — edit it freely; `update` never touches it. To reset to the baseline, delete the folder or pass `--force` together with `--statusline`.
+- installing it is **opt-in**: pass `--statusline` to `init`, or answer the y/N prompt during an interactive install. Each teammate decides for their own computer.
 
-```powershell
-.\install.ps1 -StatusLine            # Windows
-```
 ```sh
-./install.sh --statusline             # macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init --statusline
+```
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
 ```
 
 Requirements and details (jq required; gh and node optional): see [`baselines/statusline/README.md`](baselines/statusline/README.md).
@@ -131,18 +112,15 @@ Requirements and details (jq required; gh and node optional): see [`baselines/st
 
 1. Drop the skill folder under `skills/`. Each skill is a directory containing `SKILL.md` (uppercase — case-sensitive filesystems matter).
 2. `git add skills/<name> && git commit && git push`.
-3. On each other machine, run `install.ps1 -Update` / `install.sh --update` (or just ask Claude to update orion) to pick it up.
+3. Every project picks it up on its next `orion update` (offered automatically at session start in `ask` mode).
 
 ## Uninstall
 
-```powershell
-.\uninstall.ps1                  # Windows
-```
 ```sh
-./uninstall.sh                    # macOS / Linux
+bash .claude/orion/orion.sh uninstall        # or: /orion uninstall inside Claude Code
 ```
 
-Removes the managed skill copies (any folder carrying the `.orion-managed` marker), removes the `statusLine` entry from `~/.claude/settings.json` if it points at the baseline copy (the `~/.claude/statusline` folder itself is left for you to delete, since it may carry your edits), and unregisters the scheduled task (if one was registered). The cloned repo itself is left in place — delete the folder if you don't want it.
+Removes everything orion owns from the project: the marked skill copies, `.claude/orion/`, the import line in `CLAUDE.md` (the rest of the file stays), and the `SessionStart` hook entry in `.claude/settings.json`. Your own skills and rules stay. The status line is a per-computer copy and is left alone — delete `~/.claude/statusline` and its `statusLine` entry in `~/.claude/settings.json` by hand if you no longer want it.
 
 ## Contributing
 
@@ -151,7 +129,7 @@ The working rules for changes to this repo live in [`CLAUDE.md`](CLAUDE.md) — 
 - **Distribution safety (highest-priority rule).** Everything here is publicly distributable. Never introduce anything that identifies a specific person, team, company, product, private repo, or machine — in prose, code, examples, placeholders, **and git metadata (commit messages, PR titles, PR bodies)**. Use runtime-resolved placeholders (`<repo-name>`, `<gh-login>`, `#<N>`, `~/.claude`) instead; skills detect everything project-specific from the target repo at run time. Self-check your diff *and* your commit/PR text before pushing.
 - **Versioning.** All current skills (and the baselines) are edited in place. Skills carrying a `-vN` suffix are immutable per version — copy to a bumped `-vN` rather than editing in place, add a CHANGELOG entry, and add the new row to this README.
 - **Issues.** Before filing one, dedupe first — search open issues *and* the code; never point at a **closed** issue as the reason to skip work.
-- **PR/commit hygiene.** Branch off `main`; commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`, e.g. `fix(installer): guard junction delete`); keep installer scripts pure-ASCII and Windows-PowerShell-5.1-compatible; keep PR bodies as generic as the code they describe.
+- **PR/commit hygiene.** Branch off `main`; commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): description`, e.g. `fix(orion): guard the hook merge`); keep `orion.sh` portable bash and `orion.ps1` pure-ASCII, Windows-PowerShell-5.1-compatible; keep PR bodies as generic as the code they describe.
 
 ## License
 

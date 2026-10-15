@@ -34,16 +34,16 @@ Cache files live under `~/.cache/claude-statusline/` — delete the folder to fo
 
 ## Install
 
-This is a **baseline**: the installer copies this folder **once** to `~/.claude/statusline` and points `statusLine` in `~/.claude/settings.json` at it. From then on the copy is **yours** — edit it freely. `-Update` / `--update` never touches it, and a re-install leaves it alone. To start again from the baseline, delete the folder (or pass `-Force` / `--force` together with the status-line switch). Installing is **opt-in**:
+This is a **baseline** and a **per-computer** setting: `orion init --statusline` copies this folder **once** to `~/.claude/statusline` and points `statusLine` in `~/.claude/settings.json` at it. From then on the copy is **yours** — edit it freely. `orion update` never touches it, and a re-run of `init` leaves it alone. To start again from the baseline, delete the folder (or pass `--force` together with `--statusline`). Installing is **opt-in**, one decision per computer:
 
-```powershell
-.\install.ps1 -StatusLine          # Windows
-```
 ```sh
-./install.sh --statusline           # macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init --statusline
+```
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
 ```
 
-(The interactive installer also offers it as a y/N prompt.)
+(An interactive `init` also offers it as a y/N prompt.)
 
 Or configure manually — copy the folder wherever you like and point `statusLine` at the script in `~/.claude/settings.json`:
 
@@ -60,4 +60,4 @@ Or configure manually — copy the folder wherever you like and point `statusLin
 
 ## Uninstall
 
-`uninstall.ps1` / `uninstall.sh` remove the `statusLine` setting if it points at the copy, but leave `~/.claude/statusline` in place (it is yours and may carry your edits) — delete the folder by hand if you no longer want it. A pre-baseline managed copy at `~/.claude/statusline-orion` is removed.
+`orion uninstall` works on a project and leaves this per-computer copy alone (it is yours and may carry your edits). To remove it, delete `~/.claude/statusline` and the `statusLine` entry in `~/.claude/settings.json` by hand.
