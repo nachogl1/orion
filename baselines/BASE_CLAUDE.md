@@ -21,9 +21,10 @@
 
 ## Work tracking
 
-- **GitHub Issues in the project's own repository are the only source of truth.** PRD → epic → story. Agents
-  implement **stories** only, never an epic. (`/dev-next`, `/dev-quick` and `/harvest` drive GitHub Issues and
-  nothing else.)
+- **GitHub Issues in the project's own repository are the only source of truth.** PRD → epic → story:
+  `/prd-to-tickets` cuts a PRD into epics and stories built for parallel work (scaffold → contract stories →
+  fan-out). Agents implement **stories** only, never an epic. (`/prd-to-tickets`, `/dev-next`, `/dev-quick` and
+  `/harvest` drive GitHub Issues and nothing else.)
 - **The assignee owns the issue.** Assign yourself *before* writing any code. Never work on, edit or unassign someone
   else's. Two claims can land in the same second, so re-read after claiming: a second assignee, or an earlier
   "claimed by run …" comment from another run, means the earlier claim wins. The later run deletes its claim comment,
@@ -84,9 +85,12 @@ PRD wins on product, the rules files win on process.
 - **No meeting recordings, transcripts or notes exports in the repository, ever** — they carry personal data. What a
   meeting decided goes onto the ticket it concerns, as a comment in the participant's own words.
 - **Code, comments, commits, issues and docs in the language the project's `CLAUDE.md` names.**
-- **Front-end development is led by the UX designs in `docs/ux/`.** A story that adds or changes a screen implements
-  the prototype's screen, never a layout of its own; a screen the prototype lacks is a UX change first (pull request
-  on `docs/ux/`), then a story. The user provides the designs before the first PRD is split into tickets.
+- **Front-end development is led by the UX prototype in `docs/ux/prototypes/`.** A story that adds or changes a
+  screen implements the prototype's screen, never a layout of its own, and names that screen under `### References`;
+  a screen the prototype lacks is a UX change first (pull request on `docs/ux/prototypes/`), then a story. The
+  prototype exists before any front-end story starts: the user provides it, or `/prd-to-tickets` drafts one from the
+  PRD in parallel with the split (a pull request a human merges) and blocks every front-end story on it until it is
+  on `main`.
 - **Take every reversible decision yourself** — simplest option that meets the acceptance criteria, recorded in the
   pull request. Only a genuinely irreversible one becomes `needs-human`. A run that waits costs money doing nothing.
 - **Two sources of truth, kept in step.** Issues track the work; the PRD holds the product. In a session with a person
@@ -176,6 +180,9 @@ PRD wins on product, the rules files win on process.
 - Skills under `.claude/skills/` carrying an `.orion-managed` marker are orion's and are refreshed by `orion update`;
   the project's own skills (no marker) are never touched.
 - `/orion` manages the installation: `status`, `check`, `update`, `uninstall`.
+- `/prd-to-tickets` turns a PRD under `docs/PRDs/` into epics and stories with the person present: existing open
+  issues become blockers, never duplicates; both blocker forms are set and read back; nothing is filed `agent-ready`
+  with a question left.
 - `/issue-map` draws the blocked-by graph of every issue, level by level, into `docs/issue_map/issue_map.html` — a
   local, never-committed snapshot that `/dev-next` rebuilds after every claim and merge. The issues stay the truth.
 
