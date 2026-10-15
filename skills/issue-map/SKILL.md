@@ -1,6 +1,6 @@
 ---
 name: issue-map
-description: ORION - Rebuild the issue map (docs/issue_map/issue_map.html, the live blocked-by graph of every GitHub issue in the project, level by level, with epics, readiness labels, assignees and a click-to-trace chain) from the current state of the issues, and open it when the user asked to see it. Works with GitHub Issues only (it drives the gh tool and GitHub's sub-issue and blocked-by links). Use when the user says "show me the issue map", "update the issue map", "where are we on the issues", "what is blocked by what", or types /issue-map. Called with --silent by /dev-next after a claim and after a merge; then it rebuilds and shows nothing.
+description: ORION - Rebuild the issue map (docs/issue_map/issue_map.html, the live blocked-by graph of every GitHub issue in the project, level by level, with epics, readiness labels, assignees and a click-to-trace chain) from the current state of the issues, and open it when the user asked to see it. Works with GitHub Issues only (it drives the gh tool and GitHub's sub-issue and blocked-by links). Use when the user says "issue map", "show me the issue map", "update the issue map", "where are we on the issues", "what is blocked by what", or types /issue-map. Called with --silent by /dev-next after a claim and after a merge; then it rebuilds and shows nothing.
 argument-hint: "(none) | --silent"
 ---
 
