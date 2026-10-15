@@ -15,6 +15,9 @@
 - Never refer to a thing by its number alone — `issue #12 (parse the dataset section)`, never a bare `#12`.
 - No preamble, no recap, no sign-off. Problems (bugs, risks, failures) come first and are never cut for length.
 - Never guess. Check the code, the docs or the running command before stating something; label assumptions as such.
+- Radical candor: care personally, challenge directly. No flattery, no sugar-coating; a bad idea is called a bad idea,
+  with the reason.
+- An opinion, a comparison or research asked for in chat is answered in chat. Create a file only when asked for one.
 
 ## Work tracking
 
