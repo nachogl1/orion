@@ -54,7 +54,12 @@ die()  { warn "$*"; exit 1; }
 
 usage() { sed -n '2,35p' "$0" 2>/dev/null || true; exit 0; }
 
-is_tty() { [ -t 0 ] && [ -t 1 ]; }
+# The documented install is `curl ... | bash`, so stdin is the script itself: a question is still possible
+# when the terminal can be opened directly (/dev/tty), which is what ask() reads from in that case.
+is_tty() { [ -t 1 ] && { [ -t 0 ] || ( : </dev/tty ) 2>/dev/null; }; }
+ask() {  # prompt -> sets $resp; reads from the terminal even when stdin is a pipe
+    if [ -t 0 ]; then read -r -p "$1" resp; else read -r -p "$1" resp </dev/tty; fi
+}
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -304,7 +309,7 @@ apply_skills() {  # mode(init|update) force(0|1)
                 say "  skip $name (exists and is not an orion copy)"; skipped=$((skipped+1)); continue
             fi
             if [ "$force" != "1" ]; then
-                read -r -p "  !  $name exists and is not an orion copy. Overwrite? [y/N] " resp
+                ask "  !  $name exists and is not an orion copy. Overwrite? [y/N] "
                 if [[ ! "$resp" =~ ^[Yy]$ ]]; then say "  skip $name"; skipped=$((skipped+1)); continue; fi
             fi
         fi
@@ -468,7 +473,7 @@ cmd_init() {
         say "  1) ask   - offer the update and let you say yes or no (default)"
         say "  2) auto  - update by itself and tell you in one line"
         say "  3) off   - never check"
-        read -r -p "Choose [1/2/3] (Enter = ask): " resp
+        ask "Choose [1/2/3] (Enter = ask): "
         case "$resp" in 2|auto) mode=auto ;; 3|off) mode=off ;; *) mode=ask ;; esac
     fi
     fetch_source "$source" "$ref"
@@ -480,7 +485,7 @@ cmd_init() {
     if [ "$statusline" = "prompt" ]; then
         statusline=no
         if is_tty; then
-            read -r -p "Also install the orion status line for this computer (~/.claude/statusline, optional)? [y/N] " resp
+            ask "Also install the orion status line for this computer (~/.claude/statusline, optional)? [y/N] "
             [[ "$resp" =~ ^[Yy]$ ]] && statusline=yes
         fi
     fi
@@ -611,7 +616,7 @@ cmd_uninstall() {
     local dir="$PROJECT/.claude/orion"
     if [ "$yes" != "1" ]; then
         is_tty || die "refusing to uninstall without --yes in a non-interactive shell"
-        read -r -p "Remove everything orion owns from $PROJECT (your CLAUDE.md rules and your own skills stay)? [y/N] " resp
+        ask "Remove everything orion owns from $PROJECT (your CLAUDE.md rules and your own skills stay)? [y/N] "
         [[ "$resp" =~ ^[Yy]$ ]] || { say "aborted"; return; }
     fi
     shopt -s nullglob
