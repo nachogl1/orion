@@ -10,12 +10,17 @@
 #                      [--statusline|--no-statusline] [--force]
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
 #   orion.sh check     [--force]        # session-start hook: is a newer orion available? (once a day)
+#   orion.sh verify                     # mechanical post-install checks, one line per finding, no fixes
 #   orion.sh status                     # what is installed, which version, which update mode
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
 #   orion.sh help
 #
 # First-time bootstrap, no clone needed (run inside the project):
 #   curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init
+#
+# After init, the next Claude Code session start is asked ONCE to run the
+# /orion-verify skill: it runs `verify`, fixes what is mechanical, reviews
+# CLAUDE.md against BASE_CLAUDE.md and the skills, and reports the rest.
 #
 # What orion owns in a project (overwritten on update, removed on uninstall):
 #   .claude/skills/<skill>/           every folder carrying a `.orion-managed` marker
@@ -47,7 +52,7 @@ say()  { printf '%s\n' "$*"; }
 warn() { printf 'orion: %s\n' "$*" >&2; }
 die()  { warn "$*"; exit 1; }
 
-usage() { sed -n '2,30p' "$0" 2>/dev/null || true; exit 0; }
+usage() { sed -n '2,35p' "$0" 2>/dev/null || true; exit 0; }
 
 is_tty() { [ -t 0 ] && [ -t 1 ]; }
 
@@ -81,6 +86,18 @@ config_get() {  # file key default
 version_sha() { sed -n '1p' "$1" 2>/dev/null || true; }
 
 short() { printf '%s' "${1:0:7}"; }
+
+# Per-computer, per-project state that must never be committed (the daily
+# update-check stamp, the one-shot "post-install check pending" marker).
+cache_file() {  # suffix
+    printf '%s/orion/%s.%s' "${XDG_CACHE_HOME:-$HOME/.cache}" "$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)" "$1"
+}
+
+# The `name:` value of a skill's front matter (quotes stripped), or nothing.
+skill_name() {  # SKILL.md
+    awk 'NR==1 && $0 !~ /^---\r?$/ {exit} NR>1 && $0 ~ /^---\r?$/ {exit}
+         /^name:/ { sub(/^name:[ \t]*/, ""); sub(/\r$/, ""); gsub(/^["'"'"']|["'"'"']$/, ""); print; exit }' "$1" 2>/dev/null
+}
 
 # Fetch orion into a temp dir. Sets SRC_DIR and SRC_SHA. If this script sits in
 # an orion checkout (skills/ and baselines/ beside it) that checkout is used.
@@ -126,6 +143,16 @@ json_tool() {
     elif python -c 'import json' >/dev/null 2>&1; then echo python
     elif have powershell.exe; then echo powershell
     else echo none; fi
+}
+
+json_valid() {  # file -> 0 when it parses (or when no JSON tool exists to tell)
+    local tool; tool=$(json_tool)
+    case "$tool" in
+        jq) jq empty "$1" >/dev/null 2>&1 ;;
+        python3|python) "$tool" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8-sig"))' "$1" >/dev/null 2>&1 ;;
+        powershell) powershell.exe -NoProfile -NonInteractive -Command "Get-Content -Raw '$(cygpath -w "$1" 2>/dev/null || printf '%s' "$1")' | ConvertFrom-Json | Out-Null" >/dev/null 2>&1 ;;
+        *) return 0 ;;
+    esac
 }
 
 settings_add_hook() {  # settings-file
@@ -458,8 +485,14 @@ cmd_init() {
         fi
     fi
     [ "$statusline" = "yes" ] && install_statusline "$force"
+    # One-shot: the next session start asks Claude Code to run the post-install check.
+    pending="$(cache_file verify-pending)"
+    mkdir -p "$(dirname "$pending")" 2>/dev/null && printf '%s' "$(date +%s)" > "$pending" || true
     say ""
     say "done. Review with 'git status', then commit the new files on a branch so your team gets them."
+    say "Next: in Claude Code, run /orion-verify. It checks that CLAUDE.md, the imported rules, the skills and the"
+    say "settings fit together after the install, fixes what is mechanical and reports the rest. If you skip it,"
+    say "the next session start asks for it once."
 }
 
 cmd_update() {
@@ -505,11 +538,21 @@ cmd_check() {
         esac
     done
     PROJECT="$(resolve_project "$project")" || exit 0
-    local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" mode source ref current latest stamp now last ctx
+    local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" mode source ref current latest stamp now last ctx pending
     [ -f "$dir/VERSION" ] || exit 0
+    # A fresh init leaves a one-shot marker: ask for the post-install check instead of an update.
+    pending="$(cache_file verify-pending)"
+    if [ -f "$pending" ]; then
+        rm -f "$pending" 2>/dev/null || true
+        if [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ]; then
+            ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
+            printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
+        fi
+        exit 0
+    fi
     mode="$(config_get "$cfg" updateMode ask)"
     [ "$mode" = "off" ] && exit 0
-    stamp="${XDG_CACHE_HOME:-$HOME/.cache}/orion/$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1).last-check"
+    stamp="$(cache_file last-check)"
     now=$(date +%s)
     if [ "$force" != "1" ] && [ -f "$stamp" ]; then
         last=$(cat "$stamp" 2>/dev/null || echo 0)
@@ -589,7 +632,128 @@ cmd_uninstall() {
         say "  ~    CLAUDE.md (import line removed; your rules untouched)"
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"
+    rm -f "$(cache_file verify-pending)" 2>/dev/null || true
     say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone."
+}
+
+# Mechanical post-install checks: one line per finding, never a fix. Exit 1 when
+# anything FAILs. The /orion-verify skill runs this first, then fixes and reviews.
+# Clears the one-shot marker that init leaves for the session-start hook.
+VERIFY_FAIL=0; VERIFY_WARN=0
+v_ok()   { say "  ok    $1: $2"; }
+v_warn() { say "  WARN  $1: $2"; VERIFY_WARN=$((VERIFY_WARN+1)); }
+v_fail() { say "  FAIL  $1: $2"; VERIFY_FAIL=$((VERIFY_FAIL+1)); }
+
+cmd_verify() {
+    local project=""
+    while [ $# -gt 0 ]; do case "$1" in --project) project="$2"; shift 2 ;; -h|--help) usage ;; *) die "unknown option for verify: $1" ;; esac; done
+    PROJECT="$(resolve_project "$project")"
+    local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" skills="$PROJECT/.claude/skills"
+    local claude="$PROJECT/CLAUDE.md" settings="$PROJECT/.claude/settings.json" base="$PROJECT/.claude/orion/BASE_CLAUDE.md"
+    local f n mode entry name sname ours names="" dups="" ref p slots
+    rm -f "$(cache_file verify-pending)" 2>/dev/null || true
+    say "orion verify -> $PROJECT"
+
+    # 1. the files orion owns
+    n=""
+    for f in orion.sh BASE_CLAUDE.md VERSION .orion-manifest config.json; do [ -f "$dir/$f" ] || n="$n $f"; done
+    if [ -z "$n" ]; then v_ok core-files ".claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, .orion-manifest, config.json} present"
+    else v_fail core-files "missing in .claude/orion:$n (fix: bash .claude/orion/orion.sh update --force, or init if orion.sh itself is gone)"; fi
+    mode="$(config_get "$cfg" updateMode ask)"
+    case "$mode" in ask|auto|off) v_ok config-update-mode "updateMode is '$mode'" ;;
+        *) v_fail config-update-mode "updateMode is '$mode' in .claude/orion/config.json; must be ask, auto or off" ;; esac
+    [ ! -f "$cfg" ] || json_valid "$cfg" || v_fail config-json ".claude/orion/config.json is not valid JSON"
+
+    # 2. CLAUDE.md and the rules it imports
+    if [ ! -f "$claude" ]; then
+        v_fail claude-md "CLAUDE.md is missing (fix: bash .claude/orion/orion.sh update --force writes the starter)"
+    else
+        n=$(grep -cxF "$IMPORT_LINE" "$claude" || true)
+        case "$n" in
+            1) v_ok claude-md-import "CLAUDE.md imports .claude/orion/BASE_CLAUDE.md once" ;;
+            0) v_fail claude-md-import "CLAUDE.md does not import the mandatory rules (fix: add this line at the top: $IMPORT_LINE)" ;;
+            *) v_fail claude-md-import "CLAUDE.md carries the import line $n times (fix: keep the first, delete the others)" ;;
+        esac
+        grep -qxF "$OLD_IMPORT_LINE" "$claude" && v_fail claude-md-old-import "CLAUDE.md still imports the retired ORION.md (fix: delete that line; the BASE_CLAUDE.md import replaces it)"
+        slots=$(grep -cE '`TBD`|<[a-z][^<>]*>' "$claude" || true)
+        [ "$slots" -gt 0 ] 2>/dev/null && v_warn claude-md-slots "CLAUDE.md has $slots line(s) with an unfilled slot (TBD or <placeholder>); the rules that rely on them cannot run until they are filled"
+        while IFS= read -r p; do
+            [ -n "$p" ] && [ ! -e "$PROJECT/$p" ] && v_warn claude-md-reference "CLAUDE.md refers to $p, which does not exist"
+        done <<< "$(grep -oE '\.claude/skills/[A-Za-z0-9_./-]+' "$claude" 2>/dev/null | sed 's/[.]*$//' | sort -u || true)"
+    fi
+    if [ -f "$base" ]; then
+        if git -C "$PROJECT" ls-files --error-unmatch -- .claude/orion/BASE_CLAUDE.md >/dev/null 2>&1 \
+           && ! git -C "$PROJECT" diff --quiet HEAD -- .claude/orion/BASE_CLAUDE.md 2>/dev/null; then
+            v_warn rules-copy-edited ".claude/orion/BASE_CLAUDE.md differs from the committed copy; orion overwrites it on update, so a rule change belongs in a pull request to orion, not here"
+        else
+            v_ok rules-copy ".claude/orion/BASE_CLAUDE.md is the shipped copy"
+        fi
+        # every skill and skill file the rules rely on must be installed
+        n=0
+        while IFS= read -r ref; do
+            [ -n "$ref" ] || continue
+            if [ ! -e "$PROJECT/$ref" ]; then
+                v_fail rules-reference "the rules rely on $ref, which is not installed (a project skill without the orion marker kept its place, or it was deleted; fix: bash .claude/orion/orion.sh init --force)"
+                n=$((n+1))
+            fi
+        done <<< "$( { grep -oE '\.claude/skills/[A-Za-z0-9_./-]+' "$base" | sed 's/[.]*$//'; grep -oE '`/[a-z][a-z0-9-]*' "$base" | sed 's|^`/|.claude/skills/|'; } 2>/dev/null | sort -u || true)"
+        [ "$n" -eq 0 ] && v_ok rules-reference "every skill and skill file BASE_CLAUDE.md relies on is installed"
+    fi
+
+    # 3. skills: the orion-managed ones and the project's own
+    if [ -d "$skills" ]; then
+        shopt -s nullglob
+        for entry in "$skills"/*/; do
+            name=$(basename "$entry"); ours=0; [ -f "${entry%/}/$MARKER" ] && ours=1
+            if [ ! -f "${entry%/}/SKILL.md" ]; then
+                if [ "$ours" = "1" ]; then v_fail skill-file "$name (orion-managed) has no SKILL.md (fix: bash .claude/orion/orion.sh update --force)"
+                else v_warn skill-file "$name (the project's own) has no SKILL.md, so Claude Code ignores it"; fi
+                continue
+            fi
+            sname=$(skill_name "${entry%/}/SKILL.md")
+            if [ -z "$sname" ]; then
+                if [ "$ours" = "1" ]; then v_fail skill-name "$name (orion-managed) has no name: in its front matter (fix: bash .claude/orion/orion.sh update --force)"
+                else v_warn skill-name "$name (the project's own) has no name: in its front matter"; fi
+            elif [ "$sname" != "$name" ]; then
+                if [ "$ours" = "1" ]; then v_fail skill-name "$name (orion-managed) declares name: $sname (fix: bash .claude/orion/orion.sh update --force)"
+                else v_warn skill-name "$name (the project's own) declares name: $sname; folder and name should match"; fi
+            fi
+            [ -n "$sname" ] && { case " $names " in *" $sname "*) dups="$dups $sname" ;; esac; names="$names $sname"; }
+            [ -d "$HOME/.claude/skills/$name" ] && v_warn skill-shadow "$name also exists at user level (~/.claude/skills/$name); two skills with one name are ambiguous - remove one"
+        done
+        shopt -u nullglob
+        [ -n "$dups" ] && v_fail skill-duplicate "two skill folders declare the same name:$dups (fix: rename or remove one)"
+        [ -z "$dups" ] && v_ok skills "every skill under .claude/skills has a SKILL.md whose name matches its folder"
+    else
+        v_fail skills ".claude/skills is missing (fix: bash .claude/orion/orion.sh update --force)"
+    fi
+
+    # 4. settings: the session-start hook
+    if [ ! -f "$settings" ]; then
+        v_fail settings-hook ".claude/settings.json is missing, so the update check never runs (fix: bash .claude/orion/orion.sh update --force)"
+    elif ! json_valid "$settings"; then
+        v_fail settings-json ".claude/settings.json is not valid JSON; Claude Code ignores every setting in it (fix: repair it by hand, then re-run)"
+    else
+        n=$(grep -cF "$HOOK_NEEDLE" "$settings" || true)
+        case "$n" in
+            1) v_ok settings-hook ".claude/settings.json has the orion SessionStart hook once" ;;
+            0) v_fail settings-hook ".claude/settings.json has no orion SessionStart hook (fix: bash .claude/orion/orion.sh update --force)" ;;
+            *) v_warn settings-hook ".claude/settings.json has the orion SessionStart hook $n times (fix: delete the duplicates)" ;;
+        esac
+    fi
+
+    # 5. git: what orion installed must reach the team
+    if git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        n=""
+        for p in CLAUDE.md .claude/orion/orion.sh .claude/skills .claude/settings.json; do
+            [ -e "$PROJECT/$p" ] && git -C "$PROJECT" check-ignore -q -- "$p" 2>/dev/null && n="$n $p"
+        done
+        if [ -n "$n" ]; then v_warn git-ignored "ignored by .gitignore:$n - teammates will not get orion with a clone (fix: un-ignore them)"
+        else v_ok git-tracked "nothing orion installed is ignored by git"; fi
+    fi
+
+    say "verify: $VERIFY_FAIL fail, $VERIFY_WARN warn"
+    [ "$VERIFY_FAIL" -eq 0 ]
 }
 
 main() {
@@ -598,6 +762,7 @@ main() {
         init) cmd_init "$@" ;;
         update) cmd_update "$@" ;;
         check) cmd_check "$@" ;;
+        verify) cmd_verify "$@" ;;
         status) cmd_status "$@" ;;
         uninstall) cmd_uninstall "$@" ;;
         help|-h|--help) usage ;;
