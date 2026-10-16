@@ -64,11 +64,14 @@ and that run is the gate.
 
 - **Green** → merge.
 - **Red** → release `merging`, then send the failure back to a fresh `dev-N` round; the branch re-takes the slot when
-  it is ready again. **After two red rounds**: comment the failure, label `needs-human`, leave the branch, **remove the
-  issue's entry from the in-flight file** (step 5 is never reached on this path), move on.
+  it is ready again. **After two red rounds**: label `needs-human`, leave the branch, and **release the issue** — the
+  failure as the last comment, `gh issue edit <N> --remove-label in-progress --remove-assignee @me`, its entry removed
+  from the in-flight file (step 5 is never reached on this path) — then move on. A story still assigned is never
+  eligible again, even once a person re-marks it `agent-ready`; a leftover `in-progress` only misleads the team.
 - **Pending** → wait. Never merge on pending.
 - **No checks reported, after the poll window expired** → this is **red**. Do not merge. Something is wrong with the
-  workflow itself; **release `merging`, remove the issue's entry from the in-flight file**, label `needs-human` and say so.
+  workflow itself; **release `merging`**, label `needs-human` and **release the issue** exactly as for red (comment,
+  `in-progress` removed, unassigned, in-flight entry removed), saying so in the comment.
 
 ## 4 · Merge and verify
 
@@ -76,14 +79,14 @@ and that run is the gate.
 # first: re-read the in-flight file — merging.run must be yours, else do NOT merge (in-flight.md, The merge slot, step 3)
 gh pr merge <P> --squash               # no --delete-branch: step 5 deletes the branches
 gh pr view <P> --json state           # must be MERGED; judge by this, not by the exit code
-gh issue view <N> --json state        # must be CLOSED
+gh issue view <N> --json title,body,labels,comments,state   # state must be CLOSED
 ```
 
 Use the merge method the project's `CLAUDE.md` names; squash is the default.
 
 **As soon as `gh pr merge` returns — merged or failed — set `merging` to `null` in the in-flight file.** The slot is
 held for minutes, never across the clean-up below. A **failed** `gh pr merge` is treated exactly as red in step 3: back
-to step 0 once the cause is fixed, and after two failures `needs-human` with the issue entry removed.
+to step 0 once the cause is fixed, and after two failures `needs-human` with the issue released as in step 3.
 
 If the issue did not close, the `Closes #N` line was missing or malformed. Close it manually and note it on the pull request.
 
@@ -118,7 +121,10 @@ says is never auto-applied (infrastructure, a migration against a shared databas
 has run against a shared database is corrected by a new one, never by rewriting the old one.
 
 If a merge breaks `main` for everyone (the gate goes red on `main` itself), that is a `bug` issue opened immediately,
-not a deferred line. A second report of the same failures — another dev agent's `INHERITED RED` in the same run, or a
+not a deferred line, **per `new-issue.md`**: every heading, the failing tests under `### Acceptance criteria`, labels
+`story` + `bug` + `needs-human` (filed mid-run; the reason comment, its last, asks a person to confirm the failures and
+flip it to `agent-ready`, after which `eligibility.md` ranks it first), native sub-issue of the merged story's epic,
+and linked from that story's pull request. A second report of the same failures — another dev agent's `INHERITED RED` in the same run, or a
 later run — links the existing issue instead of opening another.
 
 **`main` can turn red with no commit.** A newly published dependency security advisory fails an install or audit step

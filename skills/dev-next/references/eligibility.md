@@ -24,10 +24,10 @@ gh issue view N --json title,body,labels,comments
 | Labelled `agent-ready` | Nothing is left to ask. An issue with no readiness label at all was put to the human in preflight (`SKILL.md` phase 0 step 8); if it is still unlabelled, it is not eligible. |
 | **Not** labelled `needs-human` | Somebody has to answer it first. The reason is in the issue's last comment. |
 | **Not** labelled `outside-change` | It touches a repository this team does not own; a human drives it to a pull request for that repository's reviewer. |
-| **Not** carrying any planning-only label set the project reserves (if any) | Planning tickets belong to the planning process, not to development. |
-| No assignee | The assignee is the claim. Someone owns it. |
+| **Not** carrying any `wayfinder:*` label (`wayfinder:map`, `wayfinder:research`, …) | Planning tickets belong to the planning skill, not to development. |
+| No assignee | The assignee is the claim. Someone owns it. A run that gave up on a story unassigned itself (`SKILL.md`, the release rule at the top); an assignee left behind is a live claim. The `in-progress` label alone never blocks: it is a hint to people, removed on release with the assignee. |
 | No open pull request with head `feat/N-*` | Work is already in flight. |
-| No remote branch `feat/N-*` | A run may have crashed mid-flight; do not trample it. |
+| No remote branch `feat/N-*` | A run may have crashed mid-flight; do not trample it. A released story whose branch stays for a human becomes eligible again once that person deletes the branch or takes it over. |
 | Every blocker is **CLOSED** — in the body **and** in GitHub's native relation | Not "nearly done". Closed. Either place blocks. |
 
 Blockers come from two places and the union counts. The body: take every `#N` on the lines under a `### Blocked by`
@@ -38,7 +38,9 @@ as **not** eligible and say so — a typo'd blocker is a real problem, not an ab
 ## Rank the eligible ones
 
 **A `bug` that turns the gate on `main` green comes before everything below.** Every story behind a red gate stops at
-`INHERITED RED`, and a bug filed late carries a high number, so lowest-number ranking alone would put it last.
+`INHERITED RED`, and a bug filed late carries a high number, so lowest-number ranking alone would put it last. This
+skill files that bug as `story` + `bug` + `needs-human` (`new-issue.md`, the mid-run rule), so it passes the filter
+above only once a person has confirmed the failures and flipped it to `agent-ready`; from then on it ranks first.
 
 1. **An epic nobody else is working in.** Two people inside one epic collide even with no `Blocked by` between them —
    they invent the same seam and whoever lands second pays for the redesign. Prefer an empty epic over a busy one.

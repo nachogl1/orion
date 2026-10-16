@@ -12,7 +12,8 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
 **Your environment — nobody else's:**
 
 - Worktree: `<wt root>/<N>-<slug>` — work **only** here. Never touch the main checkout, never touch another worktree.
-- Branch: `feat/<N>-<slug>`, already created and checked out.
+- Branch: `feat/<N>-<slug>`, already created and checked out. **Never switch branches and never `git stash`**, here
+  or in any other checkout.
 - Runtimes: use the exact interpreter and SDK paths in this brief (`<runtime paths>`), never the plain command on PATH —
   it may be another version on this machine.
 - Any per-issue resource the project's `CLAUDE.md` derives from the issue number (a database name, a port) is yours
@@ -42,9 +43,13 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
    No exceptions.
 7. `git merge origin/main` if you are behind — **never rebase, never stash**. Resolve conflicts in your own files only.
 8. Add this pull request's **one line to `docs/CHANGELOG.md`**, newest first: what changed and why it matters, a few
-   words, never a restatement of the diff (create the file with a `# Changelog` heading if it does not exist). Then
+   words, never a restatement of the diff (create the file with a `# Changelog` heading if it does not exist). **A
+   change to user-visible behaviour** (a screen, a command, an output a person reads) **also updates
+   `docs/runbook.md`** in this pull request (create it with a `# Runbook` heading if it does not exist). Then
    commit with Conventional Commits (`type(scope): summary`). **Never `git add -A`** — add the files you actually touched.
-9. Open the pull request with **`Closes #<N>`** in the body, plus the evidence table below.
+9. Push the branch the first time with `git push -u origin feat/<N>-<slug>` (it was created with no upstream, so a
+   plain `git push` has nowhere to go), then open the pull request with **`Closes #<N>`** in the body, plus the
+   evidence table below.
 
 **Before step 9, the checks that cost review rounds when skipped:**
 

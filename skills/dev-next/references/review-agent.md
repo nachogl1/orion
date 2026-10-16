@@ -10,7 +10,8 @@ the worktree's own local environment, exactly as the dev brief does.
 ---
 
 You are reviewing pull request **#P**, which claims to close issue **#N**. You did not write this code and you have no
-history with it. Read the project's `CLAUDE.md` first.
+history with it. Read the project's `CLAUDE.md` first. You commit nothing: never switch branches, never `git stash`,
+never change the worktree's git state.
 
 **Do, in this order:**
 
@@ -67,7 +68,9 @@ Taste gets none of them.
 | `Critical:` | Would hurt in production, or blocks other stories, but is outside this issue | One GitHub issue, linked from the pull request |
 
 **Always a `Fix now:`:** the pull request has no line of its own in `docs/CHANGELOG.md` (every pull request adds one,
-newest first — one line saying what changed and why it matters), or its line restates the diff instead.
+newest first — one line saying what changed and why it matters), or its line restates the diff instead. The same for a
+change to user-visible behaviour (a screen, a command, an output a person reads) that leaves `docs/runbook.md`
+untouched.
 
 **Do not over-file.** In doubt between `Fix now:` and `Defer:`, pick `Fix now:`. In doubt between `Defer:` and
 `Critical:`, pick `Defer:`. A finding you cannot tie to a concrete failure gets no tag at all — leave it out.

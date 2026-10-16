@@ -8,7 +8,7 @@ disable-model-invocation: true
 # /dev-quick
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`; see the repo's `CLAUDE.md`). Keep everything here **general**: no project, person, company or stack names — the project's own `CLAUDE.md` supplies those at run time. It works with GitHub Issues only, like `dev-next`, whose `SKILL.md` and `references/new-issue.md` it relies on.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (a behaviour change is made here directly, never by copying the skill to a new versioned name). Keep everything here **general**: no project, person, company or stack names — the project's own `CLAUDE.md` supplies those at run time. It works with GitHub Issues only, like `dev-next`, whose `SKILL.md` and `references/new-issue.md` it relies on.
 
 `/dev-next` takes an issue that already exists. This skill is for the change you want **now**, that nobody has written
 down yet: a fix you just spotted, a small feature a conversation produced, a tweak that is not worth a planning
@@ -82,16 +82,18 @@ file, you have taken the dev agent's job.
 3. Labels: `gh label list --limit 200 --json name --jq '.[].name'`; create any of `epic`, `story`, `agent-ready`,
    `needs-human`, `in-progress`, `outside-change`, `bug` that is missing, with a one-line description. Never rename or
    delete one. (`/dev-next` does the same; whichever runs first creates them.)
-4. **Latest `main`, read only.** In the main checkout: `git checkout main` → `git fetch origin main` →
-   `git merge --ff-only origin/main`. A dirty checkout or a `main` that cannot fast-forward → stop and print what is
-   in the way; never stash, never reset. This skill creates no worktree and no branch — `/dev-next` does, in phase 3.
+4. **Latest `main`, read only, without switching any branch.** `git fetch origin main`, then read the code as it is
+   on `origin/main` (`git show origin/main:<path>`, `git grep <pattern> origin/main`, `git ls-tree -r --name-only
+   origin/main <folder>`). The main checkout's own files count only when it is on `main` at `origin/main`. **Never
+   `git checkout` or `git switch` in the main checkout**, never stash, never reset: a person may be working there.
+   This skill creates no worktree and no branch — `/dev-next` does, in phase 3.
 
 ## Phase 1 — Understand before asking
 
 A question grounded in the code is answerable; a question asked blind gets a guess back.
 
-1. **Read what the change touches.** From the description, find the folder or module it lives in (`grep`, `ls`, the
-   project's `CLAUDE.md` layout section). Read enough to know: what exists today, what the change would alter, which
+1. **Read what the change touches.** From the description, find the folder or module it lives in, on `origin/main`
+   (phase 0 step 4; the project's `CLAUDE.md` layout section). Read enough to know: what exists today, what the change would alter, which
    tests cover it, what else depends on it. A change in an unfamiliar area may go to a `scout-quick` sub-agent with a
    bounded brief ("the folder, the entry points, the tests, the dependants — ten bullets, no essay"); a change you can
    place in a few reads does not need one.
@@ -214,7 +216,7 @@ The issue is **not** handed over, and the run ends after phase 4 saying why, whe
 closed").
 
 **The second touchpoint is `/dev-next`'s close-out**, nothing of this skill's own: the ten lines per issue, the
-`Harvest due` and `QA due` lines if any, and `For you in this session:` or `All good: …`.
+`Harvest due`, `QA due` and `Drift found: run /reconcile-issue-map` lines if any, and `For you in this session:` or `All good: …`.
 
 ---
 

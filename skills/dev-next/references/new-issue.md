@@ -1,6 +1,7 @@
 # Writing a new issue
 
-The checklist for every issue this skill files — a `Critical:` finding (`SKILL.md` phase 4) — and the shape it expects
+The checklist for every issue this skill files — a `Critical:` finding (`SKILL.md` phase 4) or the `bug` for a red
+gate on `main` (`SKILL.md` phase 3, `merge-and-ci.md` *After the merge*) — and the shape it expects
 of every issue it takes, whoever filed it: a harvest ticket (`/harvest`), a story cut by a planning process, or a
 ticket a person writes by hand (this file **is** the shape; there is no separate issue template to keep in step with
 it). Where the project's `CLAUDE.md` defines its own issue shape, that wins. **No step here is optional**: an
@@ -17,7 +18,7 @@ Copy the shape of the existing stories. Headings, in this order:
 | `### Goal` | One or two lines: what is true when the story is done, with the requirements section it serves (if the project keeps a requirements document). |
 | `### Scope` | `**In**` and `**Out**` bullet lists. Name what the story **reuses** — an existing configuration option, a record type and whether its fields may be null — and say plainly when something it builds on does not exist yet. Each of these otherwise surfaces only in review. |
 | `### Seam` | **The folder or module this story owns** (`src/<Area>/`, `.claude/skills/<name>/`, …). Two open stories on the same folder, **record type or interface** are merged into one, or one blocks the other — never left to collide (two stories in different folders that both stored the same records still collided at merge). Check with `gh issue list --state open --label story --search "<folder>"` before filing. |
-| `### Acceptance criteria` | Checkbox list; every behaviour has a test. A criterion an agent cannot meet alone — one that needs credentials it does not hold, a call to a live service, or a person's act — is **split into its own `needs-human` story naming the person**, which the agent-ready story does not wait for; left inside an `agent-ready` story it closes on merge still open. Before labelling `agent-ready`, read every criterion against the project's standing rules (its `CLAUDE.md`): one that needs a repository the team does not own built or run, or a skipped test, makes the story `needs-human`. |
+| `### Acceptance criteria` | Checkbox list; every behaviour has a test. A criterion an agent cannot meet alone — one that needs credentials it does not hold, a call to a live service, or a person's act — is **split into its own `needs-human` story naming the person**, which the agent-ready story does not wait for; left inside an `agent-ready` story it closes on merge still open. Before labelling `agent-ready`, read every criterion against the project's standing rules (its `CLAUDE.md`): one that needs a repository the team does not own built or run, or a skipped test, makes the story `needs-human`. A story that changes user-visible behaviour carries the criterion "`docs/runbook.md` updated in the same pull request". |
 | `### References` | The requirements sections and the issues the story came from. A harvest ticket names the audit runs its items came from (`audit/<login>`, run id, issue); an issue filed while working on another names that work's pull request (step 5). |
 | `### Blocked by` | One line per blocker, `#<N> — <title>`, or `(none)`. Every line here is also set as a native relation (step 4). An existing open issue that already covers part of the work is a blocker here, never a duplicate ticket. |
 | `### External reference` | **Only** when the work touches a repository this team does not own: that repository's own work-item key or change number. Its presence means the labels in step 2 are `outside-change` + `needs-human`. |
@@ -47,8 +48,8 @@ about, never only its number.
 | A person must act or decide first | `story`, `needs-human` | The **last comment** on the issue says what the person must do. Post it right after creating the issue. |
 | Touches a repository this team does not own (has an `### External reference`) | `story`, `outside-change`, `needs-human` | Last comment, as above. `outside-change` never travels alone. |
 
-`agent-ready` and `needs-human` never sit on one issue together. A `Critical:` issue filed mid-run is `needs-human`
-by default: nobody has yet checked that nothing is left to ask. Pass the labels on creation
+`agent-ready` and `needs-human` never sit on one issue together. An issue filed mid-run — a `Critical:` finding or the
+`bug` for a red `main` — is `needs-human` by default: nobody has yet checked that nothing is left to ask. Pass the labels on creation
 (`gh issue create --label story --label needs-human …`); `bug` is added when the issue reports a defect.
 
 ## 3 · Epic link — native sub-issue, never a text list
@@ -82,6 +83,7 @@ ticket, not a tolerance.
   mid-session — is linked from that work's pull request, and names it under `### References`. Without both links
   nobody can tell later when or why it was filed. No pull request open yet → add the link to its body when it opens.
 - A session with a person present that keeps a requirements document asks once, after its batch of tickets: **"Should
-  we update the requirements document with this too?"** The dev skill's `Critical:` filing runs unattended and never asks.
+  we update the PRD with this too?"**, one line per change naming the PRD section it touches. The dev skill's
+  `Critical:` and red-`main` filing runs unattended and never asks.
 - The issue map (`/issue-map`) draws the new issue, its epic link and its blockers on its next run; a body section
   and a native relation that disagree show up in the map's footer as a mismatch.
