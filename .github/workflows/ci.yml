@@ -12,29 +12,48 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build (syntax check)
         run: bash -n orion.sh
-      - name: One file (Python compiles)
-        run: python3 -m py_compile skills/issue-map/scripts/issue_map.py
+      - name: One file (bash parses, Python compiles)
+        run: |
+          bash -n skills/clear-git-resources/scripts/scan.sh
+          python3 -m py_compile skills/issue-map/scripts/issue_map.py skills/generate-project-writeup/assets/build_docx.py
       - name: Lint (every skill description carries the ORION prefix)
         run: |
           missing=$(grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md || true)
           if [ -n "$missing" ]; then echo "missing ORION - prefix:"; echo "$missing"; exit 1; fi
-      - name: Full suite (init / update / check / uninstall round trip)
-        run: |
-          d=$(mktemp -d)
-          bash orion.sh init --project "$d" --no-statusline --update-mode ask
-          bash orion.sh update --project "$d" --force
-          bash orion.sh check --project "$d" --force
-          bash orion.sh uninstall --project "$d" --yes
-          # uninstall keeps the starter CLAUDE.md and an empty settings.json on purpose;
-          # the check is that nothing orion owns is left behind
-          if [ -e "$d/.claude/orion" ] || [ -e "$d/.claude/skills" ] || grep -qi orion "$d/CLAUDE.md" "$d/.claude/settings.json"; then
-            echo "orion left something behind after uninstall:"; ls -laR "$d"; cat "$d/CLAUDE.md" "$d/.claude/settings.json"; exit 1
-          fi
+      - name: Full suite (tests/run.sh)
+        run: bash tests/run.sh
 
-  powershell-parse:
+  windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Typecheck (orion.ps1 parses under Windows PowerShell 5.1)
         shell: powershell
         run: '[scriptblock]::Create((Get-Content -Raw orion.ps1)) > $null'
+      - name: Full suite under Git Bash (tests/run.sh)
+        shell: bash
+        run: bash tests/run.sh
+
+  # The repository is public: every commit it carries must have an empty email or a GitHub no-reply
+  # address, so no real email address enters its history. On a pull request, the pull request's commits;
+  # on a push to main, the pushed commits.
+  commit-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commit emails are empty or GitHub no-reply addresses
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          range="$BASE..$HEAD"
+          git cat-file -e "$BASE^{commit}" 2>/dev/null || range="-1 $HEAD"
+          # tab-separated, so an empty email stays an empty field instead of collapsing
+          bad=$(git log --format='%h%x09%ae%x09%ce' $range | awk -F'\t' '{ for (i = 2; i <= 3; i++) if ($i != "" && $i !~ /@users\.noreply\.github\.com$/ && $i != "noreply@github.com") { print $1; break } }')
+          if [ -n "$bad" ]; then
+            echo "commits whose author or committer email is neither empty nor a GitHub no-reply address:"
+            echo "$bad"
+            exit 1
+          fi

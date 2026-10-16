@@ -174,12 +174,10 @@ flush_wt
 checked_out() { grep -qxF "$1" "$TMP/wt-branches" 2>/dev/null; }
 
 # --- local branches -------------------------------------------------------------------------------------
-LOCAL_N=0
 # Fields are split on \001, not tab: tab is IFS whitespace, so an empty field (no upstream) would collapse.
 g for-each-ref refs/heads --format='%(refname:short)%01%(upstream:short)%01%(upstream:track)%01%(committerdate:short)' 2>/dev/null > "$TMP/heads"
 while IFS=$'\001' read -r b up track date; do
     [ -n "$b" ] || continue
-    LOCAL_N=$((LOCAL_N+1))
     local_cmd="git -C \"$MAIN\" branch -D \"$b\""
     if protected_branch "$b"; then
         case "$b" in "$DEFAULT"|audit/*) continue ;; esac   # never listed, never offered
@@ -200,14 +198,12 @@ while IFS=$'\001' read -r b up track date; do
 done < "$TMP/heads"
 
 # --- remote branches ------------------------------------------------------------------------------------
-REMOTE_N=0
 if [ -n "$REMOTE" ]; then
     g for-each-ref "refs/remotes/$REMOTE" --format='%(refname)%01%(committerdate:short)%01%(authorname)' 2>/dev/null > "$TMP/remotes"
     while IFS=$'\001' read -r ref date author; do
         [ -n "$ref" ] || continue
         rb="${ref#refs/remotes/}"           # origin/<branch>; refname:short would print origin/HEAD as plain origin
         [ "$rb" = "$REMOTE/HEAD" ] && continue
-        REMOTE_N=$((REMOTE_N+1))
         b="${rb#$REMOTE/}"
         case "$b" in "$DEFAULT"|audit/*) continue ;; esac
         remote_cmd="git -C \"$MAIN\" push \"$REMOTE\" --delete \"$b\""
@@ -249,7 +245,12 @@ else
 fi
 
 # --- print -----------------------------------------------------------------------------------------------
-TOTAL=$((LOCAL_N+REMOTE_N)); OVER=no; [ "$TOTAL" -ge "$LIMIT" ] 2>/dev/null && OVER=yes
+# The total is the exact expression of branch_count in orion.sh (the session-start hook): local branches plus
+# the remote-tracking branches of every remote, HEAD excluded. Change both together.
+TOTAL=$(g for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null | grep -vc '/HEAD$' || true)
+LOCAL_N=$(g for-each-ref --format='%(refname)' refs/heads 2>/dev/null | grep -vc '/HEAD$' || true)
+REMOTE_N=$(g for-each-ref --format='%(refname)' refs/remotes 2>/dev/null | grep -vc '/HEAD$' || true)
+OVER=no; [ "$TOTAL" -ge "$LIMIT" ] 2>/dev/null && OVER=yes
 printf 'SCAN\tproject=%s default=%s remote=%s wt_root=%s fetched=%s pruned=%s gh=%s\n' "$MAIN" "$DEFAULT" "${REMOTE:-none}" "$WT_ROOT" "$FETCHED" "$PRUNED" "$GH"
 printf 'COUNT\tlocal=%s remote=%s total=%s limit=%s over=%s\n' "$LOCAL_N" "$REMOTE_N" "$TOTAL" "$LIMIT" "$OVER"
 [ "$GH" = "yes" ] || printf 'NOTE\tgh is missing or not signed in: pull request states are unknown, so a squash-merged branch is only recognised when its remote branch was deleted\n'
