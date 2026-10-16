@@ -15,17 +15,17 @@ This repo is a collection of **general-purpose, publicly distributable** Claude 
 | Purpose | Command |
 |---|---|
 | Build | `bash -n orion.sh` (a syntax check; there is nothing to compile) |
-| **The full suite** | `d=$(mktemp -d) && bash orion.sh init --project "$d" --no-statusline --update-mode ask && bash orion.sh update --project "$d" --force && bash orion.sh check --project "$d" --force && bash orion.sh uninstall --project "$d" --yes && [ ! -e "$d/.claude/orion" ] && [ ! -e "$d/.claude/skills" ] && ! grep -qi orion "$d/CLAUDE.md" "$d/.claude/settings.json"` (the init/update/check/uninstall round trip against an empty folder; uninstall keeps the starter `CLAUDE.md` and an empty `settings.json` on purpose, so the check is that nothing orion owns is left behind) |
-| One file | `bash -n orion.sh` · `python3 -m py_compile skills/issue-map/scripts/issue_map.py` (`python` on Windows) |
+| **The full suite** | `bash tests/run.sh` (syntax checks, then `orion.sh` end to end against throw-away projects in a sandbox: the init/update/check/uninstall round trip, every settings editor (jq, python, PowerShell where present) on a settings file with a byte-order mark, the `check` hook (silent or one JSON line, always exit 0, a failing and a working auto-update), the post-install marker, `verify`, `status`, the branch counter against `scan.sh`, config escaping and the manifest; no network, nothing left behind; prints one line per check and exits 1 on any failure) |
+| One file | `bash -n orion.sh` · `bash -n skills/clear-git-resources/scripts/scan.sh` · `python3 -m py_compile skills/issue-map/scripts/issue_map.py skills/generate-project-writeup/assets/build_docx.py` (`python` on Windows) |
 | Typecheck / static analysis | `powershell -NoProfile -Command "[scriptblock]::Create((Get-Content -Raw orion.ps1)) > \$null"` (parses `orion.ps1` with Windows PowerShell 5.1; Windows only) |
 | Lint | `grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md` (lists every skill whose description lacks the `ORION - ` prefix; must print nothing) |
 
-Run the build, the lint and the typecheck after any edit, and the full suite after every edit to `orion.sh` or `orion.ps1`; every edited `.md` must still render without parse errors. CI (`.github/workflows/ci.yml`) runs the same chain on every pull request.
+Run the build, the lint and the typecheck after any edit, and the full suite after every edit to `orion.sh`, `orion.ps1`, `scan.sh` or `tests/run.sh`, and always before a pull request opens; every edited `.md` must still render without parse errors. CI (`.github/workflows/ci.yml`) runs the same chain on every pull request. Commits carry an empty email or a GitHub no-reply address (`*@users.noreply.github.com`, `noreply@github.com`), so no real email address enters the public history; check with `git config user.email` before committing. CI's `commit-emails` job rejects any other email on a pull request's commits and on every push to `main`.
 
 ## Stack and layout
 
-- Stack: **bash** for `orion.sh` (runs under Git Bash, macOS bash and Linux, so no GNU-only flags), **Windows PowerShell 5.1** for `orion.ps1` (pure ASCII; it only finds Git Bash and runs `orion.sh`), **Python 3.9+, standard library only** for `skills/issue-map/scripts/issue_map.py`, Markdown for every skill. No test framework: the round trip above is the suite. CI runs on GitHub Actions (an Ubuntu job for bash and Python, a Windows job for the PowerShell parse).
-- Layout: `skills/<name>/` is the product (one folder per skill), `baselines/` holds `BASE_CLAUDE.md` and the status line, `docs/PRDs/` the PRDs, `docs/CHANGELOG.md` the changelog. There is no separate test code path. Skip-count baseline: 0.
+- Stack: **bash** for `orion.sh` (runs under Git Bash, macOS bash and Linux, so no GNU-only flags), **Windows PowerShell 5.1** for `orion.ps1` (pure ASCII; it only finds Git Bash and runs `orion.sh`), **Python 3.9+, standard library only** for `skills/issue-map/scripts/issue_map.py`, Markdown for every skill. No test framework: `tests/run.sh` (plain bash) is the suite. CI runs on GitHub Actions: an Ubuntu job for bash and Python, a Windows job for the PowerShell parse and the suite under Git Bash, and a job that checks commit emails.
+- Layout: `skills/<name>/` is the product (one folder per skill), `baselines/` holds `BASE_CLAUDE.md` and the status line, `docs/PRDs/` the PRDs, `docs/CHANGELOG.md` the changelog. The suite lives in `tests/`. Skip-count baseline: 0.
 
 ## Worktrees
 

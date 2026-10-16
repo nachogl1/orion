@@ -88,12 +88,26 @@ config_get() {  # file key default
     if [ -f "$1" ]; then
         v=$(sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$1" | head -n1)
         [ -n "$v" ] || v=$(sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p" "$1" | head -n1)
+        v=$(printf '%s' "$v" | sed 's/\\\\/\\/g')   # JSON writes one backslash (a Windows path) as two
     fi
     printf '%s' "${v:-$3}"
 }
 
+# A string made safe to sit between double quotes in JSON: backslashes and double quotes escaped.
+json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+# Rewrite the value of one `"key": "string"` line of config.json in place; 1 when there is no such line.
+config_set() {  # file key value
+    local v tmp
+    grep -q "^[[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"" "$1" || return 1
+    v=$(json_escape "$3" | sed 's/[\\&|]/\\&/g')   # then escaped once more for the sed replacement below
+    tmp=$(mktemp)
+    sed "s|^\([[:space:]]*\"$2\"[[:space:]]*:[[:space:]]*\"\).*\(\"[[:space:]]*,\{0,1\}[[:space:]]*\)\$|\1$v\2|" "$1" > "$tmp" && mv "$tmp" "$1"
+}
+
 # The branch count the /clear-git-resources hook and scanner share: local branches plus
-# remote-tracking branches, HEAD excluded, read from the local ref store (no network).
+# remote-tracking branches of every remote, HEAD excluded, read from the local ref store (no network).
+# skills/clear-git-resources/scripts/scan.sh runs this exact expression for its total: change both together.
 branch_count() {  # project-dir
     git -C "$1" for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null | grep -vc '/HEAD$' || true
 }
@@ -119,6 +133,8 @@ skill_name() {  # SKILL.md
 TMP_DIR=""
 cleanup() { [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR" || true; }
 trap cleanup EXIT
+trap 'exit 143' TERM   # a timed-out run still cleans up: exiting on the signal runs the EXIT trap
+trap 'exit 130' INT
 
 fetch_source() {  # source ref
     local here
@@ -137,13 +153,18 @@ fetch_source() {  # source ref
     SRC_SHA="$(git -C "$SRC_DIR" rev-parse HEAD)"
 }
 
+# Run a command for at most N seconds, so the session-start hook ends inside its 20-second limit. Git never
+# waits on a password prompt; without timeout or gtimeout (macOS has neither) git aborts a stalled transfer.
+limited() {  # seconds command...
+    local s="$1"; shift
+    if have timeout; then GIT_TERMINAL_PROMPT=0 timeout "$s" "$@"
+    elif have gtimeout; then GIT_TERMINAL_PROMPT=0 gtimeout "$s" "$@"
+    else GIT_TERMINAL_PROMPT=0 GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
+}
+
 latest_sha() {  # source ref -> prints sha or nothing
     local out=""
-    if have timeout; then
-        out=$(timeout 15 git ls-remote "$1" "refs/heads/$2" 2>/dev/null || true)
-    else
-        out=$(git ls-remote "$1" "refs/heads/$2" 2>/dev/null || true)
-    fi
+    out=$(limited 8 git ls-remote "$1" "refs/heads/$2" 2>/dev/null || true)
     printf '%s' "$out" | cut -f1 | head -n1
 }
 
@@ -160,20 +181,51 @@ json_tool() {
     else echo none; fi
 }
 
+# Every reader below tolerates a UTF-8 byte-order mark (jq skips it, python reads utf-8-sig, PowerShell
+# reads -Encoding UTF8); every writer drops it. jq and python both write two-space indentation.
 json_valid() {  # file -> 0 when it parses (or when no JSON tool exists to tell)
     local tool; tool=$(json_tool)
     case "$tool" in
         jq) jq empty "$1" >/dev/null 2>&1 ;;
         python3|python) "$tool" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8-sig"))' "$1" >/dev/null 2>&1 ;;
-        powershell) powershell.exe -NoProfile -NonInteractive -Command "Get-Content -Raw '$(cygpath -w "$1" 2>/dev/null || printf '%s' "$1")' | ConvertFrom-Json | Out-Null" >/dev/null 2>&1 ;;
+        powershell) powershell.exe -NoProfile -NonInteractive -Command "Get-Content -Raw -Encoding UTF8 '$(cygpath -w "$1" 2>/dev/null || printf '%s' "$1")' | ConvertFrom-Json | Out-Null" >/dev/null 2>&1 ;;
         *) return 0 ;;
+    esac
+}
+
+# How many SessionStart hook commands run orion's script. Reads the hooks themselves, so a permission
+# rule or any other setting that merely mentions the script does not count. Prints nothing when the
+# file does not parse. Native Windows jq, python and PowerShell end their output with \r, so it is stripped.
+hook_count() { hook_count_raw "$1" | tr -d '\r'; }
+hook_count_raw() {  # settings-file
+    local f="$1" tool
+    [ -f "$f" ] || { echo 0; return; }
+    tool=$(json_tool)
+    # The script path sits inside the program text, never as an argument of its own: Git Bash rewrites an
+    # argument that starts with / into a Windows path before a native jq or python sees it.
+    case "$tool" in
+        jq) jq '[.hooks.SessionStart[]?.hooks[]?.command // "" | select(contains("/.claude/orion/orion.sh"))] | length' "$f" 2>/dev/null || true ;;
+        python3|python)
+            "$tool" - "$f" 2>/dev/null <<'PY' || true
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8-sig"))
+ss = (d.get("hooks") or {}).get("SessionStart") or []
+print(sum(1 for g in ss for x in (g.get("hooks") or []) if "/.claude/orion/orion.sh" in (x.get("command") or "")))
+PY
+            ;;
+        powershell)
+            powershell.exe -NoProfile -NonInteractive -Command "
+                \$d = Get-Content -Raw -Encoding UTF8 '$(cygpath -w "$f" 2>/dev/null || printf '%s' "$f")' | ConvertFrom-Json
+                @(\$d.hooks.SessionStart | ForEach-Object { \$_.hooks } | Where-Object { \$_.command -like '*$HOOK_NEEDLE*' }).Count
+            " 2>/dev/null || true ;;
+        *) grep -cF "$HOOK_NEEDLE" "$f" || true ;;
     esac
 }
 
 settings_add_hook() {  # settings-file
     local f="$1" tool
     mkdir -p "$(dirname "$f")"
-    if [ -f "$f" ] && grep -qF "$HOOK_NEEDLE" "$f"; then
+    if [ "$(hook_count "$f")" -gt 0 ] 2>/dev/null; then
         say "  =    update check hook already present in ${f#"$PROJECT"/}"
         return
     fi
@@ -187,17 +239,16 @@ settings_add_hook() {  # settings-file
             "$tool" - "$f" "$HOOK_CMD" <<'PY'
 import json, sys
 f, cmd = sys.argv[1], sys.argv[2]
-d = json.load(open(f, encoding="utf-8"))
+d = json.load(open(f, encoding="utf-8-sig"))
 h = d.setdefault("hooks", {})
 h.setdefault("SessionStart", []).append({"matcher": "startup|resume", "hooks": [{"type": "command", "command": cmd, "timeout": 20}]})
-json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
-open(f, "a", encoding="utf-8").write("\n")
+open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 PY
             ;;
         powershell)
             powershell.exe -NoProfile -NonInteractive -Command "
                 \$f = '$(cygpath -w "$f" 2>/dev/null || printf '%s' "$f")'; \$cmd = '$HOOK_CMD'
-                \$d = Get-Content -Raw \$f | ConvertFrom-Json
+                \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json
                 if (-not \$d.PSObject.Properties['hooks']) { \$d | Add-Member -NotePropertyName hooks -NotePropertyValue (New-Object PSObject) }
                 if (-not \$d.hooks.PSObject.Properties['SessionStart']) { \$d.hooks | Add-Member -NotePropertyName SessionStart -NotePropertyValue @() }
                 \$entry = [PSCustomObject]@{ matcher = 'startup|resume'; hooks = @([PSCustomObject]@{ type = 'command'; command = \$cmd; timeout = 20 }) }
@@ -214,7 +265,7 @@ PY
 
 settings_remove_hook() {  # settings-file
     local f="$1" tool
-    [ -f "$f" ] && grep -qF "$HOOK_NEEDLE" "$f" || return 0
+    [ "$(hook_count "$f")" -gt 0 ] 2>/dev/null || return 0
     tool=$(json_tool)
     case "$tool" in
         jq)
@@ -224,21 +275,20 @@ settings_remove_hook() {  # settings-file
             "$tool" - "$f" <<'PY'
 import json, sys
 f = sys.argv[1]
-d = json.load(open(f, encoding="utf-8"))
+d = json.load(open(f, encoding="utf-8-sig"))
 ss = d.get("hooks", {}).get("SessionStart", [])
 ss = [g for g in ss if not any('/.claude/orion/orion.sh' in (x.get("command") or "") for x in g.get("hooks", []))]
 if ss: d["hooks"]["SessionStart"] = ss
 else:
     d.get("hooks", {}).pop("SessionStart", None)
     if not d.get("hooks"): d.pop("hooks", None)
-json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
-open(f, "a", encoding="utf-8").write("\n")
+open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 PY
             ;;
         powershell)
             powershell.exe -NoProfile -NonInteractive -Command "
                 \$f = '$(cygpath -w "$f" 2>/dev/null || printf '%s' "$f")'
-                \$d = Get-Content -Raw \$f | ConvertFrom-Json
+                \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json
                 \$keep = @(\$d.hooks.SessionStart | Where-Object { -not (\$_.hooks | Where-Object { \$_.command -like '*/.claude/orion/orion.sh*' }) })
                 if (\$keep.Count -gt 0) { \$d.hooks.SessionStart = \$keep } else { \$d.hooks.PSObject.Properties.Remove('SessionStart') }
                 if (@(\$d.hooks.PSObject.Properties).Count -eq 0) { \$d.PSObject.Properties.Remove('hooks') }
@@ -264,16 +314,15 @@ settings_set_statusline() {  # settings-file command
             "$tool" - "$f" "$cmd" <<'PY'
 import json, sys
 f, cmd = sys.argv[1], sys.argv[2]
-d = json.load(open(f, encoding="utf-8"))
+d = json.load(open(f, encoding="utf-8-sig"))
 d["statusLine"] = {"type": "command", "command": cmd}
-json.dump(d, open(f, "w", encoding="utf-8"), indent=2)
-open(f, "a", encoding="utf-8").write("\n")
+open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 PY
             ;;
         powershell)
             powershell.exe -NoProfile -NonInteractive -Command "
                 \$f = '$(cygpath -w "$f" 2>/dev/null || printf '%s' "$f")'; \$cmd = '$cmd'
-                \$d = Get-Content -Raw \$f | ConvertFrom-Json
+                \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json
                 \$sl = [PSCustomObject]@{ type = 'command'; command = \$cmd }
                 if (\$d.PSObject.Properties['statusLine']) { \$d.statusLine = \$sl } else { \$d | Add-Member -NotePropertyName statusLine -NotePropertyValue \$sl }
                 [IO.File]::WriteAllText(\$f, (\$d | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
@@ -295,6 +344,8 @@ copy_managed() {  # src dst
     # marker first: an interrupted copy still looks orion-managed and gets redone next time
     printf '%s' "orion" > "$2/$MARKER"
     cp -R "$1"/. "$2"
+    # a local checkout that ran Python carries compiled caches; they are not part of the skill
+    find "$2" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
 }
 
 apply_skills() {  # mode(init|update) force(0|1)
@@ -340,7 +391,8 @@ apply_core() {  # source ref update-mode
     printf '%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/VERSION"
     printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest" > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
-        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s\n}\n' "$mode" "$1" "$2" "$BRANCH_LIMIT_DEFAULT" > "$dir/config.json"
+        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s\n}\n' \
+            "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" > "$dir/config.json"
         say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT, a number or off)"
     fi
     say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION} @ $(short "$SRC_SHA")"
@@ -457,10 +509,11 @@ install_statusline() {  # force
 # --------------------------------------------------------------------------
 cmd_init() {
     local source="$ORION_DEFAULT_SOURCE" ref="$ORION_DEFAULT_REF" force=0 statusline="prompt" project="" resp mode=""
+    local source_given=0 ref_given=0 key val old
     while [ $# -gt 0 ]; do
         case "$1" in
-            --source) source="$2"; shift 2 ;;
-            --ref) ref="$2"; shift 2 ;;
+            --source) source="$2"; source_given=1; shift 2 ;;
+            --ref) ref="$2"; ref_given=1; shift 2 ;;
             --update-mode) mode="$2"; shift 2 ;;
             --project) project="$2"; shift 2 ;;
             --force) force=1; shift ;;
@@ -473,10 +526,22 @@ cmd_init() {
     PROJECT="$(resolve_project "$project")"
     local cfg="$PROJECT/.claude/orion/config.json"
     if [ -f "$cfg" ]; then
-        source="$(config_get "$cfg" source "$source")"; ref="$(config_get "$cfg" ref "$ref")"
+        [ "$source_given" = "1" ] || source="$(config_get "$cfg" source "$source")"
+        [ "$ref_given" = "1" ] || ref="$(config_get "$cfg" ref "$ref")"
     fi
     case "$mode" in ""|ask|auto|off) ;; *) die "--update-mode must be ask, auto or off (got: $mode)" ;; esac
     say "orion init -> $PROJECT"
+    # config.json is yours, but a --source or --ref given on the command line is an explicit request to change it.
+    if [ -f "$cfg" ]; then
+        for key in source ref; do
+            if [ "$key" = "source" ]; then [ "$source_given" = "1" ] || continue; val="$source"
+            else [ "$ref_given" = "1" ] || continue; val="$ref"; fi
+            old="$(config_get "$cfg" "$key" "")"
+            [ "$old" = "$val" ] && continue
+            if config_set "$cfg" "$key" "$val"; then say "  ~    .claude/orion/config.json: $key changed from '$old' to '$val' (from --$key)"
+            else warn "could not set $key in .claude/orion/config.json; set \"$key\": \"$val\" there by hand"; fi
+        done
+    fi
     # config.json is written once and never touched again, so the update mode is chosen here.
     if [ -z "$mode" ] && [ ! -f "$cfg" ] && is_tty; then
         say "When a newer orion exists, what should happen at session start?"
@@ -556,13 +621,12 @@ cmd_check() {
     local dir="$PROJECT/.claude/orion" now ctx tidy pending
     [ -f "$dir/VERSION" ] || exit 0
     # A fresh init leaves a one-shot marker: ask for the post-install check instead of an update.
+    # Without the /orion-verify skill there is nothing to ask for, so the marker waits for it (or for `verify`).
     pending="$(cache_file verify-pending)"
-    if [ -f "$pending" ]; then
+    if [ -f "$pending" ] && [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ]; then
         rm -f "$pending" 2>/dev/null || true
-        if [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ]; then
-            ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
-            printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
-        fi
+        ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
+        printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
         exit 0
     fi
     now=$(date +%s)
@@ -591,7 +655,9 @@ check_update_ctx() {  # force now
     [ "$latest" = "$current" ] && return 0
     case "$mode" in
         auto)
-            if cmd_update --project "$PROJECT" --quiet >/dev/null 2>&1; then
+            # A process of its own: a failed fetch ends only that process (this hook still answers and
+            # exits 0), and its own exit trap removes the temporary clone. 8 s check + 10 s update < 20 s hook limit.
+            if limited 10 bash "${BASH_SOURCE[0]:-$0}" update --project "$PROJECT" --quiet >/dev/null 2>&1 </dev/null; then
                 printf '%s' "orion (the repo-level utility framework in .claude/orion) was updated automatically from $(short "$current") to $(short "$latest"), as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
             else
                 printf '%s' "orion tried to update itself automatically ($(short "$current") -> $(short "$latest")) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
@@ -638,7 +704,7 @@ cmd_status() {
     shopt -u nullglob
     say "skills:     $n orion-managed"
     grep -qxF "$IMPORT_LINE" "$PROJECT/CLAUDE.md" 2>/dev/null && say "CLAUDE.md:  imports the mandatory rules" || say "CLAUDE.md:  does NOT import the mandatory rules (run: orion.sh update)"
-    grep -qF "$HOOK_NEEDLE" "$PROJECT/.claude/settings.json" 2>/dev/null && say "hook:       update check installed" || say "hook:       update check NOT installed"
+    [ "$(hook_count "$PROJECT/.claude/settings.json")" -gt 0 ] 2>/dev/null && say "hook:       update check installed" || say "hook:       update check NOT installed"
 }
 
 cmd_uninstall() {
@@ -665,14 +731,16 @@ cmd_uninstall() {
     shopt -u nullglob
     rmdir "$PROJECT/.claude/skills" 2>/dev/null || true
     if [ -f "$dir/.orion-manifest" ]; then
-        while IFS= read -r line; do [ -n "$line" ] && rm -f "$dir/$line"; done < "$dir/.orion-manifest"
+        # a checkout with Windows line endings turns each line into "name\r": strip it, or nothing matches
+        while IFS= read -r line || [ -n "$line" ]; do line="${line%$'\r'}"; [ -n "$line" ] && rm -f "$dir/$line"; done < "$dir/.orion-manifest"
         rm -f "$dir/.orion-manifest"
     fi
     rm -f "$dir/config.json"
     rmdir "$dir" 2>/dev/null && say "  -    .claude/orion" || warn "left .claude/orion in place (it holds files orion did not create)"
     f="$PROJECT/CLAUDE.md"
     if [ -f "$f" ] && { grep -qxF "$IMPORT_LINE" "$f" || grep -qxF "$OLD_IMPORT_LINE" "$f"; }; then
-        tmp=$(mktemp); grep -vxF "$IMPORT_LINE" "$f" | grep -vxF "$OLD_IMPORT_LINE" | sed '1{/^$/d;}' > "$tmp"; mv "$tmp" "$f"
+        # grep exits 1 when it keeps no line (a CLAUDE.md that held only the import line): not an error here
+        tmp=$(mktemp); { grep -vxF "$IMPORT_LINE" "$f" || true; } | { grep -vxF "$OLD_IMPORT_LINE" || true; } | sed '1{/^$/d;}' > "$tmp"; mv "$tmp" "$f"
         say "  ~    CLAUDE.md (import line removed; your rules untouched)"
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"
@@ -791,7 +859,7 @@ cmd_verify() {
     elif ! json_valid "$settings"; then
         v_fail settings-json ".claude/settings.json is not valid JSON; Claude Code ignores every setting in it (fix: repair it by hand, then re-run)"
     else
-        n=$(grep -cF "$HOOK_NEEDLE" "$settings" || true)
+        n=$(hook_count "$settings")
         case "$n" in
             1) v_ok settings-hook ".claude/settings.json has the orion SessionStart hook once" ;;
             0) v_fail settings-hook ".claude/settings.json has no orion SessionStart hook (fix: bash .claude/orion/orion.sh update --force)" ;;
@@ -818,7 +886,8 @@ main() {
     case "$cmd" in
         init) cmd_init "$@" ;;
         update) cmd_update "$@" ;;
-        check) cmd_check "$@" ;;
+        # the hook contract: whatever goes wrong inside, the session start sees exit 0
+        check) set +e; ( set -e; cmd_check "$@" ); exit 0 ;;
         verify) cmd_verify "$@" ;;
         status) cmd_status "$@" ;;
         uninstall) cmd_uninstall "$@" ;;
