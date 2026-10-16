@@ -1,6 +1,6 @@
 ---
 name: harvest-qa
-description: ORION - Run the QA checks that every merged /dev-next story leaves behind on the developers' audit branches — against main, one agent at a time, in as many rounds as it takes until every record is tested — dropping records a later story has superseded or made obsolete, filing one bug issue per confirmed failure (never one an open issue already covers), and keeping a log on main of what was tested, when, on which commit and with what result. Reads only the QA records; never the notes /harvest works through. Use when the user types /harvest-qa, or when a /dev-next run ended with `QA due: run /harvest-qa`.
+description: 'ORION - Run the QA checks that every merged /dev-next story leaves behind on the developers'' audit branches — against main, one agent at a time, in as many rounds as it takes until every record is tested — dropping records a later story has superseded or made obsolete, filing one bug issue per confirmed failure (never one an open issue already covers), and keeping a log on main of what was tested, when, on which commit and with what result. Reads only the QA records; never the notes /harvest works through. Use when the user types /harvest-qa, or when a /dev-next run ended with `QA due: run /harvest-qa`.'
 argument-hint: "(no arguments)"
 disable-model-invocation: true
 ---
@@ -8,7 +8,7 @@ disable-model-invocation: true
 # /harvest-qa
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`; see the repo's `CLAUDE.md`). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` and `references/audit.md` it relies on.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `harvest`, is changed where it is). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` and `references/audit.md` it relies on.
 
 `/dev-next` builds, reviews and merges a story, but nobody starts the product and checks the acceptance criteria the way
 a user would. This skill does that **later, against `main`**, from the QA record `/dev-next` writes for every merged
@@ -87,7 +87,8 @@ then start. No question is asked; a person started this skill and expects it to 
    `git -C <main checkout> worktree add --detach <wt root>/qa-<yyyymmdd-hhmmss> origin/main`. Record its commit:
    that is `commit` in every log entry this run writes. Resolve the runtime paths the way `/dev-next` does in its
    preflight (the pinned version's real interpreter and SDK, never the plain command on PATH) and pass them to every
-   agent.
+   agent. **Keep the `qa-` prefix in the folder name**: it is how `/clear-git-resources` recognises a QA run's
+   worktree and asks the person before offering to delete it, so a sweep run mid-QA never removes it silently.
 2. The port: the project's port rule applied to issue number **0** (`<base port>` itself), which no story can hold.
    Any per-issue resource the rule derives (a database name) the same way.
 3. **One agent per seam group, strictly in sequence.** Spawn `qa-<seam>` with the brief in
@@ -108,16 +109,22 @@ then start. No question is asked; a person started this skill and expects it to 
    behaviour; the body carries the exact steps, what was expected, what was seen, the commit tested and the record it
    came from (`audit/<login>`, run id, issue). Two failures in the same flow are one issue. Search the open issues once
    more before each `gh issue create` — the dedupe in phase 1 ran before the product was driven, and a teammate may
-   have filed meanwhile. Labels: `story`, `bug`, and `agent-ready` when the steps reproduced deterministically and
-   name no credential or person; otherwise `needs-human` with a last comment saying what a person must confirm.
-   Read every issue back the way `new-issue.md` verifies it.
+   have filed meanwhile. Labels: `story`, `bug` and `needs-human`. That is this skill's choice for every QA bug it
+   files: the failure was reproduced by an agent, not yet confirmed by a person, so nobody has checked that nothing is
+   left to ask. Post its last comment right after creating it, saying what a person must confirm before flipping it to
+   `agent-ready` (the steps reproduce for them, and nothing is left to ask). Read every issue back the way `new-issue.md` verifies it.
 2. Write `docs/harvest-qa-state.json`: for every login read, `tested_through` = the newest run id seen this run;
    `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug`, `superseded` + `by`,
    `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
    `last_qa` = today. A check in `carried` is **not** in `log`. Audit branches are never written to.
-3. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout); commit the
-   state file; add the run's one line to `docs/CHANGELOG.md`, newest first; open the pull request. Its body is the
-   table below. **A human merges it** — this skill never merges.
+3. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout);
+   write the state file there and add the run's one line to
+   `docs/CHANGELOG.md`, newest first (create the file with a `# Changelog` heading if it does not exist). **Run the
+   gate** (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite) in that worktree
+   before the pull request opens. Red → do not open it: this pull request only adds a state file and a changelog line,
+   so red means `main` itself is red; the close-out names the failing command first, for a person to fix, and the
+   worktree is kept so the log is not lost. Green → commit those two files (never `git add -A`), push, open the pull
+   request; its body is the table below. **A human merges it** — this skill never merges.
 
 ```
 | Check (plain words) | From | Result | Where it went |

@@ -1,6 +1,6 @@
 ---
 name: wayfinder
-description: 'ORION - Plan a chunk of work too big for one agent session as a shared MAP of decision tickets on the repo''s issue tracker, then resolve them one at a time until the way to the destination is clear. Charting starts by naming the DESTINATION (the spec, decision, or change this effort is finding its way to), then fans out breadth-first to surface the open questions; every question that can be stated sharply becomes a child ticket of the map, everything still blurry stays as written-down "fog" that graduates into tickets later, and anything past the destination is ruled out of scope. Tickets are typed — research (agent alone), prototype (build a rough artifact to react to), grilling (conversation with the user), task (manual work that unblocks a decision) — and each carries an inline protocol, so the skill needs no companion skills. PLANNING, NOT BUILDING: it produces decisions, never the deliverable, unless the map''s Notes say otherwise. Tracker-agnostic: detects GitHub Issues, Jira, or falls back to a local markdown map, and verifies parent/child and blocking support at run time instead of assuming it. Resolves at most ONE non-research ticket per session. Use when the user says "/wayfinder", "help me plan this big thing", "this is too big for one session", "chart the work", "work the map", or hands over a loose idea with no clear route to the end.'
+description: 'ORION - Plan a chunk of work too big for one agent session as a shared MAP of decision tickets on the repo''s issue tracker, then resolve them one at a time until the way to the destination is clear. Charting starts by naming the DESTINATION (the spec, decision, or change this effort is finding its way to), then fans out breadth-first to surface the open questions; every question that can be stated sharply becomes a child ticket of the map, everything still blurry stays as written-down "fog" that graduates into tickets later, and anything past the destination is ruled out of scope. Tickets are typed — research (agent alone), prototype (build a rough artifact to react to), grilling (conversation with the user), task (manual work that unblocks a decision) — and each carries an inline protocol, so the skill calls no other skill (it only reads dev-next''s issue-linking reference, references/new-issue.md). PLANNING, NOT BUILDING: it produces decisions, never the deliverable, unless the map''s Notes say otherwise. Works with GitHub Issues only, like dev-next: the map''s tickets are native sub-issues, and every blocker is set both as GitHub''s native relation and as a Blocked by body section. Resolves at most ONE non-research ticket per session. Started by hand only: use when the user types /wayfinder; when they say "help me plan this big thing", "this is too big for one session", "chart the work", "work the map", or hand over a loose idea with no clear route to the end, suggest they type /wayfinder.'
 argument-hint: "A loose idea to chart, or a map URL/number to work through"
 disable-model-invocation: true
 ---
@@ -8,14 +8,14 @@ disable-model-invocation: true
 # wayfinder
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `project-handover` / `handoff`; see the repo's `CLAUDE.md`).
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `harvest`, is changed where it is). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, and is **started by hand only** (`disable-model-invocation: true`): the model never starts it on its own, and no other skill invokes it — they only point the person at `/wayfinder`.
 
-A loose idea has arrived. It is too big for one agent session and wrapped in fog: the way from here to the **destination** is not visible yet. Wayfinding is about *finding the way*, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** — questions whose answer is a decision, not slices of a build to execute — one at a time until the route is clear.
+A loose idea has arrived. It is too big for one agent session and wrapped in fog: the way from here to the **destination** is not visible yet. Wayfinding is about *finding the way*, not charging at the destination. This skill charts the way as a **shared map** in the repo's GitHub Issues, then works its **decision tickets** — questions whose answer is a decision, not slices of a build to execute — one at a time until the route is clear.
 
 **Jargon, defined once:**
 
 - **Destination** — what reaching the end of this map looks like. A spec to hand off, a decision to lock before planning starts, or a change made in place (e.g. a data-structure migration).
-- **Map** — one issue on the tracker holding the whole effort at low resolution. The canonical artifact.
+- **Map** — one GitHub issue holding the whole effort at low resolution. The canonical artifact.
 - **Ticket** — a child issue of the map. One question, sized to a single agent session.
 - **Fog of war** — decisions you can tell are coming but cannot yet phrase sharply enough to ticket.
 - **Frontier** — the tickets takeable *right now*: open, not blocked by anything unfinished, and not claimed by another session.
@@ -34,20 +34,15 @@ An agent session has a fixed memory. Work that spans weeks does not fit in one, 
 5. **Never resolve a HITL ticket by yourself.** An agent that answers its own grilling questions has broken the skill. Ask the user and wait.
 6. **Don't chart what you can't see.** Incompleteness is the design, not a defect — see [Fog of war](#fog-of-war).
 
-## Phase 0 — Detect the tracker (do this first, every session)
+## Phase 0 — Check the tracker (do this first, every session)
 
-Never assume a tracker. Detect it, and detect what it actually supports, before writing anything:
+**GitHub Issues in the project's own repository are the only tracker** (the project's mandatory rules). Read the project's `CLAUDE.md` first; it overrides this file where they disagree. Then, before writing anything:
 
-1. **GitHub Issues** — the default when `gh auth status` succeeds *and* `gh repo view --json hasIssuesEnabled` reports issues enabled. Confirm the repo with `gh repo view --json nameWithOwner`.
-2. **Jira / other tracker** — if the repo's `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, or PR template points at one, ask the user (clickable options) which to use before falling back.
-3. **Local markdown fallback** — no usable tracker. Write the map as files under `~/wayfinder/<repo-name>-<map-slug>/` (`map.md` plus `tickets/<nnn>-<slug>.md`), **outside** the repo so it never pollutes the tree or gets committed by accident. Tell the user plainly that a local map is **not shareable** — if teammates or parallel sessions need it, a real tracker is required.
+1. `gh auth status`; `gh repo view --json nameWithOwner,hasIssuesEnabled`. Not signed in, issues disabled, or a `CLAUDE.md` naming another tracker as the source of truth → stop and say this skill needs GitHub Issues. Never fall back to another tracker or to local files.
+2. **Parent/child is a native sub-issue.** Every ticket is added to the map with the sub-issues API — the same calls and read-back as `.claude/skills/dev-next/references/new-issue.md` step 3, with the map where the epic stands. Never a text checklist in the map body.
+3. **Blocking is set in both forms, always:** GitHub's native "blocked by" relation (what people see — it renders the frontier in GitHub's own UI) **and** a `### Blocked by` section in the ticket body, one `#<N> — <title>` line per blocker or `(none)` (what agents parse). Same calls and read-back as `new-issue.md` step 4; a read-back that does not match the body is fixed before the next ticket is written.
 
-**Then probe the two relationships the map depends on — do not assume them:**
-
-- **Parent/child (sub-issues).** On GitHub this is the sub-issues API — try it once on the first ticket (`gh api` against the repo's sub-issues endpoint for the map's issue number). If the call errors for this repo, fall back to a **body convention**: the map body carries a `## Tickets` checklist of linked ticket names, and each ticket body opens with `Part of <map name>` as a link.
-- **Blocking.** Prefer the tracker's **native** dependency relationship — it renders the frontier visually in the tracker's own UI, so the user sees what is takeable without opening the map. Probe it the same way; if the repo does not have it, fall back to a `Blocked by: <ticket name>` line in the ticket body, and treat that line as authoritative.
-
-Report which tracker and which relationship mechanism you landed on, in one line, before proceeding.
+Report the repository and that both relations work, in one line, before proceeding.
 
 ## The map
 
@@ -99,13 +94,18 @@ Each ticket is a child of the map. Its body is the question, sized to **one agen
 
 <Anything taken on trust rather than verified, so a later session can challenge it.
 Omit the section if there are none.>
+
+### Blocked by
+
+<One `#<N> — <title>` line per blocking ticket, or `(none)`. Each line is also set as
+the native relation (Phase 0).>
 ```
 
 Rules:
 
 - **Type label.** Every ticket carries exactly one `wayfinder:research` / `wayfinder:prototype` / `wayfinder:grilling` / `wayfinder:task` label. Create missing labels once, at charting time.
 - **Claiming.** A session claims a ticket by **assigning it to the user driving the map — first, before any work** — so concurrent sessions skip it. That assignee *is* the claim: an open, unassigned ticket is unclaimed.
-- **Blocked / unblocked.** A ticket is unblocked when every ticket blocking it is closed. The **frontier** is the open, unblocked, unclaimed children.
+- **Blocked / unblocked.** A ticket is unblocked when every ticket blocking it is closed — in the body section **and** in the native relation; either one blocks. The **frontier** is the open, unblocked, unclaimed children.
 - **Answers live in comments,** not in the body. The body stays the question, so the ticket reads as a question forever.
 - **Assets are linked, never pasted.** A prototype, a branch, a document — link it from the ticket.
 - **Plan for parallelism.** When splitting a question into tickets, minimise the files, modules, and areas two tickets share, so two people (or two sessions) can work them at once without colliding. Where a dependency is unavoidable, state it explicitly as a blocking edge.
@@ -124,7 +124,7 @@ Protocol: state the exact question → gather from primary sources (official doc
 
 Raise the fidelity of the discussion by making something cheap, rough, and concrete for the user to react to: an outline, a stub, a throwaway UI, a sketch of the logic. Use when the key question is "how should it look" or "how should it behave".
 
-Protocol: build the smallest artifact that makes the choice visible (throwaway quality is correct — say so out loud) → put it on a `wayfinder/<ticket-slug>` branch or in a scratch folder, never on `main` → show the user and ask for a *reaction*, not approval → record what the reaction decided. The prototype is evidence, not deliverable code; it is linked from the ticket and does not have to survive.
+Protocol: build the smallest artifact that makes the choice visible (throwaway quality is correct — say so out loud) → put it in a scratch folder outside the repository, or, when it must be shared, on a `feat/wayfinder-<ticket-slug>` branch in a worktree outside the project (Guardrails, *Git*) — never in the main checkout, never on `main` → show the user and ask for a *reaction*, not approval → record what the reaction decided. The prototype is evidence, not deliverable code; it is linked from the ticket and does not have to survive.
 
 ### grilling — HITL — the default
 
@@ -167,9 +167,10 @@ The user invokes with a loose idea (or with no argument, in which case ask what 
 2. **Map the frontier — breadth-first.** Grill again, fanning out across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. **If this surfaces no fog** — the way is already clear, the whole journey fits one session — say so and **stop**: a map would be pure overhead. Ask the user how they want to proceed instead.
 3. **Dedupe before creating anything** — mandatory, see below.
 4. **Create the map** with the `wayfinder:map` label: Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**.
-5. **Create the tickets you can specify now** as children of the map, then wire the blocking edges in a **second pass** — issues need ids before they can reference each other. Wiring sorts them into the frontier and the blocked; anything you cannot yet specify stays in the fog.
+5. **Create the tickets you can specify now** as children of the map, then wire the blocking edges in a **second pass** — issues need ids before they can reference each other — in both forms, each read back (Phase 0). Wiring sorts them into the frontier and the blocked; anything you cannot yet specify stays in the fog.
 6. **Fire the research sub-agents** for each `research` ticket just created, per the research protocol. Each captures its findings as a resolution comment on its own ticket.
-7. **Stop.** Charting is one session's work; it hand-resolves nothing else. Report the map by name with its link, the frontier tickets by name, and how many patches are still in fog.
+7. **Ask the PRD question** once, after the batch ([The PRD question](#the-prd-question)).
+8. **Stop.** Charting is one session's work; it hand-resolves nothing else. Report the map by name with its link, the frontier tickets by name, and how many patches are still in fog.
 
 ## Mode B — Work through the map
 
@@ -179,10 +180,15 @@ The user invokes with a map (URL or number). A specific ticket is **optional** �
 2. **Choose the ticket.** If the user named one, use it. Otherwise take the first frontier ticket in order. **Claim it by assigning it before any work.**
 3. **Resolve it.** Zoom as needed: fetch the full body or resolution of any related or closed ticket on demand; follow whatever the map's `## Notes` block points at. Run the protocol for the ticket's type.
 4. **Record the resolution:** post the answer as a **resolution comment**, **close** the ticket, and **append one gist line** to the map's *Decisions so far*, linking it by name.
-5. **Advance the frontier:** create newly-surfaced tickets (create-then-wire); graduate any fog the answer made specifiable and **delete that patch from *Not yet specified*** so it lives only as its new ticket; rule out of scope anything the answer pushed past the destination; update or delete tickets the decision invalidated.
-6. **Stop after one ticket** (research excepted). Report: the ticket resolved by name, the decision in one line, and what is on the frontier now.
+5. **Advance the frontier:** create newly-surfaced tickets (create-then-wire, both blocker forms); graduate any fog the answer made specifiable and **delete that patch from *Not yet specified*** so it lives only as its new ticket; rule out of scope anything the answer pushed past the destination; update or delete tickets the decision invalidated.
+6. **Ask the PRD question** once, when this session created or edited any ticket ([The PRD question](#the-prd-question)).
+7. **Stop after one ticket** (research excepted). Report: the ticket resolved by name, the decision in one line, and what is on the frontier now.
 
-Expect **other sessions to be editing the tracker concurrently** — the user may run unblocked tickets in parallel. Re-read a ticket's current state immediately before writing to it, and never assume the frontier you loaded at step 1 is still current at step 5.
+Expect **other sessions to be editing the issues concurrently** — the user may run unblocked tickets in parallel. Re-read a ticket's current state immediately before writing to it, and never assume the frontier you loaded at step 1 is still current at step 5.
+
+## The PRD question
+
+A session with the person present asks it **once, after its batch of ticket creations or edits**, whenever at least one PRD exists under `docs/PRDs/` (before any PRD exists there is nothing to update): **"Should we update the PRD with this too?"**, followed by one line per change, naming the PRD section it touches. "No" ends it. "Yes" → the PRD edit ships in a `docs(prd)` pull request, made under Guardrails, *Git* (worktree, changelog line, gate, merged by a human).
 
 ## Asking the user questions
 
@@ -192,14 +198,14 @@ Every question to the user goes through clickable options (`AskUserQuestion`): d
 
 Before creating a map, a ticket, or *offering* to create one, confirm nothing already covers it. This gets skipped and gets it wrong; do it properly every time:
 
-- Search the **tracker's open and recently-closed issues** with several term variations (`gh issue list --search …`, `gh search issues`, or the repo's equivalent) — not one keyword. **Read** the candidates; do not just count them.
+- Search the **repository's open and recently-closed issues** with several term variations (`gh issue list --search …`, `gh search issues`) — not one keyword. **Read** the candidates; do not just count them.
 - Search the **codebase** for an existing implementation, TODO, ADR, or design doc that already answers or intentionally defers the question.
 - **Never defer to a closed issue.** If you point at an existing issue as the reason not to chart something, verify it is actually **open** first — a closed issue means nobody picks the work up and it silently falls through the cracks. If it is closed, or does not really cover the case, chart it anyway.
 - If something does cover it, **link to it** instead of creating a duplicate, and say which item and why.
 
 ## Guardrails
 
-- **Git.** Never commit to `main`. Anything this skill writes into the repo (rare — usually only prototypes) goes on a `wayfinder/<ticket-slug>` or `feat/<desc>` branch, with Conventional Commit messages (`type(scope): summary`) and a pull request a **human** merges. Never force-push, never `--no-verify`, never auto-merge.
+- **Git.** Never commit to `main` and never work in the main checkout. Anything this skill writes into the repo (rare — usually only a prototype or a PRD edit) goes on a `feat/<slug>` branch (or the project's own branch pattern) in a worktree outside the project, at the worktree root the project's `CLAUDE.md` names: `git -C <main checkout> worktree add <wt root>/<slug> -b feat/<slug> origin/main`. Before the pull request opens, add one line to `docs/CHANGELOG.md`, newest first (every pull request carries one; create the file with a `# Changelog` heading if it does not exist), then run **the gate** — the gate commands the project's `CLAUDE.md` lists, build → lint → typecheck → full suite — and open the pull request only on green. Conventional Commit messages (`type(scope): summary`), never `git add -A`, and a pull request a **human** merges. Never force-push, never `--no-verify`, never auto-merge.
 - **Sensitive data.** Maps and tickets are visible to everyone with repo access. Never write credentials, tokens, personal data, or absolute machine paths into them — record where a thing lives, not what it is.
 - **No silent scope growth.** If resolving a ticket tempts you into building the destination, stop and say so: that is the hand-off signal, not permission.
 - **Destroy nothing quietly.** Deleting or closing a ticket someone else created, or rewriting the destination, needs the user's explicit go-ahead first.

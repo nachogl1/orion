@@ -7,7 +7,7 @@ argument-hint: "(none) | <path to one PRD> | --since <yyyy-mm-dd>"
 # /reconcile-issue-map
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`; see the repo's `CLAUDE.md`). Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and its PRDs supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it checks against and files to.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `harvest`, is changed where it is). Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and its PRDs supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it checks against and files to.
 
 The standing rule says there are **two sources of truth, kept in step**: the issues track the work, the PRD holds the
 product, and a disagreement between them is a bug. People and repositories move on — a PRD section is rewritten after
@@ -49,7 +49,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 | `map-health-<slug>` | sonnet | low | the mechanical lens: labels, parents, both blocker forms, seams, order. Returns one line per finding, no essay |
 | `prd-trace-<slug>` | opus | high | the two PRD lenses: PRD → issues and issues → PRD. Returns a bounded table |
 | `code-check-<slug>` | sonnet | low | the product lens: what `main` actually holds against what the PRD and the closed stories claim. Returns one line per finding |
-| `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits and the bookmark in its own worktree and opens the pull request |
+| `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits, the bookmark and the changelog line in its own worktree, runs the gate and opens the pull request |
 
 `<slug>` is the repository name, lower-case, hyphenated (one PRD given → the PRD's file name without `PRD` and `.md`).
 Name every sub-agent after what it does, keep the agent id each spawn returns, and ask each for a bounded result. A
@@ -64,7 +64,7 @@ Every finding belongs to exactly one lens, and the person hears the lens name, i
 |---|---|---|
 | **The PRD asks for something no story covers** | every scope item, acceptance line and build decision in each PRD has an epic or a story (open or closed) that names its section under `### References` or `### Goal`, or plainly implements it; every PRD section **changed since the bookmark** still matches the open stories that reference it (scope, acceptance criteria, vocabulary); nothing on the PRD's do-not-build list has an open story | the PRDs under `docs/PRDs/` (`git log` for what changed) |
 | **A story the PRD does not ask for, or an outcome the PRD never absorbed** | every open story names a PRD section that exists and still says what the story says; every epic matches a PRD area; every story **closed since the bookmark** whose `## Decisions (agent-ready)`, pull request or last comments changed the product in a way the PRD does not record | the issues, open and closed, and their merged pull requests |
-| **The issue map is broken** | an open non-epic issue with no native parent epic; an open epic with no open children, or a closed epic with open children; `### Blocked by` and the native relation disagree; a blocker that does not exist, points at an epic or closes a cycle; a story closed while a blocker of it is still open (built out of order); both `agent-ready` and `needs-human`, or neither readiness label; `outside-change` without `needs-human` or without `### External reference`; two open stories on one `### Seam`; a `### Seam` folder absent from `main` that the story does not say it creates; a chain deeper than level 3 | `new-issue.md` and the issue-map footer |
+| **The issue map is broken** | an open non-epic issue with no native parent epic; an open epic with no open children, or a closed epic with open children; `### Blocked by` and the native relation disagree; a blocker that does not exist, points at an epic or closes a cycle; a story closed while a blocker of it is still open (built out of order); both `agent-ready` and `needs-human`, or a non-epic issue with neither readiness label (epics never carry one); `outside-change` without `needs-human` or without `### External reference`; two open stories on one `### Seam`; a `### Seam` folder absent from `main` that the story does not say it creates; a chain deeper than level 3 | `new-issue.md` and the issue-map footer |
 | **The product does not match what the issues say** | a closed story whose seam, test or acceptance evidence is absent from `main` (the pull request was reverted, or never merged); an open story whose work `main` already holds (done under another name); a do-not-build item present in the code; a `TBD` row in the project's commands table that a closed scaffold story was meant to fill | the code and docs on `main` |
 
 The issue map `issue-map` draws is a picture of the third lens; this skill reads the same facts and the footer the
@@ -98,9 +98,12 @@ same plain words ("Fix the story", "Update the PRD", "File a story", "It is fine
 
 1. `gh auth status`, `gh repo view --json nameWithOwner,hasIssuesEnabled`. Issues disabled or another tracker named in
    `CLAUDE.md` → stop and say so. `.claude/skills/dev-next/references/new-issue.md` exists → else stop.
-2. **Latest `main`, read only.** In the main checkout: `git checkout main` → `git fetch origin main` →
-   `git merge --ff-only origin/main`. Dirty or cannot fast-forward → stop and print what is in the way; never stash,
-   never reset. This session creates no branch of its own; only `reconcile-pr-<slug>` does, in its own worktree.
+2. **Latest `main`, read only.** `git fetch origin main`, then read everything on `main` through `origin/main` —
+   `git show origin/main:<path>`, `git ls-tree -r --name-only origin/main -- <path>`, `git grep <pattern>
+   origin/main`, `git log`/`git diff` ranges ending at `origin/main` — never through the main checkout's files. That
+   checkout may sit on another branch or hold someone's work: never switch its branch, never stash, never reset. Every
+   sub-agent reads `main` the same way. This session creates no branch of its own; only `reconcile-pr-<slug>` does, in
+   its own worktree.
 3. Read the project's `CLAUDE.md` in full: layout, commands table, worktree root, boundaries, the PRD location if it
    names one, standing decisions.
 4. Read `docs/reconcile-state.json` if it exists:
@@ -114,13 +117,16 @@ same plain words ("Fix the story", "Update the PRD", "File a story", "It is fine
    No file → nothing has been reconciled yet; every PRD section counts as changed and every closed story as new.
    `accepted` holds findings the person said are fine on purpose: they are checked again, but shown only when the
    facts behind them changed (a new PRD edit on that section, a new comment on that issue).
-5. **The PRDs.** Every `docs/PRDs/*.md` (or the one given), in full; `git log --name-only <reconciled_at>..main --
-   docs/PRDs/` for what changed since the bookmark and `git diff <reconciled_at>..main -- <file>` per changed file.
+5. **The PRDs.** Every `docs/PRDs/*.md` on `origin/main` (or the one given), in full; `git log --name-only
+   <reconciled_at>..origin/main -- docs/PRDs/` for what changed since the bookmark and `git diff
+   <reconciled_at>..origin/main -- <file>` per changed file.
 6. **The issues.** `gh issue list --state all --limit 500 --json number,title,state,labels,assignees,body,closedAt,
    updatedAt` (page past 500 with `--search` on `created:` ranges when the list is cut), the open epics'
    sub-issue lists (`gh api repos/{owner}/{repo}/issues/<epic>/sub_issues --jq 'map(.number)'`), and for every open
    non-epic issue its native blockers (`.../issues/<N>/dependencies/blocked_by --jq 'map(.number)'`). Write all of it
-   to one scratch file outside the repository; the sub-agents read that file, never the API again.
+   to one scratch file outside the repository; the sub-agents read that file, never the API again. **Issues carrying
+   any `wayfinder:*` label are left out of that file and skipped by every lens**: they are `/wayfinder`'s planning map
+   and decision tickets, not stories, so they carry no readiness label, epic or seam on purpose.
 7. **The issue map**, when installed: run `python .claude/skills/issue-map/scripts/issue_map.py` in the background, as
    its own command, never chained; when it finishes, copy its footer sentence (agree / DISAGREE on …; dropped links)
    into the scratch file.
@@ -229,14 +235,19 @@ project's worktree root, opened by `reconcile-pr-<slug>`. A human merges it; thi
    `### References` and `### Goal`, `### References` also naming this reconcile run (`reconcile of <date>`).
 4. **Close a story** → `gh issue close <N> --comment "<why, in plain words, and what covers it on main or which PRD
    change dropped it>"`. Never an assigned or in-flight issue.
-5. **Write `docs/reconcile-state.json`** (in the worktree, part of the pull request): `reconciled_at` = the `main`
-   commit read in phase 0; `last_reconcile` = today; `accepted` = every finding the person said is fine as it is,
-   this run and earlier, minus those whose facts changed and were decided again. Only this skill writes the file.
-6. Add the run's one line to `docs/CHANGELOG.md` when the project keeps one (newest first), commit with Conventional
-   Commits (`docs(prd): reconcile …` when the PRD changed, else `chore(reconcile): …`), **never `git add -A`**, push,
-   open the pull request with the table below, and tell the person it waits for their merge. No file change at all
-   (only issue edits) → still write the bookmark and open the pull request; it is what tells `/dev-next` the drift was
-   looked at.
+5. **Write `docs/reconcile-state.json`** (in the worktree, part of the pull request): `reconciled_at` = the
+   `origin/main` commit read in phase 0; `last_reconcile` = today; `accepted` = every finding the person said is fine
+   as it is, this run and earlier, minus those whose facts changed and were decided again. Only this skill writes the
+   file.
+6. Add the run's one line to `docs/CHANGELOG.md`, newest first (every pull request carries one; create the file with
+   a `# Changelog` heading if it does not exist). **Run the gate** (the gate commands the project's `CLAUDE.md` lists:
+   build → lint → typecheck → full suite) in the worktree before the pull request opens; it opens only on green. Red →
+   `reconcile-pr-<slug>` reports the failing command and stops, and this session names it first in the close-out for
+   a person to fix (the pull request holds only PRD text, the bookmark and a changelog line, so red almost always
+   means `main` itself is red). Then commit with Conventional Commits (`docs(prd): reconcile …` when the PRD changed,
+   else `chore(reconcile): …`), **never `git add -A`**, push, open the pull request with the table below, and tell the
+   person it waits for their merge. No file change at all (only issue edits) → still write the bookmark and open the
+   pull request; it is what tells `/dev-next` the drift was looked at.
 7. **Rebuild the issue map** when installed: the generator with no arguments, in the background, as its own command.
 
 ```

@@ -1,6 +1,6 @@
 ---
 name: harvest
-description: ORION - Work through the one pile agents leave behind — the audit reports on every developer's audit branch, which hold three kinds of note (a product problem left for later, something that slowed a run down, a tip for the next run) — with the person running it, in three waves (fix now, throw away or keep, then tasks), every item explained as if the person had never heard of the project, with its kind and how much it matters said out loud, never proposing anything an open task already covers, and grouping what belongs together into as few tickets as possible. Nothing is filed or dropped without the person's word. Use when the user types /harvest, or when a /dev-next run ended with `Harvest due: run /harvest`.
+description: 'ORION - Work through the one pile agents leave behind — the audit reports on every developer''s audit branch, which hold three kinds of note (a product problem left for later, something that slowed a run down, a tip for the next run) — with the person running it, in three waves (fix now, throw away or keep, then tasks), every item explained as if the person had never heard of the project, with its kind and how much it matters said out loud, never proposing anything an open task already covers, and grouping what belongs together into as few tickets as possible. Nothing is filed or dropped without the person''s word. Use when the user types /harvest, or when a /dev-next run ended with `Harvest due: run /harvest`.'
 argument-hint: "(no arguments)"
 disable-model-invocation: true
 ---
@@ -8,7 +8,7 @@ disable-model-invocation: true
 # /harvest
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `wayfinder`; see the repo's `CLAUDE.md`). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` and `references/audit.md` it relies on.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `wayfinder`, is changed where it is). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` and `references/audit.md` it relies on.
 
 A person runs this. It is never started by another skill: `/dev-next` only counts the pile and prints
 `Harvest due: run /harvest` when it reaches ten (the findings-left-for-later rule). Every decision below is the
@@ -149,7 +149,7 @@ team a backlog nobody drains, or an hour of a person's attention on things that 
      `.claude/skills/dev-next/references/new-issue.md` (the body headings, `story` plus exactly one readiness label,
      the labels and the `### External reference` heading it prescribes when the work touches a repository this team
      does not own, native sub-issue of its epic, both blocker forms). The epic is the one the items came from when
-     they share one, otherwise the human picks. `### PRD references` names the audit runs the items came from.
+     they share one, otherwise the human picks. `### References` names the audit runs the items came from.
    - **Add to an existing task** — an open story already owns the area but not this exact problem: a comment on that
      story (Phase 3, step 2); never on a `needs-human` story.
    - **Drop** — only on the human's explicit word, but **the recommendation for every item rated "probably never
@@ -211,7 +211,7 @@ the pull request — this skill has no merge autonomy.
 1. **Fix now** → make the change. **Rule change** → edit the rule file. Both in this pull request.
 2. **Ticket** → create the issue exactly as `.claude/skills/dev-next/references/new-issue.md` says — body file,
    labels, native sub-issue, both blocker forms, verified with the read-back calls there — naming the audit runs the
-   items came from under `### PRD references`. Once, after the last ticket is created or edited, if the project keeps
+   items came from under `### References`. Once, after the last ticket is created or edited, if the project keeps
    a PRD, ask the PRD question: **"Should we update the PRD with this too?"**, followed by one line per ticket saying
    what changed and which PRD section it touches.
    **Add to an existing task** → a comment on that story, headed `Harvest of <date>:`, saying in plain words what the

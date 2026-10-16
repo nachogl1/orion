@@ -7,7 +7,7 @@ argument-hint: "<path to the PRD> --developers N"
 # /prd-to-tickets
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `dev-quick`; see the repo's `CLAUDE.md`). Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and the PRD supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it files to. The brief for the prototype sub-agent lives in `references/ux-prototype.md`.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `dev-quick`, is changed where it is). Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and the PRD supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it files to. The brief for the prototype sub-agent lives in `references/ux-prototype.md`.
 
 A PRD says **what** to build. Agents build **stories**. This skill is the step between: it reads one PRD and files
 the epics and stories that let several developers (people or `/dev-next` runs) work on it **at the same time without
@@ -64,9 +64,11 @@ never stashes, never switches branches, commits only the files it touched, and o
 3. Labels: `gh label list --limit 200 --json name --jq '.[].name'`; create any of `epic`, `story`, `agent-ready`,
    `needs-human`, `in-progress`, `outside-change`, `bug` that is missing, with a one-line description. Never rename or
    delete one.
-4. **Latest `main`, read only.** In the main checkout: `git checkout main` → `git fetch origin main` →
-   `git merge --ff-only origin/main`. Dirty or cannot fast-forward → stop and print what is in the way; never stash,
-   never reset. This session creates no branch of its own; only its sub-agents do, each in its own worktree.
+4. **Latest `main`, read only.** `git fetch origin main`, then read the code, the layout and `docs/ux/` on `main`
+   through `origin/main` — `git show origin/main:<path>`, `git ls-tree -r --name-only origin/main -- <path>`,
+   `git grep <pattern> origin/main` — never through the main checkout's files. That checkout may sit on another branch
+   or hold someone's work: never switch its branch, never stash, never reset. This session creates no branch of its
+   own; only its sub-agents do, each in its own worktree.
 5. **Locate the PRD** (arguments above) and read it in full. Note every section number or heading, so each story can
    name the one it serves under `### References` and `### Goal`. Nothing is asked of the person in this phase: the
    first thing they hear is phase 1.
@@ -127,7 +129,8 @@ A failure is reported in one line and the story stays `needs-human` with the per
    - **An open epic already matches a PRD area → reuse it** as the parent; a new epic is created only when none fits.
    - **A closed issue** covered something once → it does not now; cut the story (never defer to a closed issue).
    - **Code on `main` already does it** → no story; say so in the plan under "already done".
-4. **Check the layout against the PRD.** `ls` the application and test paths. A project with no code yet needs a
+4. **Check the layout against the PRD.** List the application and test paths on `origin/main` (`git ls-tree`, as in
+   phase 0). A project with no code yet needs a
    **scaffold story** (the project skeleton, the build, the test runner, the gate commands filled into `CLAUDE.md`);
    a project that already builds and tests does not.
 
@@ -247,8 +250,10 @@ File in dependency order, so every blocker exists before the issue it blocks:
 6. **Ask once, after the batch:** "Should we update the PRD with this too?" — one line per change the interview made
    to the product (naming the PRD section), only when there is one. "No" ends it; "yes" → spawn `prd-update-<slug>`
    with the exact lines and sections: it works in its own worktree on `feat/prd-update-<slug>` (or the project's
-   own branch pattern), commits only the PRD and the changelog line, opens a `docs(prd)` pull request a human merges,
-   and returns its link. Never pushed to `main`.
+   own branch pattern), adds one line to `docs/CHANGELOG.md` (newest first; created with a `# Changelog` heading if
+   missing), runs the gate (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite)
+   and on green commits only the PRD and the changelog line, opens a `docs(prd)` pull request a human merges, and
+   returns its link; red → it reports the failing command and stops. Never pushed to `main`.
 7. **Close-out, ten lines or fewer:** epics and stories filed (counts per level against the developer count), which
    story `/dev-next` takes first (the scaffold, or the contract stories when there is no scaffold), every
    `needs-human` item with who acts and what, every `outside-change` with who drives it, the prototype pull request
