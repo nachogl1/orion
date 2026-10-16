@@ -7,24 +7,31 @@
 > listed at the end). **The two must never contradict each other**: before writing or changing a rule in the project's
 > `CLAUDE.md`, check it against this file; after every `orion update` that changed this file, re-read the project's
 > `CLAUDE.md` for new conflicts and fix them in the same commit. If a contradiction slips through anyway, this file wins.
+>
+> **A person's own rules file (their user-level `CLAUDE.md`) is different: when it contradicts this file, neither wins
+> silently.** Stop, tell the person about the contradiction (quote both rules and say where each lives), and ask
+> which one to use.
 
 ## Communication
 
 - TLDR first. One-liners. Numbered steps, one action per line. End with exactly one next action.
-- Five lines max unless asked for more; several topics become one line each, never casualties.
+- Several topics become one line each, never casualties.
 - Never refer to a thing by its number alone — `issue #12 (parse the dataset section)`, never a bare `#12`.
 - No preamble, no recap, no sign-off. Problems (bugs, risks, failures) come first and are never cut for length.
 - Never guess. Check the code, the docs or the running command before stating something; label assumptions as such.
 - Radical candor: care personally, challenge directly. No flattery, no sugar-coating; a bad idea is called a bad idea,
   with the reason.
-- An opinion, a comparison or research asked for in chat is answered in chat. Create a file only when asked for one.
+- When you need the person's answer, ask questions as one list with clickable options (the AskUserQuestion tool):
+  distinct options per question, the recommended one marked. Word every question and option for a junior developer
+  who knows neither the stack nor the business: plain words, every term of jargon or acronym explained on first use.
 
 ## Work tracking
 
 - **GitHub Issues in the project's own repository are the only source of truth.** PRD → epic → story:
   `/prd-to-tickets` cuts a PRD into epics and stories built for parallel work (scaffold → contract stories →
-  fan-out). Agents implement **stories** only, never an epic. (`/prd-to-tickets`, `/dev-next`, `/dev-quick` and
-  `/harvest` drive GitHub Issues and nothing else.)
+  fan-out). Agents implement **stories** only, never an epic. (`/prd-to-tickets`, `/dev-next`, `/dev-quick`,
+  `/harvest`, `/harvest-qa`, `/issue-map`, `/reconcile-issue-map` and `/wayfinder` drive GitHub Issues and nothing
+  else.)
 - **The assignee owns the issue.** Assign yourself *before* writing any code. Never work on, edit or unassign someone
   else's. Two claims can land in the same second, so re-read after claiming: a second assignee, or an earlier
   "claimed by run …" comment from another run, means the earlier claim wins. The later run deletes its claim comment,
@@ -43,10 +50,12 @@
   `/dev-next` — never built by hand in the chat.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
-  `### PRD references`.
+  `### References`.
 - **Read an issue only with `gh issue view <N> --json title,body,labels,comments`.** Shorter forms drop the body.
 - Labels: `epic` `story` `agent-ready` `needs-human` `in-progress` `outside-change` `bug`, plus the `wayfinder:*` set
   the planning skill owns. `/dev-next` creates any of the seven that are missing in its preflight.
+  - `wayfinder:*`: a planning ticket, never a story. `/dev-next` never takes an issue carrying one, and the drift
+    checks (`/dev-next`'s probe, `/reconcile-issue-map`) leave such issues out.
   - `agent-ready`: nothing is left to ask. An agent claims it, builds it, gets a fresh-agent review and merges with no
     human. **An issue with none of `agent-ready`, `needs-human` or `outside-change` is not taken automatically**:
     `/dev-next` stops in preflight and asks the human what it is. A label given then earns one ready-check before
@@ -119,8 +128,9 @@ PRD wins on product, the rules files win on process.
 - Worktrees live **outside the project**, at the root the project's `CLAUDE.md` names. The in-flight file
   (`<worktree root>/in-flight.json`, never committed) lives beside them; format in
   `.claude/skills/dev-next/references/in-flight.md`.
-- Update a branch with `git merge origin/main` — **never rebase, never stash**. Never force-push, never bypass hooks
-  (`--no-verify`), never `git add -A`, never rebase or stash someone else's work, never delete work you did not create.
+- Update a branch with `git merge origin/main` — **never rebase, never stash**. Never force-push unless the person
+  explicitly asks for that push, never bypass hooks (`--no-verify`), never `git add -A`, never rebase or stash
+  someone else's work, never delete work you did not create.
 - Never merge on red or pending checks; "no checks reported" counts as red — poll for the check run first, the host can
   take minutes.
 - **Leave nothing behind.** A merged branch is deleted, locally and on the remote; a worktree whose work landed is
@@ -159,6 +169,10 @@ PRD wins on product, the rules files win on process.
 
 ## Working
 
+- **Invoking a skill is the go:** a person who starts a skill authorises everything that skill's own rules let it
+  do, end to end, and the go ends with that run. No skill overrides the Git or Definition of done rules: never push
+  to `main`, never merge on red or pending checks, never skip hooks, never force-push without the person's explicit
+  word for that push.
 - **Smallest change that works:** what was asked and no more. No refactors of untouched code, no speculative
   abstractions. **Stay on the issue you claimed.** A side-fix belongs in the pull request only if it is small, safe
   **and** in a file you are already changing.
@@ -202,16 +216,31 @@ PRD wins on product, the rules files win on process.
 - Skills under `.claude/skills/` carrying an `.orion-managed` marker are orion's and are refreshed by `orion update`;
   the project's own skills (no marker) are never touched.
 - `/orion` manages the installation: `status`, `check`, `update`, `uninstall`.
+- `/orion-verify` is the one-time check after install: `CLAUDE.md`, this file, every skill and the settings fit
+  together; it fixes what is mechanical and asks before touching anything the project owns.
+- `/wayfinder` plans work too big for one session as a map of decision tickets and settles them one at a time; it
+  produces decisions, never the deliverable.
 - `/prd-to-tickets` turns a PRD under `docs/PRDs/` into epics and stories with the person present: existing open
   issues become blockers, never duplicates; both blocker forms are set and read back; nothing is filed `agent-ready`
   with a question left.
-- `/harvest-qa` drives the QA checks every merged story left behind against `main`, in sequential rounds until every
-  record is tested or deduped, and files a `bug` issue only for a failure reproduced twice that nothing open covers.
+- `/dev-quick` turns a change wanted now, with no ticket yet, into an `agent-ready` issue and hands it to `/dev-next`.
+- `/dev-next` takes the next free story end to end: claim, build in a worktree, fresh-agent review, merge on green,
+  close, report.
 - `/issue-map` draws the blocked-by graph of every issue, level by level, into `docs/issue_map/issue_map.html` — a
   local, never-committed snapshot that `/dev-next` rebuilds after every claim and merge. The issues stay the truth.
+- `/harvest` works through the run reports on the audit branches with the person and turns what matters into tickets
+  or rule edits.
+- `/harvest-qa` drives the QA checks every merged story left behind against `main`, in sequential rounds until every
+  record is tested or deduped, and files a `bug` issue only for a failure reproduced twice that nothing open covers.
 - `/reconcile-issue-map` checks the issues, the PRDs and the code on `main` against each other and fixes the drift
   with the person present: issue edits under the ownership rules, PRD edits and its bookmark in a pull request a
   human merges. The PRD wins on what to build; `main` wins on what is done.
+- `/clear-git-resources` lists stale worktrees, branches and leftover files, says what deleting each would lose, and
+  deletes only what the person agrees to.
+- `/handoff` packs the current conversation into a handoff document for the next session or agent.
+- `/project-handover` writes a self-contained HTML handover of the project for clients, stakeholders and new joiners.
+- `/generate-project-writeup` writes a Word summary report of the work delivered, for leadership and commercial
+  stakeholders.
 
 ## What the project's `CLAUDE.md` must state
 
