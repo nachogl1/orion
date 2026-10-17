@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- The repo's own `CLAUDE.md` now asks, before any change to it, whether the change belongs in `BASE_CLAUDE.md` instead, so rules every project needs end up in the baseline.
 - The planning skills (`wayfinder`, `harvest`, `harvest-qa`, `reconcile-issue-map`, `prd-to-tickets`) now follow the baseline: GitHub Issues only, the gate and a changelog line on every pull request, no branch switching in the main checkout.
 - `dev-next` and `dev-quick` now follow the rules they ship with, so given-up stories can be picked up again, planning tickets and reconciles no longer raise false alarms, and the main checkout is never switched off its branch.
 - BASE_CLAUDE.md lists every skill, drops the reply-length cap, allows a force-push only on the person's explicit word and bounds what starting a skill authorises, asks the person when their own rules contradict it; the repo's `CLAUDE.md` loses the contradictions the audit found.
