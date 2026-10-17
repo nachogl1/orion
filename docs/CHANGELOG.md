@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- `BASE_CLAUDE.md` and the starter `CLAUDE.md` no longer suggest an example boundary: each project writes its own boundaries, if it has any.
 - Small fixes to `BASE_CLAUDE.md` (TLDR after any problem, `fix/` branches allowed, the AI-model rule only for projects that call a model, a neutral boundary example), and the `-vN` skill-versioning rule is gone: every skill is edited in place.
 - The commit-email rule and its CI check are gone: emails in commits are allowed again, so pull requests merge with GitHub's normal squash merge.
 - A clash between a person's own rules file and BASE_CLAUDE.md is now fixed for good: with the person present the assistant offers to change one file or the other; an unattended run never stops to ask, follows the baseline and logs the clash as friction in its run report.

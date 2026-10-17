@@ -511,7 +511,7 @@ has no use for. A rule written here must not contradict the mandatory rules.
 - Deploys to: <environment>, from \`main\`.
 - External read-only repositories: <none, or list them with their work-item key format>.
 - Sensitive data classes that never enter the repository: <customer records, partner-owned schemas, …>.
-- Boundaries an agent must not move: <e.g. "AI is a build-time tool; nothing it produces executes at runtime">.
+- Boundaries an agent must not move: <none, or list them>.
 - Working language for code, comments, commits, issues and docs: <language>.
 
 ## Pending until PRD v1

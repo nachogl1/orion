@@ -100,8 +100,7 @@ PRD wins on product, the rules files win on process.
   history — and never run anything against production.
 - **Secrets only in `.env`** (gitignored; `.env.example` lists the names). Never in code, issues, pull requests or
   committed files. A committed secret is rotated by its owner, not just deleted: git history keeps it.
-- **A boundary the project's `CLAUDE.md` draws is never moved by an agent** (e.g. "the
-  mobile app never talks to the database directly; it goes through the API").
+- **A boundary the project's `CLAUDE.md` draws is never moved by an agent.**
 - **A repository the project's `CLAUDE.md` lists as external is read-only from here.** Never build it, run it, commit
   to it or change its git state. A change that must land there is an `outside-change` issue: it stops at a pull
   request its own reviewer merges.
