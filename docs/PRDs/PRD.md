@@ -80,8 +80,9 @@ The loop, from idea to checked software:
   plans, never builds. Works on GitHub Issues, Jira or a local markdown map.
 - `prd-to-tickets` — cuts a PRD into epics and stories for parallel work (scaffold → contract stories → fan-out),
   sets both blocker forms, reuses open issues as blockers, and drafts a UX prototype when front-end stories lack one.
-- `dev-quick` — interviews the person about a change with no ticket, files an `agent-ready` issue in the standard
-  shape and hands it to `dev-next`.
+- `dev-quick` — turns a change with no ticket into an `agent-ready` issue in the standard shape and hands it to
+  `dev-next`. It interviews the person only when something is unclear, and agents offer it whenever someone asks for a
+  code change in chat.
 - `dev-next` — the engine: picks the next free story, claims it, builds it in a worktree, has a fresh agent review it,
   merges on green CI, closes it, writes the run report and QA record, and counts what is due.
 - `issue-map` — draws the blocked-by graph of every issue into a never-committed local HTML snapshot; `dev-next`
