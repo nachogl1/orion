@@ -4,6 +4,7 @@ This skill has **no `-vN` convention** — it is edited in place. Record notable
 
 ## Unreleased
 
+- **Added `VERIFY.md`**: read-only checks for git, Python 3.8+, the bundled generator and the Downloads folder.
 - **Renamed to `generate-project-writeup`** (the `-orion` suffix is dropped) and the
   description now starts with `ORION -` so the origin stays visible in skill listings.
 - **COCOMO phase split disambiguated.** The nominal 7/17/25/22/22/7 split listed six

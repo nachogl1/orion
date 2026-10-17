@@ -9,7 +9,7 @@ disable-model-invocation: true
 > [!NOTE]
 > **Editing this skill?** This skill has **no `-vN` convention** — edit it in place
 > (like `project-handover` / `handoff`). Keep everything in the skill
-> files **general** (see the Distribution-safety gate at the bottom) — this repo is
+> files **general** (see the Distribution-safety gate at the bottom) — orion is
 > publicly distributable. The *report* it generates about a user's repo is a local
 > artifact in their Downloads and may name their project, people, and figures; the
 > **skill files must never hard-code anything project-specific** (no product/codename,
@@ -410,17 +410,17 @@ python "<skill-dir>/assets/build_docx.py" "<data.json>" \
 - **Generated/vendored code dwarfs hand-written** — exclude it from production SLOC or the
   cost model is meaningless; state the exclusions.
 - **PowerShell encoding** — if you ever write text parts yourself (HTML fallback), avoid a
-  BOM: use `[System.IO.File]::WriteAllText($path,$content, (New-Object System.Text.UTF8Encoding $false))`.
+  BOM (PowerShell 5.1's `-Encoding utf8` adds one): use `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` (`$path` must be absolute, e.g. `(Join-Path (Get-Location) '<file>')`, because .NET resolves relative paths against its own current directory, not PowerShell's).
   `build_docx.py` already writes UTF-8 without BOM.
 
 ---
 
-## Distribution-safety gate (this repo is publicly distributable)
+## Distribution-safety gate (orion is publicly distributable)
 
 This skill ships publicly. Before generating, confirm **nothing project-specific leaked into
 the skill files** — no person/org/product/codename/repo/stack/rate/locale/path specifics in
 prose, examples, or the generator. The **generated report** about a user's repo is a **local
 artifact** (in their Downloads) and may name their project, people, business unit, rates, and
-figures — that's expected; it is never committed back into this repo. What must stay general
-is everything under `skills/generate-project-writeup/` itself (including any example JSON
+figures — that's expected; it is never committed back into the project. What must stay general
+is the skill's own files (including any example JSON
 or rates in `build_docx.py` — keep them neutral placeholders).

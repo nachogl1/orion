@@ -7,7 +7,7 @@ argument-hint: (no arguments)
 # orion-verify
 
 > [!NOTE]
-> **Editing this skill?** It has **no `-vN` convention** — edit it in place (like `orion`; see the orion repo's `CLAUDE.md`). Keep it **general**: no project, person, company or stack names — everything project-specific is read from the project at run time.
+> **Editing this skill?** It has **no `-vN` convention** — edit it in place (like `orion`). Keep it **general**: no project, person, company or stack names — everything project-specific is read from the project at run time.
 
 `orion init` copies skills, a rules file and a session-start hook into a project, and adds an import line to the
 project's `CLAUDE.md`. That is a mechanical copy: it cannot tell whether the result makes sense **as a whole** — a
@@ -40,7 +40,7 @@ bash .claude/orion/orion.sh verify
 ```
 
 It prints one line per finding (`ok`, `WARN`, `FAIL`) and a closing count; exit 1 means at least one `FAIL`. If the
-script is missing, orion is not installed here: say so, point at the orion README's one-line install, and stop.
+script is missing, orion is not installed here: say so, say that orion is installed by running its `init` against this project, and stop.
 
 Apply the fix for every `FAIL` **without asking** — these only repair what orion installed and never change what the
 project wrote:

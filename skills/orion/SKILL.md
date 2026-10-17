@@ -7,7 +7,7 @@ argument-hint: status | check | update | uninstall
 # orion
 
 > [!NOTE]
-> **Editing this skill?** It has **no `-vN` convention** — edit it in place (see the orion repo's `CLAUDE.md`).
+> **Editing this skill?** It has **no `-vN` convention** — edit it in place.
 
 The orion files in this repository are managed by one script, `.claude/orion/orion.sh`. This skill is a thin wrapper
 around it: pick the sub-command from the argument (default `status`), run it from the project root with bash, and report
@@ -25,7 +25,7 @@ the outcome in the user's preferred shape. All commands work on Windows too, thr
 ## Rules
 
 - Run the script, do not re-implement it. If `.claude/orion/orion.sh` is missing, orion is not installed here: say so
-  and point at the orion README's one-line bootstrap instead of inventing files.
+  and say it is installed by running orion's `init` against this project, instead of inventing files.
 - `update` and `uninstall` change tracked files. Never commit for the user unless they ask; never commit to `main`.
 - The update mode lives in `.claude/orion/config.json` (`updateMode`: `ask` = offer at session start, `auto` = update
   silently at session start, `off` = never check). When the user wants to change it, edit that one key and nothing else.

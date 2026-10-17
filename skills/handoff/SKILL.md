@@ -7,7 +7,7 @@ argument-hint: What will the next session be used for?
 # handoff
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `project-handover` / `generate-project-writeup`; see the repo's `CLAUDE.md`).
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `project-handover` / `generate-project-writeup`). Keep everything here **general**: no project, person, company or stack names. It writes one local file outside the workspace and never touches git; the model may offer it only on a clear user cue (see *When it runs*).
 
 Distil the **current conversation** into a single markdown handoff document so a fresh agent — with none of this chat's memory — can pick up exactly where this one left off. The value of the document is the knowledge that exists *only* in the conversation: the goal, the current state, the decisions and *why* they were made, the approaches that were tried and rejected, the open questions, and the immediate next steps. Everything already recorded elsewhere (a spec, a plan, an ADR, an issue, a commit, a diff) is **linked, not copied**.
 
@@ -139,7 +139,7 @@ If a secret was *necessary* context (e.g. "the deploy failed because the token l
 - **Does NOT save into the current workspace/repo** — always somewhere the user picks outside it.
 - **Does NOT duplicate existing artifacts** — specs, plans, ADRs, issues, commits, and diffs are referenced by path/URL with a one-line summary, never re-pasted.
 - **Does NOT commit, push, or open a PR** — it writes one local file and nothing else. No git state changes.
-- **Does NOT auto-trigger** — explicit invocation only.
+- **Does NOT volunteer** — it runs on `/handoff`, a request for a handoff, or a clear user cue that the work must continue in another session; never mid-task without one.
 - **Does NOT write secrets or PII** — the redaction pass in Step 4 is mandatory.
 - **Does NOT dump the raw transcript** — it *distils*; a wall of chat log is not a handoff.
 

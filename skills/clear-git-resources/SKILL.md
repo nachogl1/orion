@@ -7,7 +7,7 @@ argument-hint: "(none) | --dry-run"
 # /clear-git-resources
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`; see the repo's `CLAUDE.md`). Keep everything here **general**: no project, person, company or stack names. The scanner is `scripts/scan.sh` (portable bash, read-only); a change to what is found or how it is classified is a pull request on that file. The branch count it prints is the same one the session-start hook (`orion.sh check`) uses, so keep the two expressions identical.
+> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`). Keep everything here **general**: no project, person, company or stack names. The scanner is `scripts/scan.sh` (portable bash, read-only); a change to what is found or how it is classified is a pull request on that file. The branch count it prints is the same one the session-start hook (`orion.sh check`) uses, so keep the two expressions identical.
 
 Every skill that builds something leaves git resources behind: a worktree, a local branch, a remote branch, sometimes a
 folder or a log file in the worktree root. `/dev-next` deletes its own when a story merges, but nothing cleans up after a
@@ -34,7 +34,13 @@ The scanner sorts everything into three kinds. The group ids are the ones `scrip
 |---|---|---|---|
 | **Safe** (`offer=yes`) | `wt-prunable` `wt-done` `wt-detached` `br-merged` `br-gone` `br-pr-closed` `rb-merged` `rb-pr-closed` `root-orphan` `root-file` | The work is already on the default branch, its pull request is merged or closed, its remote branch was deleted after a merge, the worktree is a clean temporary checkout, or the folder/file is not a worktree at all and is older than `--days` (default 2) | Nothing but the pointer: every commit is reachable from the default branch or was abandoned through a closed pull request |
 | **Needs the person's word** (`offer=ask`) | `wt-active` `wt-dirty` `br-unmerged` `rb-unmerged` | Commits that are not on the default branch and have no pull request, or uncommitted changes in a worktree | Real work. A remote branch of this kind may be someone else's: the line says who made the last change |
-| **Never offered** (`offer=no`) | `wt-open-pr` `br-open-pr` `rb-open-pr` `wt-protected` `br-protected` `rb-protected` `root-recent` `root-other` | The default branch, `audit/<login>` branches (`/dev-next` writes run reports there), the branch checked out in the main checkout, anything in `<wt root>/in-flight.json`, any branch with an open pull request, folders changed in the last `--days` days, other repositories' checkouts in the shared worktree root | Listed under "kept" so the person knows they were seen; no command is ever run on them |
+| **Never offered** (`offer=no`) | `wt-open-pr` `br-open-pr` `rb-open-pr` `wt-protected` `br-protected` `rb-protected` `root-recent` `root-other` | The default branch, `audit/<login>` branches (`/dev-next` writes run reports there), the branch checked out in the main checkout, any worktree or branch of an issue-numbered entry in `<wt root>/in-flight.json`, any branch with an open pull request, folders changed in the last `--days` days, other repositories' checkouts in the shared worktree root | Listed under "kept" so the person knows they were seen; no command is ever run on them |
+
+**A QA run's worktree is never safe.** `/harvest-qa` drives its checks in one detached, clean worktree named
+`qa-<yyyymmdd-hhmmss>` in the worktree root. It has no branch and is not in `in-flight.json`, so the scanner lists it as
+safe (`wt-detached`). Always move every `qa-*` worktree out of the safe groups into "needs the person's word", and say
+in its line that `/harvest-qa` may be using it right now. A worktree with uncommitted changes is likewise always "needs
+the person's word", never safe.
 
 A **squash-merged** branch is not an ancestor of the default branch, so it is recognised through its pull request
 (`gh`) or through its deleted remote branch (`[gone]`). Without `gh`, the scanner says so in a `NOTE` line and such a

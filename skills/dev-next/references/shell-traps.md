@@ -7,8 +7,9 @@ real run, add it here in a pull request. Read this the moment a command behaves 
 
 - **No `&&` and no `||`.** They are a parser error, not a fallback. Use `A; if ($?) { B }`.
 - No ternary `?:`, no `??`, no `?.`.
-- `Set-Content` and `Add-Content` default to the system ANSI codepage. Pass `-Encoding utf8` when another tool will read
-  the file — or write it with Python instead.
+- `Set-Content` and `Add-Content` default to the system ANSI codepage, and `-Encoding utf8` (also on `Out-File`) writes a
+  **byte-order mark**. For a file another tool will read, write it BOM-free with
+  `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` (`$path` must be absolute, e.g. `(Join-Path (Get-Location) '<file>')`, because .NET resolves relative paths against its own current directory, not PowerShell's) — or with Python.
 - `2>&1` on a native executable wraps each stderr line in an error record and sets `$?` to false **even on exit code 0**.
   Do not redirect stderr; it is already captured.
 - `-ErrorAction SilentlyContinue` hides the message but the tool still reports failure. Use `try { ... -ErrorAction Stop } catch {}`.
@@ -21,8 +22,8 @@ real run, add it here in a pull request. Read this the moment a command behaves 
 
 ## Writing files that GitHub will read
 
-- PowerShell's UTF-8 adds a **byte-order mark**, which renders as stray characters at the top of an issue or pull request.
-  Write the body with Python — `open(path, "w", encoding="utf-8")` — then pass it with `--body-file`.
+- PowerShell 5.1's `-Encoding utf8` adds a **byte-order mark**, which renders as stray characters at the top of an issue or
+  pull request. Write the body BOM-free with `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` (`$path` must be absolute, e.g. `(Join-Path (Get-Location) '<file>')`, because .NET resolves relative paths against its own current directory, not PowerShell's) or with Python — `open(path, "w", encoding="utf-8")` — then pass it with `--body-file`.
 - **Bash heredocs break on apostrophes** in the body, and long heredocs can fail to parse on some content. Same fix:
   write the file with Python or the file tool, pass `--body-file`.
 - **The Bash tool on Windows de-escapes backslashes inside heredocs**: a path such as `C:\wt\<N>-<slug>` can reach

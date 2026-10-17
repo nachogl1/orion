@@ -9,7 +9,7 @@ disable-model-invocation: true
 > [!NOTE]
 > **Editing this skill?** This skill has **no `-vN` convention** — edit it in place
 > (like `generate-project-writeup` / `handoff`). Keep everything here
-> **general** (see the Distribution-safety gate below) — this repo is publicly
+> **general** (see the Distribution-safety gate below) — orion is publicly
 > distributable. The *report* it generates about a user's repo is a local artifact
 > and may name their repo; the skill files must never hard-code anything
 > project-specific.
@@ -284,10 +284,11 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 - Confirm no class names, file paths, open-PR/branch references, or personal "I/you"
   framing slipped in — the doc must read neutrally and at product level.
 - Confirm UTF-8 survived — accents, em dashes, arrows render when read back.
-- On Windows, if a PowerShell write added a BOM / double-encoded, re-encode without BOM:
+- On Windows, if a PowerShell write added a BOM / double-encoded, re-write it without BOM:
   ```powershell
-  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-  [System.IO.File]::WriteAllText($path, $content, $utf8NoBom)
+  # $path must be absolute, e.g. (Join-Path (Get-Location) '<file>'): .NET resolves relative paths
+  # against its own current directory, not PowerShell's
+  [System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))
   ```
 - **Report in chat:** absolute file path, the **backlog source** used and the snapshot
   date, the section count, and the **epic/story roll-up** (e.g. "X of Y epics, M of N
@@ -315,8 +316,8 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 
 ## Failure modes to watch
 
-- **PowerShell `Set-Content -Encoding utf8` adds a BOM / may double-encode.** Use
-  `[System.IO.File]::WriteAllText` with `New-Object System.Text.UTF8Encoding $false`.
+- **PowerShell 5.1 `-Encoding utf8` adds a BOM / may double-encode.** Use
+  `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` (`$path` must be absolute, e.g. `(Join-Path (Get-Location) '<file>')`, because .NET resolves relative paths against its own current directory, not PowerShell's).
 - **No structured backlog detected** — say so plainly; build §Epics & Stories from whatever
   structured units exist (milestones, top-level spec docs) and mark the rest "not tracked."
   Do not fabricate epics or stories.
@@ -347,12 +348,12 @@ when available, else the toplevel folder name. `<YYYY-MM-DD>` = today.
 
 ---
 
-## Distribution-safety gate (this repo is publicly distributable)
+## Distribution-safety gate (orion is publicly distributable)
 
 This skill ships publicly. Before writing the report, confirm **nothing project-specific
 leaked into the skill files** — no person/org/product/repo/stack/locale/path specifics in
 prose or examples, and every diagram/example here uses **generic component/module
 placeholders, never real class or file names**. The **generated report** about a user's
 repo is a **local artifact** (in their Downloads) and may name their repo and its
-modules/features — that's fine; it is never committed back into this repo. What must stay
-general is everything under `skills/project-handover/` itself.
+modules/features — that's fine; it is never committed back into the project. What must stay
+general is the skill's own files.

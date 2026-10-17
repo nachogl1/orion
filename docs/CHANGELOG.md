@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- Utility skills: one BOM-free write method, no pointers into the orion repo, a `VERIFY.md` for `generate-project-writeup`, and the sweep never treats a QA worktree as safe
 - An auto-update at session start now time-limits only the download, never the copy, so a slow Windows machine can no longer be left with a half-updated orion; the hook's time limit goes from 20 s to 60 s, and existing installs are raised by their next `update` or session-start check (until then the old 10 s cap stays).
 - `wayfinder` is rewritten in orion's own words and loses its third-party licence credit, so the skill names no outside person or repository; it works as before, with the map's sections now called Settled and Fog (older maps are still read).
 - The repo's own `CLAUDE.md` now asks, before any change to it, whether the change belongs in `BASE_CLAUDE.md` instead, so rules every project needs end up in the baseline.
