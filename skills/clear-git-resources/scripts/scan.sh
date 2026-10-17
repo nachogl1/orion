@@ -21,8 +21,9 @@
 #   SUMMARY offer=<n> ask=<n> keep=<n>
 # offer=yes: safe to delete (the work is on the default branch, or the thing is already gone).
 # offer=ask: deleting loses something; it needs the person's word.
-# offer=no:  never offered (the default branch, audit branches, open pull requests, anything in flight,
-#            other repositories' checkouts, anything changed in the last --days days).
+# offer=no:  never offered (the default branch, audit branches and their worktrees, open pull requests, anything
+#            in flight, other repositories' checkouts, anything changed in the last --days days).
+# A QA run's worktree (folder qa-<...>, detached, clean) is offer=ask, never offer=yes: a QA skill may be using it.
 #
 # Portable bash: runs under Git Bash, macOS bash and Linux. No GNU-only flags.
 
@@ -107,6 +108,10 @@ protected_branch() {  # branch -> 0 when never offered
     [ "$1" = "$HEAD_BRANCH" ] && return 0
     in_flight "$1"
 }
+qa_worktree() {  # worktree path -> 0 when it is a QA run's worktree (folder named qa-<...>, detached, see the QA skill)
+    case "$(basename "$1")" in qa-*) return 0 ;; esac
+    return 1
+}
 merged() { g merge-base --is-ancestor "$1" "$BASE" 2>/dev/null; }
 ahead()  { g rev-list --count "$BASE..$1" 2>/dev/null || echo '?'; }
 when()   { g log -1 --format=%cs "$1" 2>/dev/null; }
@@ -135,8 +140,14 @@ flush_wt() {
         [ "$wt_locked" = "1" ] && rm_cmd="git -C \"$MAIN\" worktree unlock \"$wt_path\" && $rm_cmd"
         if [ -n "$wt_branch" ] && in_flight "$wt_branch"; then
             item wt-protected "$n" "branch $wt_branch belongs to an issue in flight (in-flight.json)" ""
+        elif [ -n "$wt_branch" ] && protected_branch "$wt_branch"; then
+            case "$wt_branch" in
+                audit/*) item wt-protected "$n" "branch $wt_branch is an audit branch: it holds the run reports the dev skill writes (never offered)" "" ;;
+                *) item wt-protected "$n" "branch $wt_branch is the default branch (never offered)" "" ;;
+            esac
         elif [ "$wt_detached" = "1" ]; then
             if [ "$dirty" = "1" ]; then item wt-dirty "$n" "on no branch, has uncommitted changes" "${rm_cmd/worktree remove/worktree remove --force}"
+            elif qa_worktree "$wt_path"; then item wt-active "$n" "a QA run's worktree (on no branch, clean); the QA skill may be using it right now" "$rm_cmd"
             else item wt-detached "$n" "on no branch (a temporary checkout), clean" "$rm_cmd"; fi
         else
             st=$(pr_state "$wt_branch")
@@ -283,7 +294,7 @@ emit rb-unmerged  ask "Remote branches with commits not on $DEFAULT and no pull 
 emit wt-open-pr   no  "Worktrees with an open pull request (kept)"
 emit br-open-pr   no  "Local branches with an open pull request (kept)"
 emit rb-open-pr   no  "Remote branches with an open pull request (kept)"
-emit wt-protected no  "Worktrees of issues in flight (kept)"
+emit wt-protected no  "Worktrees of audit branches or issues in flight (kept)"
 emit br-protected no  "Local branches checked out or in flight (kept)"
 emit rb-protected no  "Remote branches of issues in flight (kept)"
 emit root-recent  no  "Recent folders and files in the worktree root (kept)"
