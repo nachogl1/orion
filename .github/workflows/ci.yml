@@ -33,27 +33,3 @@ jobs:
       - name: Full suite under Git Bash (tests/run.sh)
         shell: bash
         run: bash tests/run.sh
-
-  # The repository is public: every commit it carries must have an empty email or a GitHub no-reply
-  # address, so no real email address enters its history. On a pull request, the pull request's commits;
-  # on a push to main, the pushed commits.
-  commit-emails:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Commit emails are empty or GitHub no-reply addresses
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          range="$BASE..$HEAD"
-          git cat-file -e "$BASE^{commit}" 2>/dev/null || range="-1 $HEAD"
-          # tab-separated, so an empty email stays an empty field instead of collapsing
-          bad=$(git log --format='%h%x09%ae%x09%ce' $range | awk -F'\t' '{ for (i = 2; i <= 3; i++) if ($i != "" && $i !~ /@users\.noreply\.github\.com$/ && $i != "noreply@github.com") { print $1; break } }')
-          if [ -n "$bad" ]; then
-            echo "commits whose author or committer email is neither empty nor a GitHub no-reply address:"
-            echo "$bad"
-            exit 1
-          fi

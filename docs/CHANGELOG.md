@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- The commit-email rule and its CI check are gone: emails in commits are allowed again, so pull requests merge with GitHub's normal squash merge.
 - A clash between a person's own rules file and BASE_CLAUDE.md is now fixed for good: with the person present the assistant offers to change one file or the other; an unattended run never stops to ask, follows the baseline and logs the clash as friction in its run report.
 - BASE_CLAUDE.md gains the reply rules that help every project: accuracy beats brevity beats shape, a reply shaped to its job (report, decision, answer), full plain sentences, a status line while work runs, and pull requests named by their issue.
 - New `docs/PRDs/PRD.md` describes orion as it is today (users, vocabulary, scope, do-not-build list, acceptance bar, build decisions), so the rule that the PRD is the north star holds for orion itself; a draft until the owner approves it.
