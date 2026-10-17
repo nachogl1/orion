@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- `wayfinder` is rewritten in orion's own words and loses its third-party licence credit, so the skill names no outside person or repository; it works as before, with the map's sections now called Settled and Fog (older maps are still read).
 - The repo's own `CLAUDE.md` now asks, before any change to it, whether the change belongs in `BASE_CLAUDE.md` instead, so rules every project needs end up in the baseline.
 - The planning skills (`wayfinder`, `harvest`, `harvest-qa`, `reconcile-issue-map`, `prd-to-tickets`) now follow the baseline: GitHub Issues only, the gate and a changelog line on every pull request, no branch switching in the main checkout.
 - `dev-next` and `dev-quick` now follow the rules they ship with, so given-up stories can be picked up again, planning tickets and reconciles no longer raise false alarms, and the main checkout is never switched off its branch.
