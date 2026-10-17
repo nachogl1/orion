@@ -6,9 +6,6 @@ argument-hint: status | check | update | uninstall
 
 # orion
 
-> [!NOTE]
-> **Editing this skill?** It has **no `-vN` convention** — edit it in place.
-
 The orion files in this repository are managed by one script, `.claude/orion/orion.sh`. This skill is a thin wrapper
 around it: pick the sub-command from the argument (default `status`), run it from the project root with bash, and report
 the outcome in the user's preferred shape. All commands work on Windows too, through Git Bash.

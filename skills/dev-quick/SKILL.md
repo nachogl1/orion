@@ -8,7 +8,7 @@ disable-model-invocation: true
 # /dev-quick
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (a behaviour change is made here directly, never by copying the skill to a new versioned name). Keep everything here **general**: no project, person, company or stack names — the project's own `CLAUDE.md` supplies those at run time. It works with GitHub Issues only, like `dev-next`, whose `SKILL.md` and `references/new-issue.md` it relies on.
+> **Editing this skill?** Keep everything here **general**: no project, person, company or stack names — the project's own `CLAUDE.md` supplies those at run time. It works with GitHub Issues only, like `dev-next`, whose `SKILL.md` and `references/new-issue.md` it relies on.
 
 `/dev-next` takes an issue that already exists. This skill is for the change you want **now**, that nobody has written
 down yet: a fix you just spotted, a small feature a conversation produced, a tweak that is not worth a planning

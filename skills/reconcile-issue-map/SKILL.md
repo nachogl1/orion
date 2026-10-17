@@ -7,7 +7,7 @@ argument-hint: "(none) | <path to one PRD> | --since <yyyy-mm-dd>"
 # /reconcile-issue-map
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `harvest`, is changed where it is). Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and its PRDs supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it checks against and files to.
+> **Editing this skill?** Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and its PRDs supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it checks against and files to.
 
 The standing rule says there are **two sources of truth, kept in step**: the issues track the work, the PRD holds the
 product, and a disagreement between them is a bug. People and repositories move on — a PRD section is rewritten after

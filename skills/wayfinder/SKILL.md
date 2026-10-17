@@ -8,7 +8,7 @@ disable-model-invocation: true
 # wayfinder
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `harvest`, is changed where it is). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, and is **started by hand only** (`disable-model-invocation: true`): the model never starts it on its own, and no other skill invokes it — they only point the person at `/wayfinder`.
+> **Editing this skill?** Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, and is **started by hand only** (`disable-model-invocation: true`): the model never starts it on its own, and no other skill invokes it — they only point the person at `/wayfinder`.
 
 Some ideas are too large to finish in a single session, and at the start nobody can see every step between today
 and the end. This skill does not try to reach the end in one go. It writes the plan down as issues in the project's

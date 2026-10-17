@@ -16,7 +16,7 @@
 
 ## Communication
 
-- TLDR first. One-liners. Numbered steps, one action per line. End with exactly one next action.
+- TLDR first, after any problem. One-liners. Numbered steps, one action per line. End with exactly one next action.
 - Several topics become one line each, never casualties.
 - Never refer to a thing by its number alone — `issue #12 (parse the dataset section)`, never a bare `#12`. A pull
   request is named by the issue it serves: `the pull request for issue #12 (parse the dataset section)`, never
@@ -100,13 +100,14 @@ PRD wins on product, the rules files win on process.
   history — and never run anything against production.
 - **Secrets only in `.env`** (gitignored; `.env.example` lists the names). Never in code, issues, pull requests or
   committed files. A committed secret is rotated by its owner, not just deleted: git history keeps it.
-- **A boundary the project's `CLAUDE.md` draws is never moved by an agent** (e.g. "AI is a build-time tool; nothing it
-  produces executes in the customer's runtime").
+- **A boundary the project's `CLAUDE.md` draws is never moved by an agent** (e.g. "the
+  mobile app never talks to the database directly; it goes through the API").
 - **A repository the project's `CLAUDE.md` lists as external is read-only from here.** Never build it, run it, commit
   to it or change its git state. A change that must land there is an `outside-change` issue: it stops at a pull
   request its own reviewer merges.
-- **The model provider sits behind one swappable interface.** Tests never reach the network; a test that needs the
-  model mocks the interface. No API key is ever committed or written into an issue.
+- **If the project calls an AI model, the model provider sits behind one swappable interface.** Tests never reach
+  the network; a test that needs the model mocks the interface. No API key is ever committed or written into an
+  issue.
 - **The project deploys only to the place its `CLAUDE.md` names, from `main`.** No other hosting unless the PRD
   names it.
 - **No meeting recordings, transcripts or notes exports in the repository, ever** — they carry personal data. What a
@@ -137,8 +138,8 @@ PRD wins on product, the rules files win on process.
   merged by a human. Never auto-merge beyond that.
 - **Squash-merge only, then delete the branch** (`--delete-branch` breaks on a worktree; see
   `.claude/skills/dev-next/references/merge-and-ci.md`). One commit on `main` per pull request.
-- **Work in a worktree on `feat/<slug>`** (`feat/<issue>-<slug>` when the branch serves one issue). A pull
-  request may cover one issue or several related ones. Never work in the main checkout. **One exemption:** the
+- **Work in a worktree on `feat/<slug>` or `fix/<slug>`** (`feat/<issue>-<slug>` when the branch serves one
+  issue). A pull request may cover one issue or several related ones. Never work in the main checkout. **One exemption:** the
   per-developer branch `audit/<login>` that `/dev-next` writes run reports to is pushed directly, has no pull request
   and never merges into `main` (`.claude/skills/dev-next/references/audit.md`).
 - Worktrees live **outside the project**, at the root the project's `CLAUDE.md` names. The in-flight file

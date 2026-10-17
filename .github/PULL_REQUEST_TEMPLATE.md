@@ -5,8 +5,8 @@
 Closes #<!-- issue number — open one first if none exists -->
 
 ## Type of change
-- [ ] New skill or skill version (`-vN`)
-- [ ] Edit to existing skill (in-place)
+- [ ] New skill
+- [ ] Edit to existing skill
 - [ ] Installer (`orion.sh` / `orion.ps1`) change
 - [ ] Status line / shared tooling change
 - [ ] Documentation only
@@ -24,7 +24,6 @@ Closes #<!-- issue number — open one first if none exists -->
 ## Docs updated
 - [ ] CHANGELOG updated for the affected skill (if behaviour changed)
 - [ ] Root README updated (skill added / renamed / removed)
-- [ ] For `-vN` skills: created a NEW version (not edited in place) + CHANGELOG + README row
 
 ## Enforcement checklist
 ### Distribution safety (check the diff AND this PR title/body)

@@ -7,7 +7,7 @@ argument-hint: (no arguments)
 # orion-verify
 
 > [!NOTE]
-> **Editing this skill?** It has **no `-vN` convention** — edit it in place (like `orion`). Keep it **general**: no project, person, company or stack names — everything project-specific is read from the project at run time.
+> **Editing this skill?** Keep it **general**: no project, person, company or stack names — everything project-specific is read from the project at run time.
 
 `orion init` copies skills, a rules file and a session-start hook into a project, and adds an import line to the
 project's `CLAUDE.md`. That is a mechanical copy: it cannot tell whether the result makes sense **as a whole** — a

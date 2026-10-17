@@ -1,6 +1,6 @@
 # Changelog — generate-project-writeup
 
-This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
+Record notable changes here.
 
 ## Unreleased
 

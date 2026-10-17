@@ -175,5 +175,5 @@ A change to orion is done when all of these hold:
 - **Ownership by marker and manifest.** `update` and `uninstall` act only on what carries `.orion-managed` or sits in
   `.orion-manifest`.
 - **Merge to `main` is the release.** Squash-merge only; projects pull it with `orion update`.
-- **Skills edited in place** unless they carry a `-vN` suffix (none today), which are copied to a new version instead.
+- **Skills are edited in place**, never copied to a new version.
 - **English** for code, comments, commits, issues and docs.

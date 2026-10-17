@@ -1,6 +1,6 @@
 # Changelog — project-handover
 
-This skill has **no `-vN` convention** — it is edited in place. Record notable changes here.
+Record notable changes here.
 
 ## Product discovery is now self-contained
 

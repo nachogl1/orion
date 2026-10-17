@@ -7,7 +7,7 @@ argument-hint: "(none) | --dry-run"
 # /clear-git-resources
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`). Keep everything here **general**: no project, person, company or stack names. The scanner is `scripts/scan.sh` (portable bash, read-only); a change to what is found or how it is classified is a pull request on that file. The branch count it prints is the same one the session-start hook (`orion.sh check`) uses, so keep the two expressions identical.
+> **Editing this skill?** Keep everything here **general**: no project, person, company or stack names. The scanner is `scripts/scan.sh` (portable bash, read-only); a change to what is found or how it is classified is a pull request on that file. The branch count it prints is the same one the session-start hook (`orion.sh check`) uses, so keep the two expressions identical.
 
 Every skill that builds something leaves git resources behind: a worktree, a local branch, a remote branch, sometimes a
 folder or a log file in the worktree root. `/dev-next` deletes its own when a story merges, but nothing cleans up after a

@@ -6,7 +6,7 @@ description: ORION - Pick up the next GitHub issue nobody owns and ship it end t
 # /dev-next
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (a behaviour change is made here directly, never by copying the skill to a new versioned name). Keep everything here **general**: no project, person, company or stack names — the project's own `CLAUDE.md` supplies those at run time.
+> **Editing this skill?** Keep everything here **general**: no project, person, company or stack names — the project's own `CLAUDE.md` supplies those at run time.
 
 One command. **Two touchpoints with the human**: one batch of questions at the start, and a ten-line summary at the end.
 Everything between is autonomous. The run **never waits for a person** — anything it cannot resolve is labelled `needs-human`

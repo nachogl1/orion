@@ -8,7 +8,7 @@ disable-model-invocation: true
 # /harvest
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `wayfinder`, is changed where it is). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` and `references/audit.md` it relies on.
+> **Editing this skill?** Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` and `references/audit.md` it relies on.
 
 A person runs this. It is never started by another skill: `/dev-next` only counts the pile and prints
 `Harvest due: run /harvest` when it reaches ten (the findings-left-for-later rule). Every decision below is the

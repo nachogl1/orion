@@ -7,8 +7,7 @@ disable-model-invocation: true
 # generate-project-writeup
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place
-> (like `project-handover` / `handoff`). Keep everything in the skill
+> **Editing this skill?** Keep everything in the skill
 > files **general** (see the Distribution-safety gate at the bottom) — orion is
 > publicly distributable. The *report* it generates about a user's repo is a local
 > artifact in their Downloads and may name their project, people, and figures; the

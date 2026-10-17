@@ -60,13 +60,6 @@ This applies even when a task's source material (a handoff note, a report, a tra
 
 > Work-specific skills (anything referencing a specific product, team, or internal workflow) do **not** belong in this repo — they live only on the machines that need them.
 
-## Versioning convention
-
-- For any skill carrying a **`-vN`** suffix (none at present — the convention is kept for future pipeline-style skills): prefer creating a **new version** (copy to a bumped `-vN` suffix) over editing in place — people and automated workflows may depend on the current behaviour. Add a CHANGELOG entry describing the deltas and leave the prior version as-is.
-- All current skills (e.g. `project-handover`) have **no `-vN` convention** and are edited in place. Each skill's top-of-file editor note states which applies.
-- **CHANGELOGs:** required for the `-vN` skills; optional for in-place skills — an in-place skill *may* keep a `CHANGELOG.md` for notable behaviour changes, and if it has one, keep it updated. `docs/CHANGELOG.md` is the repo-wide one.
-- When historical CHANGELOG entries mention the *old* skill name, leave them — they're an accurate record of that version; only operational references point at the current name.
-
 ## How the repo is wired
 
 The root `README.md` is a short, non-technical overview and install guide for people — keep it that way; the detailed facts for agents live here:
@@ -88,5 +81,6 @@ The root `README.md` is a short, non-technical overview and install guide for pe
 
 - **Every skill's `description` starts with `ORION - `** (the word, a space, a hyphen, a space), e.g. `description: ORION - Pick up the next GitHub issue …`. The prefix marks the skill as orion-managed in the user's skill list, so it is told apart from the project's own skills at a glance. Every new skill added to `skills/` must carry it, keep it when rewording a description, and the lint above checks it.
 - **Skills are self-contained by design** (see Boundaries): they're copied standalone into the project's `.claude/skills/`, so shared boilerplate (the Windows BOM workaround, the mandatory dedupe deep-dive text, palette values shared across report skills, …) is *intentionally duplicated*; when correcting such a block, `git grep` for every copy and fix all of them, never "factor it out."
-- Outside a skill run, commit/push only when the user asks; commit messages end with the required `Co-Authored-By` trailer.
+- Outside a skill run, commit/push only when the user asks; commit messages end with the `Co-Authored-By` trailer Claude Code adds.
+- **Skills are edited in place.** A skill may keep its own `CHANGELOG.md` for notable behaviour changes (`project-handover` and `generate-project-writeup` do); if it has one, keep it updated. `docs/CHANGELOG.md` is the repo-wide one. Old changelog entries that mention a skill's old name stay as they are: they are an accurate record.
 - **Every change to this `CLAUDE.md` first asks the user whether it belongs in `baselines/BASE_CLAUDE.md` instead.** A rule that would help every project that installs orion goes into the baseline; only facts and rules that make sense for this repository alone stay here.

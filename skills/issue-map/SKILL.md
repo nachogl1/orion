@@ -7,7 +7,7 @@ argument-hint: "(none) | --silent"
 # /issue-map
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (like `dev-next` / `harvest`). Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, and reads the same `### Blocked by` body section and labels that `dev-next`'s `references/new-issue.md` defines. The generator is `scripts/issue_map.py`; a change to what the map shows is a pull request on that file.
+> **Editing this skill?** Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, and reads the same `### Blocked by` body section and labels that `dev-next`'s `references/new-issue.md` defines. The generator is `scripts/issue_map.py`; a change to what the map shows is a pull request on that file.
 
 The map is **a transient snapshot**: `docs/issue_map/issue_map.html` is never committed, built on the machine that
 looks at it, and carries a banner saying who built it and when. The source of truth stays the GitHub issues

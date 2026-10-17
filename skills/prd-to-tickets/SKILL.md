@@ -7,7 +7,7 @@ argument-hint: "<path to the PRD> --developers N"
 # /prd-to-tickets
 
 > [!NOTE]
-> **Editing this skill?** This skill has **no `-vN` convention** — edit it in place (only a skill whose name ends in `-vN` is copied to a new version instead; this one, like `dev-next` / `dev-quick`, is changed where it is). Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and the PRD supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it files to. The brief for the prototype sub-agent lives in `references/ux-prototype.md`.
+> **Editing this skill?** Keep everything here **general**: no project, person, company, product or stack names — the project's own `CLAUDE.md` and the PRD supply those at run time. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md` defines the issue shape it files to. The brief for the prototype sub-agent lives in `references/ux-prototype.md`.
 
 A PRD says **what** to build. Agents build **stories**. This skill is the step between: it reads one PRD and files
 the epics and stories that let several developers (people or `/dev-next` runs) work on it **at the same time without
