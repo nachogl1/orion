@@ -45,6 +45,9 @@ IMPORT_LINE="Mandatory rules, owned and refreshed by orion (never edit the copy)
 OLD_IMPORT_LINE="@.claude/orion/ORION.md"   # what orion wrote before the rules moved to BASE_CLAUDE.md
 HOOK_NEEDLE="/.claude/orion/orion.sh"
 HOOK_CMD='bash "${CLAUDE_PROJECT_DIR}/.claude/orion/orion.sh" check'
+# The session-start hook's time budget in seconds: 8 s update check + 10 s fetch + copying the files, which
+# under Git Bash on Windows alone can take over 10 s. Installs that carry a lower value are raised on update.
+HOOK_TIMEOUT=60
 CHECK_INTERVAL_SECONDS=86400
 BRANCH_LIMIT_DEFAULT=20
 
@@ -147,13 +150,20 @@ fetch_source() {  # source ref
     have git || die "git is required to fetch orion"
     TMP_DIR="$(mktemp -d)"
     say "fetching orion ($2) from $1 ..."
-    git clone --quiet --depth 1 --branch "$2" "$1" "$TMP_DIR/orion" 2>/dev/null \
-        || die "could not fetch orion from $1 (ref $2)"
+    # ORION_FETCH_SECONDS (set by the session-start hook) time-limits the network fetch only, never the copy
+    # that follows: a copy cut short half-way would leave the project with a half-updated orion.
+    if [ -n "${ORION_FETCH_SECONDS:-}" ]; then
+        limited "$ORION_FETCH_SECONDS" git clone --quiet --depth 1 --branch "$2" "$1" "$TMP_DIR/orion" 2>/dev/null \
+            || die "could not fetch orion from $1 (ref $2) within $ORION_FETCH_SECONDS s"
+    else
+        git clone --quiet --depth 1 --branch "$2" "$1" "$TMP_DIR/orion" 2>/dev/null \
+            || die "could not fetch orion from $1 (ref $2)"
+    fi
     SRC_DIR="$TMP_DIR/orion"
     SRC_SHA="$(git -C "$SRC_DIR" rev-parse HEAD)"
 }
 
-# Run a command for at most N seconds, so the session-start hook ends inside its 20-second limit. Git never
+# Run a command for at most N seconds, so the session-start hook ends inside its HOOK_TIMEOUT. Git never
 # waits on a password prompt; without timeout or gtimeout (macOS has neither) git aborts a stalled transfer.
 limited() {  # seconds command...
     local s="$1"; shift
@@ -227,6 +237,7 @@ settings_add_hook() {  # settings-file
     mkdir -p "$(dirname "$f")"
     if [ "$(hook_count "$f")" -gt 0 ] 2>/dev/null; then
         say "  =    update check hook already present in ${f#"$PROJECT"/}"
+        settings_raise_hook_timeout "$f"
         return
     fi
     [ -f "$f" ] || printf '{}\n' > "$f"
@@ -234,14 +245,14 @@ settings_add_hook() {  # settings-file
     case "$tool" in
         jq)
             local tmp; tmp=$(mktemp)
-            jq --arg cmd "$HOOK_CMD" '.hooks = (.hooks // {}) | .hooks.SessionStart = ((.hooks.SessionStart // []) + [{matcher:"startup|resume", hooks:[{type:"command", command:$cmd, timeout:20}]}])' "$f" > "$tmp" && mv "$tmp" "$f" ;;
+            jq --arg cmd "$HOOK_CMD" --argjson t "$HOOK_TIMEOUT" '.hooks = (.hooks // {}) | .hooks.SessionStart = ((.hooks.SessionStart // []) + [{matcher:"startup|resume", hooks:[{type:"command", command:$cmd, timeout:$t}]}])' "$f" > "$tmp" && mv "$tmp" "$f" ;;
         python3|python)
-            "$tool" - "$f" "$HOOK_CMD" <<'PY'
+            "$tool" - "$f" "$HOOK_CMD" "$HOOK_TIMEOUT" <<'PY'
 import json, sys
-f, cmd = sys.argv[1], sys.argv[2]
+f, cmd, t = sys.argv[1], sys.argv[2], int(sys.argv[3])
 d = json.load(open(f, encoding="utf-8-sig"))
 h = d.setdefault("hooks", {})
-h.setdefault("SessionStart", []).append({"matcher": "startup|resume", "hooks": [{"type": "command", "command": cmd, "timeout": 20}]})
+h.setdefault("SessionStart", []).append({"matcher": "startup|resume", "hooks": [{"type": "command", "command": cmd, "timeout": t}]})
 open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 PY
             ;;
@@ -251,16 +262,78 @@ PY
                 \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json
                 if (-not \$d.PSObject.Properties['hooks']) { \$d | Add-Member -NotePropertyName hooks -NotePropertyValue (New-Object PSObject) }
                 if (-not \$d.hooks.PSObject.Properties['SessionStart']) { \$d.hooks | Add-Member -NotePropertyName SessionStart -NotePropertyValue @() }
-                \$entry = [PSCustomObject]@{ matcher = 'startup|resume'; hooks = @([PSCustomObject]@{ type = 'command'; command = \$cmd; timeout = 20 }) }
+                \$entry = [PSCustomObject]@{ matcher = 'startup|resume'; hooks = @([PSCustomObject]@{ type = 'command'; command = \$cmd; timeout = $HOOK_TIMEOUT }) }
                 \$d.hooks.SessionStart = @(\$d.hooks.SessionStart) + @(\$entry)
                 [IO.File]::WriteAllText(\$f, (\$d | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
             " >/dev/null ;;
         *)
             warn "no jq/python/powershell found - add this SessionStart hook to $f by hand:"
-            warn "  {\"hooks\":{\"SessionStart\":[{\"matcher\":\"startup|resume\",\"hooks\":[{\"type\":\"command\",\"command\":\"$HOOK_CMD\",\"timeout\":20}]}]}}"
+            warn "  {\"hooks\":{\"SessionStart\":[{\"matcher\":\"startup|resume\",\"hooks\":[{\"type\":\"command\",\"command\":\"$HOOK_CMD\",\"timeout\":$HOOK_TIMEOUT}]}]}}"
             return ;;
     esac
     say "  +    update check hook in ${f#"$PROJECT"/}"
+}
+
+# Earlier installs gave the hook "timeout": 20, too little for an auto-update on Windows: every orion hook
+# whose numeric timeout is below HOOK_TIMEOUT is raised to it. The file is rewritten only when something changes.
+settings_raise_hook_timeout() {  # settings-file
+    local state
+    state=$(raise_hook_timeout "$1" | tr -d '\r' || true)
+    case "$state" in [1-9]*) say "  ~    update check hook time limit raised to $HOOK_TIMEOUT s in ${1#"$PROJECT"/}" ;; esac
+}
+raise_hook_timeout() {  # settings-file -> prints "<raised> <orion hooks>" as found BEFORE the raise, or nothing
+    local f="$1" tool
+    [ -f "$f" ] || return 0
+    tool=$(json_tool)
+    case "$tool" in
+        jq)
+            local orion='.hooks.SessionStart[]?.hooks[]? | select((.command // "") | contains("/.claude/orion/orion.sh"))'
+            local low="$orion | select((.timeout | type) == \"number\" and .timeout < \$t)" state
+            state=$(jq -r --argjson t "$HOOK_TIMEOUT" "\"\\([$low] | length) \\([$orion] | length)\"" "$f" 2>/dev/null | tr -d '\r' || true)
+            [ -n "$state" ] || return 0
+            case "$state" in
+                [1-9]*) local tmp; tmp=$(mktemp)
+                        jq --argjson t "$HOOK_TIMEOUT" "($low | .timeout) |= \$t" "$f" > "$tmp" && mv "$tmp" "$f" || return 0 ;;
+            esac
+            echo "$state" ;;
+        python3|python)
+            "$tool" - "$f" "$HOOK_TIMEOUT" 2>/dev/null <<'PY' || true
+import json, sys
+f, t = sys.argv[1], int(sys.argv[2])
+d = json.load(open(f, encoding="utf-8-sig"))
+n = total = 0
+for g in (d.get("hooks") or {}).get("SessionStart") or []:
+    for x in g.get("hooks") or []:
+        if "/.claude/orion/orion.sh" not in (x.get("command") or ""):
+            continue
+        total += 1
+        to = x.get("timeout")
+        if type(to) in (int, float) and to < t:
+            x["timeout"] = t
+            n += 1
+if n:
+    open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+print(n, total)
+PY
+            ;;
+        powershell)
+            powershell.exe -NoProfile -NonInteractive -Command "
+                \$f = '$(cygpath -w "$f" 2>/dev/null || printf '%s' "$f")'
+                \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json
+                \$n = 0; \$total = 0
+                foreach (\$g in @(\$d.hooks.SessionStart)) { foreach (\$x in @(\$g.hooks)) {
+                    if (-not (\$x.command -like '*$HOOK_NEEDLE*')) { continue }
+                    \$total++
+                    \$to = \$x.timeout
+                    \$num = (\$to -is [int]) -or (\$to -is [long]) -or (\$to -is [double]) -or (\$to -is [decimal])
+                    if (\$num -and \$to -lt $HOOK_TIMEOUT) { \$x.timeout = $HOOK_TIMEOUT; \$n++ }
+                } }
+                if (\$n -gt 0) { [IO.File]::WriteAllText(\$f, (\$d | ConvertTo-Json -Depth 10) + [Environment]::NewLine) }
+                [string]\$n + ' ' + \$total
+            " 2>/dev/null || true ;;
+        *)
+            warn "no jq/python/powershell found - if the orion SessionStart hook in $f has a \"timeout\" below $HOOK_TIMEOUT, set it to $HOOK_TIMEOUT by hand" ;;
+    esac
 }
 
 settings_remove_hook() {  # settings-file
@@ -594,6 +667,7 @@ cmd_update() {
     fetch_source "$source" "$ref"
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then
         say "orion is already at $(short "$current") - nothing to do (pass --force to re-copy anyway)"
+        settings_raise_hook_timeout "$PROJECT/.claude/settings.json"
         return
     fi
     say "orion update $(short "$current") -> $(short "$SRC_SHA") in $PROJECT"
@@ -639,7 +713,7 @@ cmd_check() {
 
 # The daily update check. Prints the context for Claude Code, or nothing when there is nothing to say.
 check_update_ctx() {  # force now
-    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest stamp last
+    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest stamp last hook
     mode="$(config_get "$cfg" updateMode ask)"
     [ "$mode" = "off" ] && return 0
     stamp="$(cache_file last-check)"
@@ -648,6 +722,11 @@ check_update_ctx() {  # force now
         [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
     fi
     mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
+    # An update run by an older orion.sh cannot raise the hook's time limit (bash had already read the old
+    # script), so the first check by the new script heals it, silently. Claude Code read the limit when this
+    # session started, so this run still goes by the value from BEFORE the heal: "0 <n>" with n > 0 means
+    # every orion hook already had HOOK_TIMEOUT; anything else (a lower limit, no hook, no JSON tool) does not.
+    hook=$(raise_hook_timeout "$PROJECT/.claude/settings.json" 2>/dev/null | tr -d '\r' || true)
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
     current="$(version_sha "$dir/VERSION")"
     latest="$(latest_sha "$source" "$ref")"
@@ -656,14 +735,25 @@ check_update_ctx() {  # force now
     case "$mode" in
         auto)
             # A process of its own: a failed fetch ends only that process (this hook still answers and
-            # exits 0), and its own exit trap removes the temporary clone. 8 s check + 10 s update < 20 s hook limit.
-            if limited 10 bash "${BASH_SOURCE[0]:-$0}" update --project "$PROJECT" --quiet >/dev/null 2>&1 </dev/null; then
+            # exits 0), and its own exit trap removes the temporary clone. With the full HOOK_TIMEOUT only the
+            # fetch is time-limited (10 s): the copy always runs to the end, so the project is never left
+            # half-updated, and 8 s check + 10 s fetch + the copy fit in it. While this session's hook still
+            # has a lower limit (an install from before the raise), the whole update stays capped at 10 s as
+            # before, so the session's own kill cannot land in the middle of the copy instead.
+            if run_auto_update "$hook" >/dev/null 2>&1 </dev/null; then
                 printf '%s' "orion (the repo-level utility framework in .claude/orion) was updated automatically from $(short "$current") to $(short "$latest"), as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
             else
                 printf '%s' "orion tried to update itself automatically ($(short "$current") -> $(short "$latest")) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
             fi ;;
         *)
             printf '%s' "A newer orion is available for this project ($(short "$current") -> $(short "$latest")). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
+    esac
+}
+
+run_auto_update() {  # hook-timeout-state from raise_hook_timeout
+    case "$1" in
+        "0 "[1-9]*) ORION_FETCH_SECONDS=10 bash "${BASH_SOURCE[0]:-$0}" update --project "$PROJECT" --quiet ;;
+        *) limited 10 bash "${BASH_SOURCE[0]:-$0}" update --project "$PROJECT" --quiet ;;
     esac
 }
 

@@ -25,7 +25,8 @@ export HOME="$SB/home" XDG_CACHE_HOME="$SB/cache"
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
 
 # The fake git: `ls-remote` answers $FAKE_LS_SHA when set, `clone` fails when $FAKE_CLONE_FAIL=1 and hangs when
-# $FAKE_CLONE_HANG=1; all else is real git.
+# $FAKE_CLONE_HANG=1; all else is real git. The fake cp: the first copy sleeps $FAKE_CP_SLEEP seconds when set,
+# so a copy is slower than the hook's fetch limit without racing a wall clock.
 cat > "$SB/bin/git" <<EOF
 #!/usr/bin/env bash
 if [ "\${1:-}" = ls-remote ] && [ -n "\${FAKE_LS_SHA:-}" ]; then printf '%s\trefs/heads/main\n' "\$FAKE_LS_SHA"; exit 0; fi
@@ -34,11 +35,21 @@ if [ "\${1:-}" = clone ] && [ "\${FAKE_CLONE_HANG:-}" = 1 ]; then sleep 60; exit
 exec "$REAL_GIT" "\$@"
 EOF
 chmod +x "$SB/bin/git"
+REAL_CP="$(command -v cp)"
+cat > "$SB/bin/cp" <<EOF
+#!/usr/bin/env bash
+if [ -n "\${FAKE_CP_SLEEP:-}" ] && [ ! -e "$SB/cp-slept" ]; then : > "$SB/cp-slept"; sleep "\$FAKE_CP_SLEEP"; fi
+exec "$REAL_CP" "\$@"
+EOF
+chmod +x "$SB/bin/cp"
 FAKEPATH="$SB/bin:$PATH"
 
 N=0
 newproj() { N=$((N+1)); mkdir -p "$SB/p$N"; P="$SB/p$N"; }               # sets P
 init()    { bash "$ORION" init --project "$P" --no-statusline --update-mode "${1:-ask}" >"$SB/out" 2>&1; }
+# The timeout of every orion hook in a settings file, one per line; and setting them all (to the old 20 s by default).
+hook_timeouts() { "$PY" -c 'import json, sys; d = json.load(open(sys.argv[1], encoding="utf-8-sig")); [print(x.get("timeout")) for g in d.get("hooks", {}).get("SessionStart", []) for x in g.get("hooks", []) if "/.claude/orion/orion.sh" in x.get("command", "")]' "$1" 2>/dev/null | tr -d '\r'; }
+set_old_hook_timeout() { "$PY" -c 'import json, sys; f = sys.argv[1]; d = json.load(open(f, encoding="utf-8-sig")); [x.update(timeout=json.loads(sys.argv[2])) for g in d["hooks"]["SessionStart"] for x in g["hooks"] if "/.claude/orion/orion.sh" in x.get("command", "")]; open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2))' "$1" "${2:-20}"; }
 json_ok() { "$PY" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8-sig"))' "$1" 2>/dev/null; }
 # A hook's answer: nothing at all, or exactly one line of valid JSON.
 hook_out_ok() {
@@ -82,6 +93,15 @@ for tool in $tools; do
     export ORION_JSON_TOOL="$tool"
     check "init with a BOM in settings.json" init ask
     check "the hook is added although a permission rule names the script" eval 'grep -cF "orion.sh\\\" check" "$P/.claude/settings.json" | grep -qx 1'
+    check "the new hook gets the 60 s time limit" eval '[ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
+    set_old_hook_timeout "$P/.claude/settings.json"
+    check "an update with nothing to do still raises an older 20 s hook to 60 s" eval 'bash "$ORION" update --project "$P" >"$SB/out" 2>&1 && grep -q "nothing to do" "$SB/out" && grep -q "time limit raised to 60 s" "$SB/out" && [ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
+    set_old_hook_timeout "$P/.claude/settings.json"
+    check "update --force raises an older 20 s hook to 60 s" eval 'bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && grep -q "time limit raised to 60 s" "$SB/out" && [ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
+    set_old_hook_timeout "$P/.claude/settings.json" '"20"'
+    check "a timeout that is not a number is left alone" eval 'bash "$ORION" update --project "$P" >"$SB/out" 2>&1 && ! grep -q "time limit raised" "$SB/out" && grep -q '"'"'"timeout": *"20"'"'"' "$P/.claude/settings.json"'
+    set_old_hook_timeout "$P/.claude/settings.json" 60
+    check "and keeps the rest of settings.json" eval 'json_ok "$P/.claude/settings.json" && grep -qF "echo own" "$P/.claude/settings.json" && grep -qF "orion.sh status" "$P/.claude/settings.json"'
     check "status sees the hook" eval 'bash "$ORION" status --project "$P" | grep -q "update check installed"'
     check "verify passes" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1'
     init ask; check "a second init adds no second hook" eval 'grep -cF "orion.sh\\\" check" "$P/.claude/settings.json" | grep -qx 1'
@@ -107,7 +127,7 @@ check "failing auto-update: no temporary clone left behind" nothing_left_in_tmp
 if command -v timeout >/dev/null 2>&1 || command -v gtimeout >/dev/null 2>&1; then
     t0=$(date +%s)
     check "hanging auto-update: exit 0, says it failed" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_CLONE_HANG=1 run_check --force && grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"'
-    check "hanging auto-update: ends inside the 20 s hook limit" eval '[ $(( $(date +%s) - t0 )) -lt 20 ]'
+    check "hanging auto-update: ends soon after the 10 s fetch limit" eval '[ $(( $(date +%s) - t0 )) -lt 20 ]'
     check "hanging auto-update: no temporary clone left behind" nothing_left_in_tmp
 fi
 # a working auto-update, from a local source repository
@@ -116,9 +136,33 @@ SRC="$SB/src"; mkdir -p "$SRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/bas
 SRC_SHA="$("$REAL_GIT" -C "$SRC" rev-parse HEAD)"
 bash "$ORION" init --project "$P" --source "$SRC" --no-statusline >"$SB/out" 2>&1; cp "$SB/out" "$SB/out-reinit"; consume_marker
 check "re-init with a new --source changes config.json and says so" eval 'grep -q "source changed" "$SB/out-reinit" && bash "$ORION" status --project "$P" | grep -qF "$SRC"'
-check "working auto-update: exit 0 and says so" eval 'run_check --force && grep -q "updated automatically" "$SB/hook" && hook_out_ok "$SB/hook"'
+# The first copy sleeps 11 s, longer than the 10 s fetch limit: only the fetch may be time-limited, never the copy.
+rm -f "$SB/cp-slept"
+check "working auto-update with a copy slower than the fetch limit: exit 0 and says so" eval 'FAKE_CP_SLEEP=11 run_check --force && grep -q "updated automatically" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "working auto-update: the slow copy really ran" eval '[ -e "$SB/cp-slept" ]'
+check "working auto-update: every file of every skill was copied" eval '[ "$(cd "$SRC/skills" && find . -mindepth 2 -type f | grep -v /__pycache__/ | sort)" = "$(cd "$P/.claude/skills" && find . -mindepth 2 -type f ! -name .orion-managed | sort)" ]'
 check "working auto-update: the project is now at the source commit" eval '[ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
 check "working auto-update: no temporary clone left behind" nothing_left_in_tmp
+
+echo "upgrade from an install whose hook still has the old 20 s limit"
+# The older script, as far as this matters: it writes a 20 s hook and never raises it. CI checks out no
+# history, so it is made from today's script rather than taken from git.
+mkdir -p "$SB/old"; OLD="$SB/old/orion.sh"
+awk '/^HOOK_TIMEOUT=60$/ { print "HOOK_TIMEOUT=20"; next }
+     /^settings_raise_hook_timeout\(\) \{/ { print "settings_raise_hook_timeout() { :; }"; print "settings_raise_hook_timeout_unused() {"; next }
+     { print }' "$ORION" > "$OLD"
+newproj
+bash "$OLD" init --project "$P" --source "$SRC" --no-statusline --update-mode auto >"$SB/out" 2>&1; consume_marker
+check "the older script installs a 20 s hook" eval '[ "$(hook_timeouts "$P/.claude/settings.json")" = 20 ]'
+check "an update run by the older script leaves it at 20 s" eval 'bash "$OLD" update --project "$P" --force >"$SB/out" 2>&1 && [ "$(hook_timeouts "$P/.claude/settings.json")" = 20 ]'
+{ printf '%s\n' 0000000000000000000000000000000000000000; sed -n '2,$p' "$P/.claude/orion/VERSION"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
+rm -f "$SB/cp-slept"
+check "on that 20 s session the whole auto-update stays capped at 10 s: exit 0, says it failed" eval 'FAKE_CP_SLEEP=11 run_check --force && grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "and that first check by the new script raised the hook to 60 s" eval '[ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
+check "and left no temporary clone behind" nothing_left_in_tmp
+check "the next session's auto-update runs to the end" eval 'run_check --force && grep -q "updated automatically" "$SB/hook" && [ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
+set_old_hook_timeout "$P/.claude/settings.json"; set_cfg updateMode '"ask"'
+check "with nothing new, check heals a 20 s hook and stays silent" eval 'FAKE_LS_SHA="$SRC_SHA" run_check --force && [ ! -s "$SB/hook" ] && [ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
 
 echo "the post-install marker waits for /orion-verify"
 newproj; XDG_CACHE_HOME="$SB/cache-marker" init ask; rm -rf "$P/.claude/skills/orion-verify"
