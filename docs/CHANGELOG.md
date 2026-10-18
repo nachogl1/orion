@@ -2,6 +2,8 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- The personal rules orion offers (`GLOBAL_CLAUDE.md`) are replaced by the reply, working and git rules its owner actually uses, so the clauses people are offered are ones proven in daily work; everyone who went through the old ones is offered the new set.
+
 - orion now offers recommended personal rules for each person's own `~/.claude/CLAUDE.md` (`GLOBAL_CLAUDE.md`, copied into every project): the session start offers a walk-through once a day while a rule is new to that computer (never under `off`), the person accepts, skips or rewords each clause, and only the ORION GLOBAL section at the end of their file ever changes, on their word; the GLOBAL_CLAUDE.md PRD is folded into `PRD.md`.
 
 - `/orion-verify` is offered again each time orion's rules change on a computer (an update, an automatic update or a teammate's pull), and it now also checks the person's own rules file for clashes, so a rule change can no longer slip in unchecked.

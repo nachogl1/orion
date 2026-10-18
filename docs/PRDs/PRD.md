@@ -83,7 +83,7 @@ The reply rules, working habits and git habits that make the assistant pleasant 
 own `~/.claude/CLAUDE.md`, one per computer. orion offers them, never pushes them; whatever a person accepts is theirs.
 
 - **The offer:** `baselines/global/GLOBAL_CLAUDE.md`, copied by `init` and `update` to
-  `<project>/.claude/orion/global/` and listed in the manifest. Nothing imports it. It leaves out every rule
+  `<project>/.claude/orion/global/` and listed in the manifest. Nothing imports it. It may repeat rules
   `BASE_CLAUDE.md` already makes for projects, and nothing in it names or describes a real person, team, company or
   machine.
 - **A clause** is one bullet or numbered item under the file's headings, on one line ending in an invisible UTC date
