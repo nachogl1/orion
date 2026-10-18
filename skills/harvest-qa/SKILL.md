@@ -81,7 +81,9 @@ story changed and what it replaced — read it; it is there for this step.
 
 Everything left is the plan. Group it by `seam`, and inside a seam keep the record order. Print the plan in one
 table — check, where it came from (a run on <date> by <their name>, the story in plain words), what will be driven —
-then start. No question is asked before the findings in phase 3; a person started this skill and expects it to finish.
+then start, saying in one line that the person is asked about each confirmed failure at the end, so they stay or
+come back for it. No question is asked before the findings in phase 3; a person started this skill and expects it to
+finish.
 
 ## Phase 2 — Rounds
 
@@ -117,14 +119,15 @@ then start. No question is asked before the findings in phase 3; a person starte
 2. **`File a bug`** → one `bug` issue, shaped per `.claude/skills/dev-next/references/new-issue.md`: the
    story's epic as the native parent; `### Seam` from the record; `### Acceptance criteria` = the check's expected
    behaviour; the body carries the exact steps, what was expected, what was seen, the commit tested and the record it
-   came from (`audit/<login>`, run id, issue). Labels: `story`, `bug` and `needs-human`. That is this skill's choice for every QA bug it
-   files: the failure was reproduced by an agent, not yet confirmed by a person, so nobody has checked that nothing is
-   left to ask. Post its last comment right after creating it, saying what a person must confirm before flipping it to
-   `agent-ready` (the steps reproduce for them, and nothing is left to ask). Read every issue back the way `new-issue.md` verifies it.
-   **`Drop`** → nothing is filed; the check is logged `fail` with `dropped` and the person's reason.
+   came from (`audit/<login>`, run id, issue). Labels: `story`, `bug` and `needs-human`. That is this skill's choice
+   for every QA bug it files: the failure was reproduced by an agent, not yet confirmed by a person, so nobody has
+   checked that nothing is left to ask. Post its last comment right after creating it, saying what a person must
+   confirm before flipping it to `agent-ready` (the steps reproduce for them, and nothing is left to ask). Read every
+   issue back the way `new-issue.md` verifies it. **`Drop`** → nothing is filed; the check is logged `tracked` + `bug`
+   when an open issue covers it, otherwise `fail` + `dropped` with the person's reason.
 3. Write `docs/harvest-qa-state.json`: for every login read, `tested_through` = the newest run id seen this run;
-   `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug` or `dropped`, `superseded` + `by`,
-   `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
+   `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug` or `dropped`,
+   `superseded` + `by`, `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
    `last_qa` = today. A check in `carried` is **not** in `log`. Audit branches are never written to.
 4. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout);
    write the state file there and add the run's one line to
@@ -142,7 +145,7 @@ then start. No question is asked before the findings in phase 3; a person starte
 
 5. Close-out, always last, in plain words: how many checks were read, tested, passed, failed, dropped as superseded or
    obsolete, already tracked, carried; every bug issue filed, named by what it is about, and every failure the person
-   dropped; the pull request link; and,
+   chose not to file; the pull request link; and,
    first of all if it happened, that the product would not start and what the agent saw.
 
 ## Rules

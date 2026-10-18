@@ -32,7 +32,9 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
    built from the runtime paths you were given; it is never committed. If the suite shells out to a second runtime,
    **export the variable the project uses to point at it** before running the suite — without it the suite finds
    whatever is on PATH, and tests fail on a machine where that is the wrong version.
-2. Implement the acceptance criteria. Nothing more — the `Out` list under `### Scope` means what it says.
+2. Implement the acceptance criteria test first: a failing test, then the code that passes it, then a refactor
+   (`BASE_CLAUDE.md`, *Test first, then clean code*). Nothing more — the `Out` list under `### Scope` means what it
+   says.
 3. **Use only synthetic or de-identified fixtures.** Never copy production, customer or personal data into the
    repository, a test, a log or an issue.
 4. **Honour every domain invariant the project's `CLAUDE.md` names** — a record that must be written for every

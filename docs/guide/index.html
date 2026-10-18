@@ -411,7 +411,7 @@ const NODES = {
   develop:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 3", title:"Develop", gsub:"Builds it in a worktree, tests first.", sub:"A dev agent builds it in its own worktree, tests first.",
     what:[
       "Creates a worktree (a separate checkout outside the project) on feat/<N>-<slug>, from the latest main.",
-      "A dev agent on the top model builds the change; every new behaviour gets a test.",
+      "A dev agent on the top model builds the change test first, with clean code; every new behaviour gets a test, and every new test earns its place.",
       "Runs the gate exactly as the project's CLAUDE.md lists it: build, lint, typecheck, full suite.",
       "Opens the pull request with an evidence table (what it did, what it expected, what it saw), a changelog line and, for user-visible changes, a run-book update."
     ],
@@ -463,16 +463,16 @@ const NODES = {
     rules:["Never merged, never swept by /clear-git-resources."]},
 
   harvestqa:{phase:"C", actor:"agent", touch:"always", kicker:"Learn · QA", title:"/harvest-qa", cmd:"/harvest-qa",
-    sub:"Drives every finished story's checks against main and files real bugs.",
+    sub:"Drives every finished story's checks against main and shows you what failed.",
     what:[
       "Reads the QA records newer than its bookmark and drops the ones a later story superseded or made obsolete.",
       "Starts the product from one fresh worktree of main, on the base port no story can hold.",
       "Runs one QA agent per area, strictly one after another, each driving the product like a user.",
-      "A failure counts only when reproduced twice. Each confirmed one becomes a bug issue, unless an open issue already covers it.",
+      "A failure counts only when reproduced twice. Each confirmed one is shown to you with its importance and any open issue that covers it.",
       "Ships its log and bookmark in a pull request."
     ],
-    you:["Start it when /dev-next says \"QA due\".","Merge its log pull request."],
-    out:["bug issues back in the backlog.","A log on main: what was tested, when, on which commit, with what result."],
+    you:["Start it when /dev-next says \"QA due\".","Choose, for each failure, whether it becomes a bug issue or is dropped.","Merge its log pull request."],
+    out:["The bug issues you chose, back in the backlog.","A log on main: what was tested, when, on which commit, with what result."],
     rules:["Run by a person, never by another skill."]},
 
   harvest:{phase:"C", actor:"both", touch:"always", kicker:"Learn · Notes", title:"/harvest", cmd:"/harvest",

@@ -41,7 +41,7 @@ replaced, so you know what "as expected" means):
 4. On a `FAIL`, perform the steps a second time from the start. Fails again → `FAIL`, with what you did, what you
    expected and what you saw, exact text where there is text. Passes the second time → `CARRIED — could not reproduce`.
 5. Note anything you saw that is plainly broken and that no check asked about — one line each, at most three — as
-   `Seen:`. You do not file anything; the orchestrator decides.
+   `Seen:`. You do not file anything; the person decides, through the orchestrator.
 
 **Never:** change a file in the worktree, commit, push, open an issue, weaken a check, skip a step because it looks
 unnecessary, or touch any other worktree or port.
