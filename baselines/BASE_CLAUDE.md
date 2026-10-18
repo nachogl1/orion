@@ -236,8 +236,9 @@ PRD wins on product, the rules files win on process.
 - Skills under `.claude/skills/` carrying an `.orion-managed` marker are orion's and are refreshed by `orion update`;
   the project's own skills (no marker) are never touched.
 - `/orion` manages the installation: `status`, `check`, `update`, `uninstall`.
-- `/orion-verify` is the one-time check after install: `CLAUDE.md`, this file, every skill and the settings fit
-  together; it fixes what is mechanical and asks before touching anything the project owns.
+- `/orion-verify` checks, once after install and again each time orion's rules change on a computer, that
+  `CLAUDE.md`, this file, every skill, the settings and the person's own rules file fit together; it fixes what is
+  mechanical and asks before touching anything the project or the person owns.
 - `/wayfinder` plans work too big for one session as a map of decision tickets and settles them one at a time; it
   produces decisions, never the deliverable.
 - `/prd-to-tickets` turns a PRD under `docs/PRDs/` into epics and stories with the person present: existing open

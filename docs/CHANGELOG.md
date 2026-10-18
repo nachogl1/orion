@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- `/orion-verify` is offered again each time orion's rules change on a computer (an update, an automatic update or a teammate's pull), and it now also checks the person's own rules file for clashes, so a rule change can no longer slip in unchecked.
 - The status line is never updated without its owner's word, even under `updateMode: auto`: a newer one is offered at session start, and an unedited copy is replaced only when the person says yes, so nobody's status bar changes behind their back.
 - The status line now follows orion updates: every project carries orion's copy, an unedited copy on each computer picks up a newer one at the next session start, and an edited one is merged in (`orion.sh statusline merge`, edits kept) or declined (`statusline skip`) on its owner's word, so a status line change reaches every developer.
 - Agents now offer `/dev-quick` for every code change asked for in chat, and a yes ships it end to end with no further questions: a clear request skips the interview and the draft look, and the skill can be started by the agent, not only by typing it.

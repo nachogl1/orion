@@ -171,6 +171,31 @@ newproj; XDG_CACHE_HOME="$SB/cache-marker" init ask; rm -rf "$P/.claude/skills/o
 check "check without the skill does not ask for it" eval 'XDG_CACHE_HOME="$SB/cache-marker" FAKE_LS_SHA="$V" run_check && [ ! -s "$SB/hook" ]'
 check "and leaves the marker in place" eval 'ls "$SB/cache-marker/orion/"*.verify-pending >/dev/null 2>&1'
 
+echo "the rules check (asks for /orion-verify once each time orion's rules change on this computer)"
+newproj; init ask; consume_marker
+asked_rules() { grep -q "have changed since they were last checked" "$SB/hook"; }
+check "after verify: no rules question" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+printf '\n- a new rule\n' >> "$P/.claude/orion/BASE_CLAUDE.md"
+check "a changed BASE_CLAUDE.md asks for /orion-verify, in one JSON line" eval 'FAKE_LS_SHA="$V" run_check --force && asked_rules && hook_out_ok "$SB/hook"'
+check "and only once" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+printf '\nmore\n' >> "$P/.claude/skills/dev-next/references/new-issue.md"
+check "a changed file of an orion skill asks again" eval 'FAKE_LS_SHA="$V" run_check --force && asked_rules'
+printf '\nmore\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"
+check "a changed script does not ask" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+check "a computer that never checked these rules asks (a teammate after a pull)" eval 'XDG_CACHE_HOME="$SB/cache-mate" FAKE_LS_SHA="$V" run_check --force && asked_rules'
+check "verify records the rules it checked" eval 'XDG_CACHE_HOME="$SB/cache-mate2" bash "$ORION" verify --project "$P" >/dev/null 2>&1; XDG_CACHE_HOME="$SB/cache-mate2" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+rm -rf "$P/.claude/skills/orion-verify"
+check "without the /orion-verify skill nothing is asked" eval 'XDG_CACHE_HOME="$SB/cache-mate3" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+newproj; bash "$ORION" init --project "$P" --source "$SRC" --no-statusline >"$SB/out" 2>&1; consume_marker
+printf '\n- a newer rule\n' >> "$SRC/baselines/BASE_CLAUDE.md"; "$REAL_GIT" -C "$SRC" -c core.autocrlf=false commit -qam rules
+check "an update that changes the rules says to run /orion-verify" eval 'bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "run /orion-verify" "$SB/out"'
+consume_marker
+printf '\n# a comment\n' >> "$SRC/skills/issue-map/scripts/issue_map.py"; "$REAL_GIT" -C "$SRC" -c core.autocrlf=false commit -qam script
+check "an update that leaves the rules alone does not" eval 'bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "orion update" "$SB/out" && ! grep -q "run /orion-verify" "$SB/out"'
+printf '\n- the newest rule\n' >> "$SRC/baselines/BASE_CLAUDE.md"; "$REAL_GIT" -C "$SRC" -c core.autocrlf=false commit -qam rules2
+set_cfg updateMode '"auto"'
+check "an auto-update that changes the rules asks for /orion-verify in the same session, one JSON line" eval 'run_check --force && grep -q "updated automatically" "$SB/hook" && asked_rules && hook_out_ok "$SB/hook"'
+
 echo "branch counter (hook and scanner count the same, two remotes)"
 newproj; "$REAL_GIT" -C "$P" init -q -b main; "$REAL_GIT" -C "$P" commit -q --allow-empty -m one
 for b in b1 b2 b3; do "$REAL_GIT" -C "$P" branch "$b"; done
@@ -229,8 +254,7 @@ check "a newer baseline is offered to an unedited copy in one JSON line, never t
 set_cfg updateMode '"auto"'
 check "auto mode still only offers it" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && grep -q "Take it" "$SB/hook" && ! grep -q "^# orion v2" "$SLFILE"'
 set_cfg updateMode '"off"'
-awk '{ printf "%s
-", $0 }' "$SLFILE" > "$SB/crlf" && cat "$SB/crlf" > "$SLFILE"   # saved by a Windows editor: still unedited
+awk '{ printf "%s\r\n", $0 }' "$SLFILE" > "$SB/crlf" && cat "$SB/crlf" > "$SLFILE"   # saved by a Windows editor: still unedited
 check "statusline merge takes it for an unedited copy, Windows line endings and all" eval 'sl_cmd merge && grep -q "^# orion v2" "$SLFILE" && ! grep -q "<<<<<<<" "$SLFILE" && sl_check --force && [ ! -s "$SB/hook" ]'
 check "without Windows line endings, so bash can still run it" eval '! grep -q "$(printf "\r")" "$SLFILE"'
 sl_put "$SB/sl-v1" "$T1"

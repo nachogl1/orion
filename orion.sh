@@ -129,6 +129,24 @@ cache_file() {  # suffix
     printf '%s/orion/%s.%s' "${XDG_CACHE_HOME:-$HOME/.cache}" "$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)" "$1"
 }
 
+# A fingerprint of the rules orion ships into this project: BASE_CLAUDE.md and every .md file of every
+# orion-managed skill. The session-start hook asks for /orion-verify once each time it changes on this computer.
+rules_sum() {
+    local entry
+    {
+        cat "$PROJECT/.claude/orion/BASE_CLAUDE.md" 2>/dev/null
+        for entry in "$PROJECT"/.claude/skills/*/; do
+            [ -f "${entry%/}/$MARKER" ] || continue
+            find "${entry%/}" -type f -name '*.md' | LC_ALL=C sort | while IFS= read -r f; do cat "$f"; done
+        done
+    } | cksum | cut -d' ' -f1
+}
+
+rules_mark() {  # [sum]: records that this computer has checked these rules
+    local f; f="$(cache_file rules-checked)"
+    mkdir -p "$(dirname "$f")" 2>/dev/null && printf '%s' "${1:-$(rules_sum)}" > "$f" || true
+}
+
 # The `name:` value of a skill's front matter (quotes stripped), or nothing.
 skill_name() {  # SKILL.md
     awk 'NR==1 && $0 !~ /^---\r?$/ {exit} NR>1 && $0 ~ /^---\r?$/ {exit}
@@ -789,6 +807,7 @@ cmd_update() {
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
     current="$(version_sha "$dir/VERSION")"
     fetch_source "$source" "$ref"
+    local rules_before; rules_before="$(rules_sum)"
     # an update run by an older orion.sh copied neither the status line nor the commit time: redo it once
     [ -d "$dir/statusline" ] || force=1
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then
@@ -807,7 +826,7 @@ cmd_update() {
     esac
     if [ "$quiet" != "1" ]; then
         say "done. Review with 'git status' / 'git diff', then commit on a branch so your team gets it."
-        say "If .claude/orion/BASE_CLAUDE.md changed, re-read CLAUDE.md for rules that now contradict it and fix them in the same commit."
+        [ "$(rules_sum)" = "$rules_before" ] || say "orion's rules or skill instructions changed: run /orion-verify to check they still fit with CLAUDE.md, the project's own skills and your own rules file."
     fi
 }
 
@@ -829,13 +848,14 @@ cmd_check() {
     pending="$(cache_file verify-pending)"
     if [ -f "$pending" ] && [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ]; then
         rm -f "$pending" 2>/dev/null || true
+        rules_mark
         ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
         printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
         exit 0
     fi
     now=$(date +%s)
     ctx="$(check_update_ctx "$force" "$now")"
-    for tidy in "$(check_statusline_ctx)" "$(check_branches_ctx "$force" "$now")"; do
+    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_branches_ctx "$force" "$now")"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
     done
@@ -881,6 +901,17 @@ check_update_ctx() {  # force now
         *)
             printf '%s' "A newer orion is available for this project ($(short "$current") -> $(short "$latest")). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
     esac
+}
+
+# Every session, local only: once each time orion's rules change on this computer (an update, or a pull that
+# brought one), ask for /orion-verify. Runs after the update check, so an auto-update is seen in the same session.
+check_rules_ctx() {
+    local sum
+    [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ] || return 0
+    sum="$(rules_sum)"
+    [ "$(cat "$(cache_file rules-checked)" 2>/dev/null)" = "$sum" ] && return 0
+    rules_mark "$sum"
+    printf '%s' "orion's rules (.claude/orion/BASE_CLAUDE.md) or the instructions of its skills have changed since they were last checked on this computer, after an update or a pull that brought one. Before anything else, ask the user with the AskUserQuestion tool whether to check now that they still fit with the project's CLAUDE.md, the project's own skills and the user's own rules file (options: 'Check now' recommended, 'Not now'). If they say yes, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written. If they say no, continue with their request: it is not asked again until the rules change, and /orion-verify runs the check any time."
 }
 
 run_auto_update() {  # hook-timeout-state from raise_hook_timeout
@@ -980,7 +1011,7 @@ cmd_uninstall() {
         say "  ~    CLAUDE.md (import line removed; your rules untouched)"
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"
-    rm -f "$(cache_file verify-pending)" 2>/dev/null || true
+    rm -f "$(cache_file verify-pending)" "$(cache_file rules-checked)" 2>/dev/null || true
     say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone."
 }
 
@@ -1006,7 +1037,7 @@ cmd_statusline() {
 
 # Mechanical post-install checks: one line per finding, never a fix. Exit 1 when
 # anything FAILs. The /orion-verify skill runs this first, then fixes and reviews.
-# Clears the one-shot marker that init leaves for the session-start hook.
+# Clears the one-shot marker that init leaves for the session-start hook and records the rules it checked.
 VERIFY_FAIL=0; VERIFY_WARN=0
 v_ok()   { say "  ok    $1: $2"; }
 v_warn() { say "  WARN  $1: $2"; VERIFY_WARN=$((VERIFY_WARN+1)); }
@@ -1020,6 +1051,7 @@ cmd_verify() {
     local claude="$PROJECT/CLAUDE.md" settings="$PROJECT/.claude/settings.json" base="$PROJECT/.claude/orion/BASE_CLAUDE.md"
     local f n mode entry name sname ours names="" dups="" checks="" ref p slots
     rm -f "$(cache_file verify-pending)" 2>/dev/null || true
+    rules_mark
     say "orion verify -> $PROJECT"
 
     # 1. the files orion owns

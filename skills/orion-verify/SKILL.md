@@ -1,6 +1,6 @@
 ---
 name: orion-verify
-description: ORION - The post-install consistency check that `orion init` asks for once. Verifies that the project's CLAUDE.md, the BASE_CLAUDE.md it imports, every skill under .claude/skills (orion's and the project's own) and the settings fit together after orion was installed - no missing pieces, no duplicates, no rule in the project that contradicts the mandatory rules, no skill that breaks them. Fixes what is mechanical by itself, asks before touching anything the project owns, and reports the rest in a few lines. Use when a session-start message says the orion post-install check is pending, right after `orion init` finished in this session, or when the user types /orion-verify.
+description: ORION - The consistency check that `orion init` asks for once, and the session-start hook asks for again each time orion's rules change on this computer. Verifies that the project's CLAUDE.md, the BASE_CLAUDE.md it imports, every skill under .claude/skills (orion's and the project's own), the settings and the person's own rules file (~/.claude/CLAUDE.md) fit together - no missing pieces, no duplicates, no rule in the project or the person's file that contradicts the mandatory rules, no skill that breaks them. Fixes what is mechanical by itself, asks before touching anything the project owns, and reports the rest in a few lines. Use when a session-start message says the orion post-install check is pending or that orion's rules changed, right after `orion init` or an `orion update` that changed the rules finished in this session, or when the user types /orion-verify.
 argument-hint: (no arguments)
 ---
 
@@ -14,7 +14,9 @@ project's `CLAUDE.md`. That is a mechanical copy: it cannot tell whether the res
 rule the project already had may now contradict the mandatory rules, a skill the project already had may share a name
 with one orion ships or may tell the agent to do what the rules forbid, a line may be missing or doubled. This skill is
 that whole-picture check. It runs **once after install** (the hook asks for it at the next session start, or `init`'s
-own closing message asks for it when it ran inside a session), and again whenever the user types `/orion-verify`.
+own closing message asks for it when it ran inside a session), **again each time orion's rules change on this
+computer** (`BASE_CLAUDE.md` or any `.md` file of an orion skill, after an update or a pull that brought one: the hook
+asks once, and `update` says so when it changed them), and whenever the user types `/orion-verify`.
 
 Three kinds of outcome, kept strictly apart:
 
@@ -82,6 +84,22 @@ Then judge the project's file against the mandatory one:
 
 Edit only after a yes, with the smallest change: never reorder or rewrite the rest of the file.
 
+### The person's own rules file
+
+Read `~/.claude/CLAUDE.md` if it exists (the person's own rules for every project, on this computer only; follow its
+`@import`s). Judge it against `BASE_CLAUDE.md` and the instructions of every skill under `.claude/skills/`:
+
+- **A clash** — a personal rule that forbids what those require or requires what they forbid (examples: "always
+  rebase", "commit straight to main", "never merge a pull request yourself" against a skill that merges on green).
+  A preference that only adds to the rules (shorter replies, a greeting, a label on every line) is not a clash. Each
+  clash is **needs a yes**, asked as `BASE_CLAUDE.md` says: quote both rules and say where each lives, then offer to
+  edit the person's own file (with the exact rewrite), to propose the change to orion instead (the exact rewrite of
+  orion's rule, for a pull request to orion's own repository, the `source` in `.claude/orion/config.json`; never edit
+  `.claude/orion/BASE_CLAUDE.md`), or to leave it.
+- **No file** — **reported** as "no personal rules file on this computer; nothing to compare".
+
+The file is personal: quote it only in the chat, never in the project, a commit, an issue or a report.
+
 ## Step 3 — the skills
 
 For every folder under `.claude/skills/` (orion-managed ones carry an `.orion-managed` marker; the others are the
@@ -132,7 +150,9 @@ Read `.claude/settings.json` (and `.claude/settings.local.json` if present; it i
 
 Put every **needs a yes** item into **one** AskUserQuestion call, one question per item (at most four per call; a second
 call for the rest), phrased for someone who has never seen these files: what is wrong, what the fix changes, with
-"Apply the fix" as the recommended option and "Leave it" as the other. Apply exactly what was accepted. No questions
+"Apply the fix" as the recommended option and "Leave it" as the other. A clash with the person's own rules file has
+three options instead: edit their file, propose the change to orion, or leave it; recommend editing their file unless
+orion's rule is clearly wrong for every project. Apply exactly what was accepted. No questions
 when nothing needs one.
 
 ## Step 6 — report

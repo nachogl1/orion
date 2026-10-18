@@ -96,7 +96,7 @@ irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
 
 That is all. The command fetches the latest orion, puts it into your project and tells you what it added. Save (commit) those files to your project so your teammates get them too.
 
-The next time you open Claude Code in the project, the assistant runs a one-time check that everything fits together: your project's instructions file, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical by itself, asks before changing anything that is yours, and tells you what is left. You can repeat the check any time by typing `/orion-verify`.
+The next time you open Claude Code in the project, the assistant runs a one-time check that everything fits together: your project's instructions file, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical by itself, asks before changing anything that is yours, and tells you what is left. It offers the check again whenever orion's rules change, after an update or after you pull one a teammate made, and it also looks for clashes with your own personal rules file. You can repeat the check any time by typing `/orion-verify`.
 
 Prefer to let the assistant do it? Open Claude Code in your project and say *"set up orion in this project"*.
 
