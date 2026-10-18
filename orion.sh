@@ -4,8 +4,8 @@
 # Everything orion ships is copied INTO the project (skills, a rules file, this
 # script, the status line baseline) and committed, so teammates get it with a
 # plain git clone/pull. The only per-computer piece is the optional status line
-# in ~/.claude/statusline: an unedited copy follows the project's newer baseline
-# at session start; an edited one is merged only on its owner's word.
+# in ~/.claude/statusline: a newer baseline in the project is offered at session
+# start and taken (merged into an edited copy) only on its owner's word.
 #
 # Usage (run inside the project, or pass --project <dir>):
 #   orion.sh init      [--source <git url|path>] [--ref <branch>] [--update-mode ask|auto|off]
@@ -16,7 +16,7 @@
 #   orion.sh verify                     # mechanical post-install checks, one line per finding, no fixes
 #   orion.sh status                     # what is installed, which version, which update mode
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
-#   orion.sh statusline merge|skip      # take orion's newer status line into your edited copy, or decline it
+#   orion.sh statusline merge|skip      # take orion's newer status line (keeping your edits), or decline it
 #   orion.sh help
 #
 # First-time bootstrap, no clone needed (run inside the project):
@@ -583,7 +583,7 @@ retire_user_level_copies() {
 
 # --------------------------------------------------------------------------
 # status line (optional, per computer). Every project carries orion's copy in .claude/orion/statusline; the
-# computer's copy follows the newest one it sees, and a copy the person edited is merged only on their word.
+# computer's copy is offered the newest one it sees and takes it (or merges it in) only on the person's word.
 #   ~/.claude/statusline/.orion-baseline   commit time and checksum of the newest baseline this computer took or skipped
 #   ~/.claude/statusline/.orion-base/      the baseline the computer's copy was made from (the merge base)
 # --------------------------------------------------------------------------
@@ -631,8 +631,9 @@ sl_stamp() { sl_number "$(sed -n '1p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d
 sl_seen() { sed -n '2p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r'; }
 project_stamp() { sl_number "$(sed -n '4p' "$PROJECT/.claude/orion/VERSION" 2>/dev/null | tr -d '\r')"; }
 
-# Bring the computer's status line up to this project's copy when that copy is newer. Prints "taken" (an
-# unedited copy was replaced), "offer" (the person edited theirs: a merge waits for their word) or nothing.
+# Compare the computer's status line with this project's copy when that copy is newer. It never changes what
+# the status line shows without the person's word. Prints "new" (an unedited copy: taking orion's waits for
+# their word), "offer" (the person edited theirs: a merge waits for their word) or nothing.
 statusline_sync() {
     local dest src t; dest="$(sl_home)"; src="$PROJECT/.claude/orion/statusline"
     sl_restore
@@ -640,12 +641,14 @@ statusline_sync() {
     t="$(project_stamp)"
     # never step back: another project on this computer may carry an older orion
     [ "$t" -gt "$(sl_stamp)" ] || return 0
-    if [ "$(tree_sum "$dest")" = "$(tree_sum "$src")" ] \
-       || { [ -d "$dest/$SL_BASE" ] && [ "$(tree_sum "$dest")" = "$(tree_sum "$dest/$SL_BASE")" ]; }; then
-        sl_seed "$src" "$t"; printf 'taken'
+    if [ "$(tree_sum "$dest")" = "$(tree_sum "$src")" ]; then
+        # already the same files: only the bookkeeping moves forward
+        sl_seed "$src" "$t"
     elif [ "$(tree_sum "$src" | cksum)" = "$(sl_seen)" ]; then
         # a newer orion whose status line did not change since the one last taken or skipped: nothing to offer
         sl_mark "$t" "$src"
+    elif [ -d "$dest/$SL_BASE" ] && [ "$(tree_sum "$dest")" = "$(tree_sum "$dest/$SL_BASE")" ]; then
+        printf 'new'
     else
         printf 'offer'
     fi
@@ -658,6 +661,12 @@ statusline_merge() {
         # installed before orion kept a merge base: nothing tells the person's edits from an older baseline
         rm -rf "$dest.bak"; cp -R "$dest" "$dest.bak"; sl_seed "$src" "$t"
         say "status line: replaced with orion's newest; your old copy is in ~/.claude/statusline.bak - carry over any change of your own from there"
+        return
+    fi
+    if [ "$(tree_sum "$dest")" = "$(tree_sum "$dest/$SL_BASE")" ]; then
+        # no edits of the person's own (line endings aside): nothing to keep, take orion's as it is
+        sl_seed "$src" "$t"
+        say "status line: orion's newest taken"
         return
     fi
     have git || die "git is required to merge the status line"
@@ -811,7 +820,7 @@ cmd_update() {
     apply_claude_md
     settings_add_hook "$PROJECT/.claude/settings.json"
     case "$(statusline_sync)" in
-        taken) say "  ~    status line on this computer (~/.claude/statusline) brought up to date" ;;
+        new) say "  !    orion's status line changed and yours was left alone: 'bash .claude/orion/orion.sh statusline merge' takes it ('statusline skip' declines this version)" ;;
         offer) say "  !    your status line has edits of your own, so it was left alone: 'bash .claude/orion/orion.sh statusline merge' takes orion's changes and keeps yours ('statusline skip' declines this version)" ;;
     esac
     if [ "$quiet" != "1" ]; then
@@ -901,10 +910,13 @@ run_auto_update() {  # hook-timeout-state from raise_hook_timeout
     esac
 }
 
-# Every session, local only: an unedited status line follows the project's newer copy silently; an edited one
-# gets the merge offered. Prints the context or nothing.
+# Every session, local only: a newer status line in the project is offered, never taken on its own, in every
+# update mode. Prints the context or nothing.
 check_statusline_ctx() {
-    if [ "$(statusline_sync)" = "offer" ]; then
+    local sync; sync="$(statusline_sync)"
+    if [ "$sync" = "new" ]; then
+        printf '%s' "orion's status line has changed, and the copy on this computer (~/.claude/statusline) was left as it is: orion never changes it without the user's word. Ask the user with the AskUserQuestion tool whether to take orion's new status line (options: 'Take it' recommended, 'Keep mine as it is'). If yes, run 'bash .claude/orion/orion.sh statusline merge' from the project root: their copy carries no edits of its own, so it simply becomes orion's new one. If no, run 'bash .claude/orion/orion.sh statusline skip' so this version is not offered again."
+    elif [ "$sync" = "offer" ]; then
         printf '%s' "orion's status line has changed, and the copy on this computer (~/.claude/statusline) carries the user's own edits, so it was not replaced. Ask the user with the AskUserQuestion tool whether to merge orion's new status line changes into theirs (options: 'Merge them in' recommended, 'Keep mine as it is'). If yes, run 'bash .claude/orion/orion.sh statusline merge' from the project root: it keeps their edits (a copy installed before orion could merge is saved to ~/.claude/statusline.bak and replaced), and if it reports lines both changed, resolve the conflict markers in the named files with the user. If no, run 'bash .claude/orion/orion.sh statusline skip' so this version is not offered again."
     fi
 }
@@ -1024,7 +1036,7 @@ cmd_uninstall() {
     say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone."
 }
 
-# The answer to the session-start offer for an edited status line: merge orion's changes in, or skip this version.
+# The answer to the session-start status line offer: take orion's changes (merged into an edited copy), or skip this version.
 cmd_statusline() {
     local action="${1:-}" project=""
     shift || true
