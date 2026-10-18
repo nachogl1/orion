@@ -3,11 +3,23 @@
 # throw-away projects. Everything runs in a sandbox (its own HOME, cache and temp folder), never touches
 # the network (a fake `git` answers the update check) and leaves nothing behind.
 #
-# usage: bash tests/run.sh          prints one line per check, exits 1 when any check fails
+# usage: bash tests/run.sh             prints one line per check, exits 1 when any check fails
+#        bash tests/run.sh --windows   only the part that differs on Windows (syntax, round trip, every settings
+#                                      editor including PowerShell), for the Windows CI job: Git Bash starts
+#                                      processes so slowly that the whole suite takes minutes there; fails
+#                                      where powershell.exe is missing
 #
 # Portable bash: runs under Git Bash, macOS bash and Linux. No GNU-only flags.
 
 set -u
+
+WINDOWS_ONLY=0
+[ $# -le 1 ] || { echo "usage: bash tests/run.sh [--windows]" >&2; exit 2; }
+case "${1:-}" in
+    "") ;;
+    --windows) WINDOWS_ONLY=1 ;;
+    *) echo "usage: bash tests/run.sh [--windows]" >&2; exit 2 ;;
+esac
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 ORION="$REPO/orion.sh"
@@ -15,6 +27,7 @@ PASS=0 FAIL=0
 ok()   { PASS=$((PASS+1)); printf '  ok    %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  FAIL  %s\n' "$1"; }
 check() { local what="$1"; shift; if "$@"; then ok "$what"; else bad "$what"; fi; }
+summary() { echo "suite: $PASS passed, $FAIL failed"; [ "$FAIL" -eq 0 ]; }
 
 if python3 -c 'import json' >/dev/null 2>&1; then PY=python3; else PY=python; fi
 REAL_GIT="$(command -v git)"
@@ -87,6 +100,7 @@ check "nothing orion owns is left" eval '[ ! -e "$P/.claude/orion" ] && [ ! -e "
 # CLAUDE.md that holds nothing but orion's import line.
 IMPORT='Mandatory rules, owned and refreshed by orion (never edit the copy): @.claude/orion/BASE_CLAUDE.md'
 tools="$PY"; command -v jq >/dev/null 2>&1 && tools="jq $tools"; command -v powershell.exe >/dev/null 2>&1 && tools="$tools powershell"
+[ "$WINDOWS_ONLY" = 1 ] && check "the Windows run has PowerShell to test" eval 'command -v powershell.exe >/dev/null 2>&1'
 for tool in $tools; do
     echo "settings edits with $tool"
     newproj; mkdir -p "$P/.claude"
@@ -112,6 +126,7 @@ for tool in $tools; do
     check "uninstall removed the import line" eval '[ -f "$P/CLAUDE.md" ] && ! grep -qF "$IMPORT" "$P/CLAUDE.md" && [ ! -e "$P/.claude/orion" ]'
     unset ORION_JSON_TOOL
 done
+if [ "$WINDOWS_ONLY" = 1 ]; then summary; exit; fi
 
 echo "check (the session-start hook: silent unless it has news, always exit 0)"
 newproj; init ask
@@ -356,5 +371,4 @@ check "update says a newer status line waits and leaves an unedited copy alone" 
 check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
 check "uninstall removes the project's copy and leaves the computer's" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ]'
 
-echo "suite: $PASS passed, $FAIL failed"
-[ "$FAIL" -eq 0 ]
+summary
