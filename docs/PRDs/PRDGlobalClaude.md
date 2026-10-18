@@ -70,7 +70,8 @@ work with have to be copied by hand from someone who already has them, and they 
   not answering means nothing else changes.
 - **`updateMode: off` silences the offer**, as it silences the update check. The person can still ask the agent at
   any time.
-- Right after `init`, the post-install message also asks for the discussion, once `/orion-verify` has run.
+- Right after `init`, the post-install message also asks for the discussion, once `/orion-verify` has run, unless
+  the update mode is `off`.
 - The hook never writes to `~/.claude/CLAUDE.md`.
 
 ## Do not build
