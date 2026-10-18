@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/orion-twinkle.gif" alt="orion — a repo-level utility framework for Claude Code projects" width="520"/>
+  <img src="assets/orion-twinkle.gif" alt="orion: plan, build, review, learn. The AI development lifecycle for Claude Code" width="520"/>
 </p>
 
 # orion

@@ -12,9 +12,14 @@ W, H = 820, 260
 SS = 3                      # supersample factor
 CW, CH = W * SS, H * SS
 
-CYAN = (92, 200, 255)       # #5cc8ff  stars / wordmark
+CYAN = (92, 200, 255)       # #5cc8ff  stars / wordmark start
+VIOLET = (180, 141, 255)    # #b48dff  wordmark end (the guide page's accent)
 SUB = (138, 160, 194)       # #8aa0c2  subtitle
 BG = (7, 11, 26)            # deep navy space
+
+WORD = "orion"
+TAGLINE = "plan · build · review · learn"
+SUBLINE = "the AI development lifecycle for Claude Code"
 
 OUT = os.path.expanduser(r"~\Downloads")
 
@@ -39,6 +44,7 @@ PHASE = [0.0, 0.35, 0.7, 0.15, 0.55, 0.85, 0.45, 0.25]
 FDIR = r"C:\Windows\Fonts"
 font_word = ImageFont.truetype(os.path.join(FDIR, "segoeuil.ttf"), int(92 * SS))   # Segoe UI Light
 font_sub = ImageFont.truetype(os.path.join(FDIR, "segoeui.ttf"), int(19 * SS))
+font_small = ImageFont.truetype(os.path.join(FDIR, "segoeui.ttf"), int(14 * SS))
 
 
 def scol(color, b):
@@ -52,6 +58,40 @@ def draw_tracked(d, pos, text, font, fill, tracking):
     for ch in text:
         d.text((x, y), ch, font=font, fill=fill, anchor="ls")
         x += font.getlength(ch) + tracking * SS
+
+
+def tracked_width(text, font, tracking):
+    return sum(font.getlength(ch) + tracking * SS for ch in text)
+
+
+# ---- wordmark: a cyan-to-violet gradient seen through the text's shape -----
+WORD_POS = (320 * SS, 140 * SS)
+WORD_TRACKING = 4
+
+
+def build_word_mask():
+    mask = Image.new("L", (CW, CH), 0)
+    draw_tracked(ImageDraw.Draw(mask), WORD_POS, WORD, font_word, 255, WORD_TRACKING)
+    return mask
+
+
+def build_word_gradient():
+    x0 = WORD_POS[0]
+    x1 = x0 + tracked_width(WORD, font_word, WORD_TRACKING)
+    row = Image.new("RGB", (CW, 1))
+    for x in range(CW):
+        t = max(0.0, min(1.0, (x - x0) / (x1 - x0)))
+        row.putpixel((x, 0), tuple(int(a + (b - a) * t) for a, b in zip(CYAN, VIOLET)))
+    return row.resize((CW, CH))
+
+
+WORD_MASK = build_word_mask()
+WORD_GRAD = build_word_gradient()
+
+
+def paste_wordmark(img, master):
+    grad = WORD_GRAD if master >= 1.0 else WORD_GRAD.point(lambda v: int(v * master))
+    img.paste(grad, (0, 0), WORD_MASK)
 
 
 # ---- static background (vignette glow + faint starfield) -------------------
@@ -169,14 +209,14 @@ def render(star_b, star_s, line_b, master=1.0, meteor=None, twk=0.0,
 
     # wordmark + subtitle (own soft glow so blur stays tight)
     tg = Image.new("RGB", (CW, CH), 0)
-    td = ImageDraw.Draw(tg)
-    draw_tracked(td, (320 * SS, 140 * SS), "orion", font_word, scol(CYAN, master), 4)
+    paste_wordmark(tg, master)
     base = add_glow(base, tg, blur=2.6 * SS, gain=word_glow * master)
 
     base = Image.alpha_composite(base.convert("RGBA"), sharp).convert("RGB")
+    paste_wordmark(base, master)
     fd = ImageDraw.Draw(base)
-    draw_tracked(fd, (320 * SS, 140 * SS), "orion", font_word, scol(CYAN, master), 4)
-    draw_tracked(fd, (324 * SS, 178 * SS), "claude code skills", font_sub, scol(SUB, master), 5)
+    draw_tracked(fd, (324 * SS, 176 * SS), TAGLINE, font_sub, scol(SUB, master), 5)
+    draw_tracked(fd, (325 * SS, 204 * SS), SUBLINE, font_small, scol(SUB, 0.75 * master), 1.5)
 
     return base.resize((W, H), Image.LANCZOS)
 

@@ -4,6 +4,10 @@
       <feGaussianBlur stdDeviation="2.4" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <linearGradient id="word" gradientUnits="userSpaceOnUse" x1="320" y1="0" x2="545" y2="0">
+      <stop offset="0" stop-color="#5cc8ff"/>
+      <stop offset="1" stop-color="#b48dff"/>
+    </linearGradient>
   </defs>
 
   <!-- transparent background; works on light or dark README -->
@@ -30,7 +34,8 @@
     <circle cx="196" cy="226" r="5.5"/>
   </g>
 
-  <!-- lowercase thin wordmark -->
-  <text x="320" y="140" font-size="92" font-weight="300" letter-spacing="4" fill="#5cc8ff">orion</text>
-  <text x="324" y="178" font-size="19" font-weight="400" letter-spacing="5" fill="#8aa0c2">claude code skills</text>
+  <!-- lowercase thin wordmark, cyan to violet -->
+  <text x="320" y="140" font-size="92" font-weight="300" letter-spacing="4" fill="url(#word)">orion</text>
+  <text x="324" y="176" font-size="19" font-weight="400" letter-spacing="5" fill="#8aa0c2">plan · build · review · learn</text>
+  <text x="325" y="204" font-size="14" font-weight="400" letter-spacing="1.5" fill="#8aa0c2" opacity=".75">the AI development lifecycle for Claude Code</text>
 </svg>
