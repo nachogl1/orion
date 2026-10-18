@@ -88,7 +88,7 @@ then start. No question is asked; a person started this skill and expects it to 
    that is `commit` in every log entry this run writes. Resolve the runtime paths the way `/dev-next` does in its
    preflight (the pinned version's real interpreter and SDK, never the plain command on PATH) and pass them to every
    agent. **Keep the `qa-` prefix in the folder name**: it is how `/clear-git-resources` recognises a QA run's
-   worktree and asks the person before offering to delete it, so a sweep run mid-QA never removes it silently.
+   worktree and never touches it, so a sweep run mid-QA can never remove it.
 2. The port: the project's port rule applied to issue number **0** (`<base port>` itself), which no story can hold.
    Any per-issue resource the rule derives (a database name) the same way.
 3. **One agent per seam group, strictly in sequence.** Spawn `qa-<seam>` with the brief in

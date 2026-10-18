@@ -179,20 +179,51 @@ for r in origin/main origin/f1 other/f2; do "$REAL_GIT" -C "$P" update-ref "refs
 "$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
 init off; consume_marker; set_cfg branchLimit 7
 check "the hook offers the tidy-up at 7 branches" eval 'run_check --force && grep -q "has 7 git branches" "$SB/hook" && hook_out_ok "$SB/hook"'
-check "the scanner counts 7 too" eval 'bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt" --limit 7 | grep -q "total=7 limit=7 over=yes"'
+check "the scanner counts 7 too" eval 'bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt" --limit 7 | grep -q "total=7 limit=7 .*over=yes"'
 check "status shows the branch count" eval 'bash "$ORION" status --project "$P" | grep -q "branches now: 7"'
 set_cfg branchLimit 8
 check "below the limit: silent" eval 'run_check --force && [ ! -s "$SB/hook" ]'
 
-echo "scanner: the audit branch's worktree and a QA run's worktree are never offered as safe"
+echo "scanner: yours and stale is deleted without asking, someone else's is asked, audit and QA resources are never touched"
 mkdir -p "$SB/wt"
 "$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/audit-dev" && "$REAL_GIT" -C "$SB/wt/audit-dev" checkout -q --orphan audit/dev && "$REAL_GIT" -C "$SB/wt/audit-dev" commit -q --allow-empty -m report
 "$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/qa-20000101-000000"
+"$REAL_GIT" -C "$P" checkout -q -b theirs && GIT_AUTHOR_EMAIL=other@example.invalid "$REAL_GIT" -C "$P" commit -q --allow-empty -m theirs
+"$REAL_GIT" -C "$P" checkout -q main && "$REAL_GIT" -C "$P" merge -q --no-ff --no-edit theirs && "$REAL_GIT" -C "$P" update-ref refs/remotes/origin/main main
+"$REAL_GIT" -C "$P" checkout -q -b mine-wip && "$REAL_GIT" -C "$P" commit -q --allow-empty -m wip && "$REAL_GIT" -C "$P" checkout -q main
+"$REAL_GIT" -C "$P" branch qa/keep && "$REAL_GIT" -C "$P" update-ref refs/remotes/origin/qa/x main
+"$REAL_GIT" -C "$P" worktree add -q -b wt-mine "$SB/wt/wt-mine"
 bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt" > "$SB/scan"
-check "the audit worktree is kept, with its reason" eval 'grep -q "^ITEM	wt-protected	.*audit-dev	.*audit/dev" "$SB/scan"'
-check "no command in the scan deletes the audit branch" eval '! grep -q "branch -D \"audit/" "$SB/scan"'
-check "the QA worktree needs the person's word, not offered as safe" eval 'grep -q "^ITEM	wt-active	.*qa-20000101-000000	.*QA" "$SB/scan" && ! grep -q "^ITEM	wt-detached	.*qa-20000101-000000" "$SB/scan"'
-check "the QA worktree's command removes only the worktree" eval 'grep "^ITEM	wt-active	.*qa-20000101-000000" "$SB/scan" | grep -q "worktree remove" && ! grep "^ITEM	wt-active	.*qa-20000101-000000" "$SB/scan" | grep -q "branch -D"'
+item_is() { awk -F'\t' -v g="$1" -v n="$2" -v a="$3" '$1=="ITEM" && $2==g && $3 ~ n && $4==a { f=1 } END { exit !f }' "$SB/scan"; }
+check "your branch already on main is deleted without asking" item_is br-merged '^b1$' auto
+check "someone else's branch already on main is asked about" item_is br-merged '^theirs$' ask
+check "your worktree whose branch is on main is deleted without asking" item_is wt-done 'wt-mine$' auto
+check "unmerged work is kept, with no command" eval 'item_is br-unmerged "^mine-wip$" keep && ! awk -F"\t" '"'"'$3=="mine-wip" && $6!=""'"'"' "$SB/scan" | grep -q .'
+check "the audit worktree is kept, with its reason" eval 'item_is wt-protected "audit-dev$" keep && grep -q "^ITEM	wt-protected	.*audit-dev	.*audit/dev" "$SB/scan"'
+check "the QA worktree is kept, never offered" eval 'item_is wt-protected "qa-20000101-000000$" keep && ! grep -q "^ITEM	wt-[a-z]*	[^	]*qa-20000101-000000	[^	]*	[^	]*	." "$SB/scan"'
+check "no command in the scan touches an audit or qa branch" eval '! grep -q "branch -D \"audit/" "$SB/scan" && ! awk -F"\t" '"'"'$1=="ITEM" && $3 ~ /(^|\/)qa\// && $6!=""'"'"' "$SB/scan" | grep -q .'
+check "the scanner counts worktrees" eval 'grep -q "^COUNT	.*worktrees=3 " "$SB/scan"'
+check "the summary counts auto, ask and keep" eval 'grep -q "^SUMMARY	auto=[0-9]* ask=[1-9][0-9]* keep=[1-9][0-9]*$" "$SB/scan"'
+set_cfg branchLimit 99; set_cfg worktreeLimit 3
+check "the hook offers the tidy-up at 3 worktrees" eval 'run_check --force && grep -q "has 3 git worktrees" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "status shows the worktree count" eval 'bash "$ORION" status --project "$P" | grep -q "worktrees now: 3"'
+check "verify reads the worktree limit" eval 'bash "$ORION" verify --project "$P" | grep -q "ok    config-worktree-limit"'
+set_cfg worktreeLimit 4
+check "below both limits: silent" eval 'run_check --force && [ ! -s "$SB/hook" ]'
+
+echo "check pulls the branch the session opens on (fast-forward only, every session)"
+R="$SB/remote.git"; "$REAL_GIT" init -q --bare "$R"
+"$REAL_GIT" clone -q "$R" "$SB/peer" 2>/dev/null; "$REAL_GIT" -C "$SB/peer" checkout -q -b main
+"$REAL_GIT" -C "$SB/peer" commit -q --allow-empty -m one && "$REAL_GIT" -C "$SB/peer" push -q -u origin main 2>/dev/null
+newproj; rmdir "$P"; "$REAL_GIT" clone -q -b main "$R" "$P"; init off; consume_marker
+"$REAL_GIT" -C "$SB/peer" commit -q --allow-empty -m two && "$REAL_GIT" -C "$SB/peer" push -q 2>/dev/null
+check "a new commit on the remote is pulled, silently" eval 'run_check && [ ! -s "$SB/hook" ] && [ "$("$REAL_GIT" -C "$P" rev-parse HEAD)" = "$("$REAL_GIT" -C "$R" rev-parse main)" ]'
+"$REAL_GIT" -C "$P" commit -q --allow-empty -m local; LOCAL="$("$REAL_GIT" -C "$P" rev-parse HEAD)"
+"$REAL_GIT" -C "$SB/peer" commit -q --allow-empty -m three && "$REAL_GIT" -C "$SB/peer" push -q 2>/dev/null
+check "a refused pull: exit 0, says so in one JSON line" eval 'run_check && grep -q "git pull" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "and nothing was forced: the local commit is still the tip" eval '[ "$("$REAL_GIT" -C "$P" rev-parse HEAD)" = "$LOCAL" ]'
+"$REAL_GIT" -C "$P" checkout -q -b lone
+check "a branch with no remote copy: silent" eval 'run_check && [ ! -s "$SB/hook" ]'
 
 echo "verify"
 newproj; init ask
