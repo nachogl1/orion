@@ -184,6 +184,16 @@ check "status shows the branch count" eval 'bash "$ORION" status --project "$P" 
 set_cfg branchLimit 8
 check "below the limit: silent" eval 'run_check --force && [ ! -s "$SB/hook" ]'
 
+echo "scanner: the audit branch's worktree and a QA run's worktree are never offered as safe"
+mkdir -p "$SB/wt"
+"$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/audit-dev" && "$REAL_GIT" -C "$SB/wt/audit-dev" checkout -q --orphan audit/dev && "$REAL_GIT" -C "$SB/wt/audit-dev" commit -q --allow-empty -m report
+"$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/qa-20000101-000000"
+bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt" > "$SB/scan"
+check "the audit worktree is kept, with its reason" eval 'grep -q "^ITEM	wt-protected	.*audit-dev	.*audit/dev" "$SB/scan"'
+check "no command in the scan deletes the audit branch" eval '! grep -q "branch -D \"audit/" "$SB/scan"'
+check "the QA worktree needs the person's word, not offered as safe" eval 'grep -q "^ITEM	wt-active	.*qa-20000101-000000	.*QA" "$SB/scan" && ! grep -q "^ITEM	wt-detached	.*qa-20000101-000000" "$SB/scan"'
+check "the QA worktree's command removes only the worktree" eval 'grep "^ITEM	wt-active	.*qa-20000101-000000" "$SB/scan" | grep -q "worktree remove" && ! grep "^ITEM	wt-active	.*qa-20000101-000000" "$SB/scan" | grep -q "branch -D"'
+
 echo "verify"
 newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
