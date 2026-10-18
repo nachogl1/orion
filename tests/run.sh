@@ -5,7 +5,7 @@
 # origin/main ref to compare GLOBAL_CLAUDE.md's clause dates with main's: run `git fetch origin main` first (CI does).
 #
 # usage: bash tests/run.sh             prints one line per check, exits 1 when any check fails
-#        bash tests/run.sh --windows   only the part that differs on Windows (syntax, round trip, every settings
+#        bash tests/run.sh --windows   only the part that differs on Windows (syntax and guide checks, round trip, every settings
 #                                      editor including PowerShell), for the Windows CI job: Git Bash starts
 #                                      processes so slowly that the whole suite takes minutes there; fails
 #                                      where powershell.exe is missing
@@ -101,7 +101,7 @@ guide_names_every_skill() {
     local d; for d in "$REPO"/skills/*/; do grep -qF "\"/$(basename "$d")\"" "$GUIDE" || return 1; done
 }
 check "the guide names every skill" guide_names_every_skill
-check "the guide loads no script or stylesheet from elsewhere" eval '[ -f "$GUIDE" ] && ! grep -qiE "<script[^>]*src=|<link[^>]*stylesheet|@import" "$GUIDE"'
+check "the guide loads no script or stylesheet from elsewhere" eval '[ -f "$GUIDE" ] && ! grep -qiE "<script[^>]*src=|<link[^>]*stylesheet|@import|src=.?https?:|url\(.?https?:|fetch\(" "$GUIDE"'
 check "the README shows the guide's graph and links the page" eval '[ -f "$REPO/docs/guide/orion-workflow.svg" ] && grep -qF "docs/guide/orion-workflow.svg" "$REPO/README.md" && grep -qF "github.io/orion" "$REPO/README.md"'
 
 echo "round trip (init / update / check / uninstall)"
