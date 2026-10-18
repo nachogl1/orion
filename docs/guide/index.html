@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>orion for Claude Code</title>
+<style>
+:root{
+  --bg:#f5f6fb; --bg-2:#eceff7; --surface:#ffffff; --surface-2:#f2f4fa; --text:#0f1730; --muted:#55607d; --faint:#8a93ad;
+  --line:#d5dbea; --human:#b76a00; --agent:#2f6be0; --both:#7a4bdc; --store:#0b927c; --focus:#2f6be0;
+  --shadow:0 1px 2px rgba(15,23,48,.06),0 8px 24px rgba(15,23,48,.08);
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a0f1f; --bg-2:#0e1530; --surface:#121a33; --surface-2:#18213f; --text:#e8ecf8; --muted:#a0abc8; --faint:#6c7796;
+    --line:#2a355a; --human:#f4b04a; --agent:#6fa6ff; --both:#b48dff; --store:#3fd3b7; --focus:#8bb8ff;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a0f1f; --bg-2:#0e1530; --surface:#121a33; --surface-2:#18213f; --text:#e8ecf8; --muted:#a0abc8; --faint:#6c7796;
+  --line:#2a355a; --human:#f4b04a; --agent:#6fa6ff; --both:#b48dff; --store:#3fd3b7; --focus:#8bb8ff;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+code,.mono{font-family:var(--mono);font-size:.92em}
+a{color:var(--agent)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px}
+
+/* ---------- hero ---------- */
+header.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
+  background:radial-gradient(1200px 400px at 80% -10%,color-mix(in srgb,var(--both) 18%,transparent),transparent 70%),
+             radial-gradient(900px 300px at 0% 0%,color-mix(in srgb,var(--agent) 14%,transparent),transparent 70%),var(--bg-2)}
+.stars{position:absolute;inset:0;pointer-events:none;opacity:.9}
+.hero-inner{position:relative;padding-top:44px;padding-bottom:30px}
+.eyebrow{font:600 12px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(30px,4.6vw,48px);line-height:1.05;margin:10px 0 12px;letter-spacing:-.02em}
+h1 .accent{background:linear-gradient(90deg,var(--agent),var(--both));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:760px;color:var(--muted);font-size:17px;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px;align-items:center}
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 14px/1 var(--sans);
+  padding:10px 14px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:var(--shadow)}
+.btn:hover{border-color:var(--focus)}
+.btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn.primary{background:linear-gradient(135deg,var(--agent),var(--both));color:#fff;border-color:transparent}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:22px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sw.human{background:var(--human)}.sw.agent{background:var(--agent)}.sw.both{background:var(--both)}.sw.store{background:var(--store)}
+.dot-full,.dot-ring{width:12px;height:12px;border-radius:50%;display:inline-block}
+.dot-full{background:var(--human)}.dot-ring{border:2px solid var(--human)}
+
+/* ---------- nav ---------- */
+nav.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;gap:16px;height:58px}
+.brand{display:inline-flex;align-items:center;gap:8px;font:800 19px/1 var(--sans);letter-spacing:-.01em;color:var(--text);text-decoration:none}
+.brand svg{color:var(--both)}
+.nav-links{margin-left:auto;display:flex;align-items:center;gap:18px;font-size:14px;font-weight:600}
+.nav-links a{color:var(--muted);text-decoration:none}
+.nav-links a:hover{color:var(--text)}
+.btn.icon{padding:8px 10px;box-shadow:none}
+a.btn{text-decoration:none}
+html{scroll-padding-top:70px}
+
+/* ---------- hero extras ---------- */
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:38px}
+.feat{background:color-mix(in srgb,var(--surface) 78%,transparent);border:1px solid var(--line);border-radius:14px;padding:16px 18px;backdrop-filter:blur(4px)}
+.feat .fi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--agent),var(--both));margin-bottom:10px}
+.feat h3{margin:0 0 4px;font-size:16px}
+.feat p{margin:0;color:var(--muted);font-size:14px}
+.opt{font:600 11px/1 var(--sans);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 7px;vertical-align:2px;margin-left:4px}
+
+/* ---------- sections ---------- */
+.sec{padding-top:64px}
+.sec-head{max-width:760px;margin-bottom:18px}
+.sec-head h2{font-size:clamp(24px,3vw,32px);line-height:1.15;letter-spacing:-.015em;margin:8px 0 8px}
+.sec-head p{margin:0;color:var(--muted);font-size:16px}
+.sec .legend{margin:16px 0 14px}
+.sec .toolbar{margin-top:16px}
+
+/* ---------- install ---------- */
+.steps{list-style:none;counter-reset:st;margin:26px 0 0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.step{counter-increment:st;position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px 18px 70px}
+.step::before{content:counter(st);position:absolute;left:18px;top:16px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  font:800 15px/1 var(--sans);color:#fff;background:linear-gradient(135deg,var(--agent),var(--both))}
+.step h3{margin:4px 0 6px;font-size:17px}
+.step p{margin:0 0 8px;color:var(--muted)}
+.plain{margin:6px 0 0;padding-left:18px;color:var(--muted)}
+.plain li{margin:4px 0}
+.plain b{color:var(--text)}
+.plain.small{font-size:14px;margin-top:10px}
+.plain code{white-space:nowrap}
+.term{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0b1022;margin-top:10px}
+.tabs{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:6px 6px 0;background:#121935;border-bottom:1px solid #26305a}
+.tabs [role=tab]{appearance:none;border:0;background:transparent;color:#a6b1d0;font:600 13px/1 var(--sans);padding:9px 12px;border-radius:8px 8px 0 0;cursor:pointer}
+.tabs [role=tab][aria-selected=true]{background:#0b1022;color:#fff}
+.tabs [role=tab]:focus-visible,.copy:focus-visible{outline:2px solid #8bb8ff;outline-offset:-2px}
+.copy{margin-left:auto;margin-bottom:6px;appearance:none;border:1px solid #2f3a66;background:#18214a;color:#dfe6ff;font:600 12px/1 var(--sans);padding:7px 10px;border-radius:7px;cursor:pointer}
+.term pre{margin:0;padding:16px 18px;overflow-x:auto;color:#e8ecff;font:14px/1.6 var(--mono)}
+.term pre code{font-size:inherit}
+.alt{margin-top:16px;padding:14px 18px;border-radius:12px;background:color-mix(in srgb,var(--agent) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--agent) 30%,var(--line))}
+.caution{margin-top:12px;padding:14px 18px;border-radius:12px;font-size:14px;color:var(--muted);border:1px solid color-mix(in srgb,var(--human) 40%,var(--line));background:color-mix(in srgb,var(--human) 8%,var(--surface))}
+.caution b{color:var(--human)}
+
+/* ---------- updates ---------- */
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:22px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.tile h3{margin:0 0 6px;font-size:16px}
+.tile p{margin:0;color:var(--muted);font-size:14px}
+footer.foot{margin-top:72px;border-top:1px solid var(--line);padding:22px 0 40px;font-size:13px;color:var(--muted)}
+footer.foot .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+
+/* ---------- graph ---------- */
+.graph-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.graph-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.graph-scroll svg{display:block;min-width:900px;width:100%;height:auto}
+.graph-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:10px 16px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--muted);background:var(--surface-2)}
+.kbd{font:600 11px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 5px;background:var(--surface)}
+
+.chip{font:600 12px/1 var(--sans);padding:5px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.chip.you{color:var(--human);border-color:color-mix(in srgb,var(--human) 45%,var(--line))}
+
+/* ---------- detail blocks (shared by drawer and cards) ---------- */
+.blk h4{margin:14px 0 6px;font:700 12px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.blk ol,.blk ul{margin:0;padding-left:20px;font-size:14px}
+.blk li{margin:4px 0}
+.blk p{margin:6px 0;font-size:14px}
+.blk .cmd{display:block;font:13px/1.5 var(--mono);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;white-space:pre-wrap;word-break:break-word}
+.blk .note{border-left:3px solid var(--human);background:color-mix(in srgb,var(--human) 9%,transparent);padding:8px 10px;border-radius:0 8px 8px 0;font-size:14px;margin:10px 0}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(5,8,20,.45);opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+aside.drawer{position:fixed;top:0;right:0;height:100%;width:min(480px,100%);background:var(--surface);border-left:1px solid var(--line);
+  box-shadow:-20px 0 50px rgba(0,0,0,.25);transform:translateX(105%);transition:transform .25s ease;display:flex;flex-direction:column;z-index:10}
+aside.drawer.on{transform:none}
+.dr-head{padding:20px 22px 14px;border-bottom:1px solid var(--line);border-top:5px solid var(--c)}
+.dr-head .phase{font-size:12.5px;color:var(--muted);margin:0 34px 12px 0;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.dr-head .phase b{color:var(--text)}
+.dr-head .k{font:700 11px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
+.dr-head h2{margin:8px 0 6px;font:700 22px/1.2 var(--mono)}
+.dr-head p{margin:0;color:var(--muted)}
+.dr-head .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.dr-body{padding:4px 22px 22px;overflow:auto;flex:1}
+.dr-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface-2)}
+.dr-foot .pos{font-size:13px;color:var(--muted)}
+.dr-close{position:absolute;top:12px;right:12px;box-shadow:none;padding:8px 10px}
+
+@media (max-width:600px){ .hero-inner{padding-top:30px} .hide-sm{display:none} .nav-links{gap:14px} .step{padding-left:18px;padding-top:62px} .sec{padding-top:48px} }
+@media print{ nav.top,.toolbar,.graph-foot,aside.drawer,.scrim,.copy{display:none!important} body{background:#fff} }
+</style>
+</head>
+<body>
+
+<nav class="top" aria-label="Main">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3 L9 9 M19 4 L15 11 M9 9 L12 10 L15 11 M9 9 L6 20 M15 11 L19 21" stroke="currentColor" stroke-opacity=".45" stroke-width="1.2" fill="none"/><g fill="currentColor"><circle cx="5" cy="3" r="1.6"/><circle cx="19" cy="4" r="1.6"/><circle cx="9" cy="9" r="1.6"/><circle cx="12" cy="10" r="1.6"/><circle cx="15" cy="11" r="1.6"/><circle cx="6" cy="20" r="1.6"/><circle cx="19" cy="21" r="1.6"/></g></svg>orion</a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#install">Install</a>
+      <a class="hide-sm" href="#updates">Updates</a>
+      <a class="hide-sm" href="https://github.com/nachogl1/orion">GitHub</a>
+      <button class="btn icon" id="theme" aria-label="Switch colour theme">◐</button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <svg class="stars" aria-hidden="true" id="stars"></svg>
+  <div class="wrap hero-inner">
+    <div class="eyebrow">orion · for Claude Code</div>
+    <h1>From a first conversation to <span class="accent">finished, checked software</span>.</h1>
+    <p class="lede">orion is a framework you install into your own project. It gives Claude Code ready-made skills and one shared set of working rules, so the assistant plans, builds, reviews and checks work the same careful way for everyone on the team.</p>
+    <div class="toolbar">
+      <a class="btn primary" href="#install">Install orion</a>
+      <a class="btn" href="#how">See how it works</a>
+    </div>
+    <div class="features">
+      <div class="feat"><div class="fi">✦</div><h3>Skills</h3><p>Ready-made abilities for every step of a project, from planning a big idea to re-testing finished work. Type <code>/</code> and a name.</p></div>
+      <div class="feat"><div class="fi">§</div><h3>Working rules</h3><p>Mandatory good practice your project's <code>CLAUDE.md</code> imports. Your own facts stay in your file, and stay yours.</p></div>
+      <div class="feat"><div class="fi">▭</div><h3>Status bar <span class="opt">optional</span></h3><p>A one-line display at the bottom of the assistant with live time, cost and usage, set up per computer.</p></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec wrap" id="how" aria-labelledby="howTitle">
+    <div class="sec-head">
+      <div class="eyebrow">How it works</div>
+      <h2 id="howTitle">One way of working, from idea to checked software</h2>
+      <p>Every box is a step. Click one to see what happens, what you do and what it leaves behind. You don't have to use every skill, but each one hands over to the next.</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn primary" id="tour">▶ Take the tour</button>
+      <button class="btn" id="export">⤓ Export graph as SVG</button>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span><i class="sw human"></i>You lead</span>
+      <span><i class="sw both"></i>You and an agent, together</span>
+      <span><i class="sw agent"></i>An agent leads</span>
+      <span><i class="sw store"></i>Where the work is kept</span>
+      <span><i class="dot-full"></i>Always asks you</span>
+      <span><i class="dot-ring"></i>Asks only when something is unclear</span>
+    </div>
+    <div class="graph-card">
+      <div class="graph-scroll"><svg id="flow" class="og" viewBox="0 0 1200 980" role="img" aria-labelledby="flowTitle flowDesc">
+        <title id="flowTitle">The orion workflow</title>
+        <desc id="flowDesc">Define: stakeholders and brief, wayfinder, PRD, prd-to-tickets into GitHub Issues. Build: dev-next claims, asks, develops, reviews, merges and audits each story. Learn: harvest-qa, harvest and reconcile-issue-map turn what runs left behind into new issues. Always on: housekeeping and sharing skills.</desc>
+      </svg></div>
+      <div class="graph-foot">
+        <span>Click any box for the full detail. <span class="kbd">←</span> <span class="kbd">→</span> step through, <span class="kbd">Esc</span> closes.</span>
+        <span>Solid arrows: the work moves on. Teal arrows: the loop feeds back.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec wrap" id="install" aria-labelledby="installTitle">
+    <div class="sec-head">
+      <div class="eyebrow">Install</div>
+      <h2 id="installTitle">Up and running in four steps</h2>
+      <p>orion is installed into a project, never for your whole computer. Once it is in, whoever clones the project gets it too: there is nothing for teammates to set up.</p>
+    </div>
+
+    <ol class="steps">
+      <li class="step">
+        <h3>Have two things ready</h3>
+        <ul class="plain">
+          <li><b>Git</b>, the tool that downloads and tracks code. On Windows, install <a href="https://git-scm.com/download/win">Git for Windows</a>.</li>
+          <li><b>Claude Code</b>, the AI assistant itself. Follow the <a href="https://docs.anthropic.com/en/docs/claude-code/setup">Claude Code setup guide</a> and open it once inside your project.</li>
+        </ul>
+      </li>
+      <li class="step">
+        <h3>Run one line in your project folder</h3>
+        <p>Open a terminal in the project folder and paste the line for your system. It fetches the latest orion, puts it into the project and tells you what it added.</p>
+        <div class="term">
+          <div class="tabs" role="tablist" aria-label="Your system">
+            <button role="tab" id="tab-sh" aria-controls="cmd-sh" aria-selected="true">Mac, Linux or Git Bash</button>
+            <button role="tab" id="tab-ps" aria-controls="cmd-ps" aria-selected="false" tabindex="-1">Windows PowerShell</button>
+            <button class="copy" id="copy" aria-label="Copy the command">Copy</button>
+          </div>
+          <pre id="cmd-sh" role="tabpanel" aria-labelledby="tab-sh"><code>curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init</code></pre>
+          <pre id="cmd-ps" role="tabpanel" aria-labelledby="tab-ps" hidden><code>irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex</code></pre>
+        </div>
+        <ul class="plain small">
+          <li>Want the optional status bar? Add <code>--statusline</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks.</li>
+          <li>Want updates applied without being asked? Choose <i>auto</i> when the installer asks, or add <code>--update-mode auto</code>.</li>
+        </ul>
+      </li>
+      <li class="step">
+        <h3>Commit what it added</h3>
+        <p>Save the new files to the project like any other change, so your teammates get orion with their next pull.</p>
+      </li>
+      <li class="step">
+        <h3>Open Claude Code in the project</h3>
+        <p>The first session runs a one-time check that everything fits together: your project's <code>CLAUDE.md</code>, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical, asks before changing anything that is yours, and tells you what is left. Repeat it any time with <code>/orion-verify</code>.</p>
+      </li>
+    </ol>
+
+    <div class="alt">Prefer to let the assistant do it? Open Claude Code in your project and say <b>"set up orion in this project"</b>.</div>
+    <div class="caution"><b>Use it with care.</b> orion tells an AI assistant how to work in your project, and the assistant will run commands and edit files on your machine. Review what you install, keep your work saved, and use it at your own risk. It is under constant improvement and is provided as-is.</div>
+  </section>
+
+  <section class="sec wrap" id="updates" aria-labelledby="updTitle">
+    <div class="sec-head">
+      <div class="eyebrow">After install</div>
+      <h2 id="updTitle">Staying up to date</h2>
+      <p>Nothing changes without your say-so. The update mode and the tidy-up limits live in <code>.claude/orion/config.json</code>.</p>
+    </div>
+    <div class="grid3">
+      <div class="tile"><h3>Updates</h3><p>Each session start checks for a newer orion. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
+      <div class="tile"><h3>Your personal rules</h3><p>At most once a day, orion offers rules for your own <code>~/.claude/CLAUDE.md</code>. You accept, skip or reword each one; nothing is written without your yes, and the rest of your file is never touched.</p></div>
+      <div class="tile"><h3>A tidy repository</h3><p>Once the project reaches <code>branchLimit</code> or <code>worktreeLimit</code> (20 each by default), the session start offers <code>/clear-git-resources</code>. Set them higher, or to <code>off</code>.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap">
+  <span>orion · <a href="https://github.com/nachogl1/orion">source on GitHub</a> · <a href="https://github.com/nachogl1/orion/blob/main/LICENSE">MIT licence</a></span>
+  <span>Built for <a href="https://claude.com/claude-code">Claude Code</a>.</span>
+</div></footer>
+
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drTitle" role="dialog">
+  <button class="btn dr-close" id="drClose" aria-label="Close">✕</button>
+  <div class="dr-head" id="drHead"></div>
+  <div class="dr-body blk" id="drBody"></div>
+  <div class="dr-foot">
+    <button class="btn" id="drPrev">← Previous</button>
+    <span class="pos" id="drPos"></span>
+    <button class="btn" id="drNext">Next →</button>
+  </div>
+</aside>
+
+<script>
+/* =====================================================================
+   CONTENT: edit the text here. The graph and the detail drawer are both
+   drawn from this one object.
+   actor: human | both | agent | store      touch: always | sometimes | none
+   ===================================================================== */
+const PHASES = [
+  {id:"A", name:"Define", line:"From a conversation to a plan: settle what to build, write it down, cut it into work."},
+  {id:"B", name:"Build", line:"One story at a time, end to end: claimed, built, reviewed by a fresh agent, merged on green, audited."},
+  {id:"C", name:"Learn", line:"Check the finished work, learn from every run, and keep the plan, the tickets and the code in step."},
+  {id:"D", name:"Always available", line:"Housekeeping that keeps orion healthy, and documents that share the project with others."}
+];
+
+const NODES = {
+  brief:{phase:"A", actor:"human", touch:"always", kicker:"1 · You", title:"Stakeholders & brief",
+    sub:"Meet the people who want it. Agree the problem, the users, what success looks like.",
+    what:[
+      "Talk to the stakeholders: the people who will use the software, pay for it or depend on it.",
+      "Agree the problem in plain words, who has it, what \"done\" looks like and any hard limits (budget, dates, data rules).",
+      "Bring the result to the next step as a short brief: a few paragraphs are enough."
+    ],
+    you:["This step is yours: orion has no skill for meetings, on purpose.","Decide whether the idea is big (go to /wayfinder) or small and clear (go straight to a PRD, or /dev-quick for one change)."],
+    out:["A short project brief: the loose idea /wayfinder starts from."],
+    rules:["No meeting recordings, transcripts or notes exports in the repository, ever: they carry personal data.","What a meeting decided goes onto the ticket it concerns, as a comment in the participant's own words."],
+    tip:"Write down who decides what. When an agent later asks a question only one person can answer, the ticket waits for that person instead of guessing."},
+
+  wayfinder:{phase:"A", actor:"both", touch:"always", kicker:"2 · Plan", title:"/wayfinder", cmd:"/wayfinder <your idea>\n/wayfinder <map issue number or link>",
+    sub:"Turns a big, foggy idea into a map of decision tickets, then settles them one per session.",
+    what:[
+      "Fixes the destination first: a finished spec, a fixed decision, or a change carried out.",
+      "Surveys every open question, wide before deep, and checks the open issues for duplicates.",
+      "Creates one map issue (Destination, Notes, Settled, Fog, Out of scope) and a decision ticket for every question it can already ask precisely.",
+      "Each ticket has one kind: research (the agent reads and cites), prototype (something rough to react to), grilling (a conversation with you) or task (hands-on work needed first).",
+      "Next sessions: picks the next free ticket, settles it, records the answer on the map, and turns fog into new tickets as it clears."
+    ],
+    you:["Answer the grilling questions and react to the prototypes.","Start one session per ticket: research tickets run alongside."],
+    out:["A map issue on GitHub with every decision recorded under Settled.","Decisions ready to be written into a PRD."],
+    rules:["It decides, it does not build (unless the map's Notes say building is in scope).","Every blocker is set twice: GitHub's native link and a Blocked by section in the body.","If the path is already clear and fits one session, it says a map would only add overhead and stops."],
+    tip:"Run the first session as a long conversation. The better the destination, the fewer tickets you need."},
+
+  prd:{phase:"A", actor:"both", touch:"always", kicker:"3 · Specify", title:"The PRD", cmd:"docs/PRDs/PRD.md\ndocs/PRDs/PRD<SummaryName>.md   (one per big change)",
+    sub:"The product requirements document: the north star every later step reads.",
+    what:[
+      "Holds the product facts: vocabulary, scope, the do-not-build list, the acceptance bar and the build decisions.",
+      "An agent writes a draft only when you ask for it, from the brief and the settled map.",
+      "The UX prototype in docs/ux/prototypes/ sits beside it and leads every screen."
+    ],
+    you:["Read the draft and approve it: it counts as the PRD only then.","Merge its docs(prd) pull request yourself."],
+    out:["An approved PRD on main.","(For front-end work) a UX prototype every screen story will follow."],
+    rules:["A PRD is never created automatically. No ticket and no code for a big change until its PRD is approved.","Disagreement is a bug: the PRD wins on product, the rules files win on process.","Rules files never restate the product: they point at the PRD."],
+    tip:"Small fixes and tweaks need no PRD. Every big change gets its own."},
+
+  tickets:{phase:"A", actor:"both", touch:"always", kicker:"4 · Split", title:"/prd-to-tickets", cmd:"/prd-to-tickets",
+    sub:"Cuts the PRD into epics and stories built so several agents can work side by side.",
+    what:[
+      "Checks for a UX prototype first and offers to draft one in parallel if the PRD has screens and none exists.",
+      "Reads the PRD and the open backlog: existing open issues become blockers, never duplicates.",
+      "Cuts the work shallow: one scaffold story, then the contract stories (shared types, schemas, config), then everything fans out.",
+      "Interviews you on every question the PRD leaves open, recommended answer first, until a round brings nothing new.",
+      "A fresh plan-check agent tests the cut against the rules; you get one look: file it, change it, or stop.",
+      "Files epics then stories, links them as native sub-issues with both blocker forms, and reads every link back."
+    ],
+    you:["Answer the interview (accepting the recommended answers is fine).","Give the plan its one look before anything is filed."],
+    out:["Epics and stories on GitHub Issues, each owning one folder (### Seam).","Every story labelled agent-ready, or needs-human with the reason as its last comment."],
+    rules:["Agents build stories only, never an epic.","Nothing is filed agent-ready with a question left.","\"I don't know, ask someone\" makes that story needs-human: nothing is guessed on anyone's behalf.","Work in a repository the team does not own is outside-change and always stops at a pull request for its own reviewer."]},
+
+  quick:{phase:"A", actor:"agent", touch:"sometimes", kicker:"Side door", title:"/dev-quick", cmd:"/dev-quick <what you want changed>",
+    sub:"A change you want now, with no ticket: files the issue and ships it.",
+    what:[
+      "Reads the request, the code and the rules, and searches for an issue that already covers it.",
+      "Clear request: says so in one line, files the issue and ships it with no questions (the fast path).",
+      "Unclear request: interviews you until nothing is left to ask, lists what only you can prepare (a secret in .env, a service, someone else's decision) and shows you the draft once.",
+      "Hands the issue to /dev-next, which takes it end to end."
+    ],
+    you:["Nothing, when the request is clear.","Answer the interview and prepare what it lists, when it is not."],
+    out:["One agent-ready issue, shipped and merged by /dev-next."],
+    rules:["One change per run: a request holding two changes becomes two issues.","Whenever you ask for a code change in chat, the agent offers /dev-quick. Saying no means no change is made, by hand or otherwise.","A change big enough to need a PRD is the wrong job for /dev-quick."]},
+
+  backlog:{phase:"A", actor:"store", touch:"none", kicker:"Source of truth", title:"GitHub Issues",
+    sub:"Epics, stories, blockers and labels: the only place work is tracked.",
+    what:[
+      "Epic to story is a native GitHub sub-issue, never a text list.",
+      "A story is blocked until every blocker is closed, whether listed under Blocked by or set as GitHub's native relation.",
+      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug (and wayfinder:* for planning tickets)."
+    ],
+    you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
+    out:["The queue /dev-next picks from. /issue-map draws it as a graph."],
+    rules:["The assignee owns the issue: never work on, edit or unassign someone else's.","An issue with no readiness label is never taken automatically.","Read an issue with: gh issue view <N> --json title,body,labels,comments"]},
+
+  claim:{phase:"B", actor:"agent", touch:"sometimes", kicker:"dev-next · 1", title:"Claim", gsub:"Picks the next free story and claims it.", cmd:"/dev-next          one story\n/dev-next 3        up to four side by side\n/dev-next #12 #15  exactly these (also resumes a crashed run)",
+    sub:"Checks tools and labels, picks the next free story and claims it.",
+    what:[
+      "Checks git, the GitHub CLI and the project's pinned runtimes; creates any missing label.",
+      "Picks eligible stories: unblocked, unassigned, ready. Ranks them and takes one (or N, up to four).",
+      "Assigns itself before writing any code, then re-reads: if another run claimed it first, the earlier claim wins and it takes the next one.",
+      "With nothing eligible, it names the issue that blocks the queue and who holds it, instead of saying \"nothing to do\"."
+    ],
+    you:["Only asked when an issue has no readiness label at all: you say what it is."],
+    out:["A claimed story, an entry in the in-flight file, a refreshed issue map."],
+    rules:["Several stories at once: one terminal with /dev-next N, never N terminals started together.","It stops before the first story if the project's build or test command still reads TBD."]},
+
+  qa:{phase:"B", actor:"agent", touch:"sometimes", kicker:"dev-next · 2", title:"Q&A", gsub:"Asks every open question, in one go.", sub:"Removes every guess before code is written.",
+    what:[
+      "Story already agent-ready before the run: asks nothing at all.",
+      "Labelled during this run: a cheap ready-check agent lists every question, each with a recommended answer, and checks the story against the project's rules and current main.",
+      "All questions come to you in one batch; the answers are written onto the issue under ## Decisions (agent-ready)."
+    ],
+    you:["Answer the batch, or accept the recommended answers.","\"I don't know, ask someone else\" releases the story as needs-human."],
+    out:["Binding decisions on the issue: the developer and the reviewer both follow them."],
+    rules:["An unanswered question becomes a guess baked into the code: a long list is cheaper than that."]},
+
+  develop:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 3", title:"Develop", gsub:"Builds it in a worktree, tests first.", sub:"A dev agent builds it in its own worktree, tests first.",
+    what:[
+      "Creates a worktree (a separate checkout outside the project) on feat/<N>-<slug>, from the latest main.",
+      "A dev agent on the top model builds the change; every new behaviour gets a test.",
+      "Runs the gate exactly as the project's CLAUDE.md lists it: build, lint, typecheck, full suite.",
+      "Opens the pull request with an evidence table (what it did, what it expected, what it saw), a changelog line and, for user-visible changes, a run-book update."
+    ],
+    you:["Nothing."],
+    out:["A pull request with green checks and its evidence."],
+    rules:["Never delete, skip or weaken a test; never widen a timeout to pass.","Never git stash, never switch branches, never git add -A.","Pre-existing failures are still its responsibility: fixed or surfaced, never \"already failing\"."]},
+
+  review:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 4", title:"Review", gsub:"A brand-new agent checks the work.", sub:"A brand-new agent reviews: never the one that wrote it.",
+    what:[
+      "A new review agent per round gets only the issue, the pull request, the worktree and the commands: no earlier context.",
+      "Reads the CI result (runs the suite itself only when there is no CI).",
+      "Sorts every finding: small and safe in a file already changed, fix now; critical, a linked GitHub issue; medium or high, a deferred note in the audit; low, nowhere.",
+      "Changes go back to the dev agent; the next round gets another fresh reviewer."
+    ],
+    you:["Nothing."],
+    out:["An approved pull request, plus any deferred notes for /harvest."],
+    rules:["Never open an issue \"to be safe\": a backlog nobody drains is worse than no backlog."]},
+
+  merge:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 5", title:"Merge", gsub:"Squash-merges once CI is green.", sub:"Squash-merges once CI is green, then cleans up after itself.",
+    what:[
+      "Takes the machine's single merging slot, so merges happen one at a time.",
+      "Merges the latest main into the branch and pushes, so CI tests what will actually land.",
+      "Waits for green checks, squash-merges, verifies the issue closed.",
+      "Deletes the worktree and the branch, and silently rebuilds the issue map."
+    ],
+    you:["Nothing: /dev-next is the only skill that merges its own pull requests."],
+    out:["One commit on main per story. The story closed."],
+    rules:["Never push to main: every change reaches main as a merged pull request.","Only /dev-next merges its own pull requests; every other pull request is merged by a person.","Never merge on red or pending: \"no checks reported\" counts as red.","Red after two rounds: the story becomes needs-human and is released."]},
+
+  audit:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 6", title:"Audit", gsub:"Leaves a report and a QA record.", sub:"Leaves a run report and a QA record, then counts what is due.",
+    what:[
+      "Writes the run report to your audit/<login> branch: deferred product problems, things that slowed the run, tips for the next one.",
+      "For a merged story, writes a QA record: user-level checks for its acceptance criteria and a short story of what changed.",
+      "Counts the piles across the team and ends with a nudge when one is due."
+    ],
+    you:["Read the closing lines: they tell you which learning skill to run next."],
+    out:["\"Harvest due: run /harvest\" at 10 unharvested notes.","\"QA due: run /harvest-qa\" at 5 untested records.","\"Drift found: run /reconcile-issue-map\" when the issues, labels or PRD look out of step."],
+    rules:["The audit branch is pushed directly, has no pull request and never merges into main."]},
+
+  records:{phase:"B", actor:"store", touch:"none", kicker:"The one pile", title:"audit/<login> branches",
+    sub:"Every developer's run reports and QA records, kept off main.",
+    what:[
+      "One branch per developer, written by every /dev-next run.",
+      "Run reports feed /harvest; QA records feed /harvest-qa. Neither reads the other's files.",
+      "Bookmarks on main record what has been read: docs/harvest-state.json for /harvest, docs/harvest-qa-state.json for /harvest-qa."
+    ],
+    you:["Nothing: the learning skills read it for you."],
+    out:["The input of every skill in the Learn phase."],
+    rules:["Never merged, never swept by /clear-git-resources."]},
+
+  harvestqa:{phase:"C", actor:"agent", touch:"always", kicker:"Learn · QA", title:"/harvest-qa", cmd:"/harvest-qa",
+    sub:"Drives every finished story's checks against main and files real bugs.",
+    what:[
+      "Reads the QA records newer than its bookmark and drops the ones a later story superseded or made obsolete.",
+      "Starts the product from one fresh worktree of main, on the base port no story can hold.",
+      "Runs one QA agent per area, strictly one after another, each driving the product like a user.",
+      "A failure counts only when reproduced twice. Each confirmed one becomes a bug issue, unless an open issue already covers it.",
+      "Ships its log and bookmark in a pull request."
+    ],
+    you:["Start it when /dev-next says \"QA due\".","Merge its log pull request."],
+    out:["bug issues back in the backlog.","A log on main: what was tested, when, on which commit, with what result."],
+    rules:["Run by a person, never by another skill."]},
+
+  harvest:{phase:"C", actor:"both", touch:"always", kicker:"Learn · Notes", title:"/harvest", cmd:"/harvest",
+    sub:"Goes through the notes every run left behind, with you, one group at a time.",
+    what:[
+      "Reads every new run report and takes off the list anything an open task already covers or a merged story already fixed.",
+      "Groups notes about the same part of the project, so they become one task, not many.",
+      "Explains each group as if you had never seen the project: its kind, how much it matters, a recommended destination.",
+      "Decides in three waves: fix now, throw away or keep, then tasks.",
+      "Ships the new tickets, any rule edits and the moved bookmark in one pull request."
+    ],
+    you:["Decide every group: fix now, new task, add to an existing task, or throw away."],
+    out:["As few new tasks as possible, back in the backlog.","Rule improvements the runs taught."],
+    rules:["Nothing is filed or dropped without your word.","Run by a person, never by another skill."]},
+
+  reconcile:{phase:"C", actor:"both", touch:"always", kicker:"Learn · Drift", title:"/reconcile-issue-map", cmd:"/reconcile-issue-map",
+    sub:"Checks that the PRDs, the issues and the code on main still tell one story.",
+    what:[
+      "Looks through four lenses: the PRD asks for something no story covers; a story the PRD does not ask for; the issue map is broken; the product does not match what the issues say.",
+      "Explains every finding in plain words, with how much it matters.",
+      "Fixes each one with your word: issue edits on the spot, PRD edits and its bookmark in a pull request."
+    ],
+    you:["Decide every finding.","Merge its pull request."],
+    out:["A backlog and a PRD back in step with main."],
+    rules:["The PRD wins on what to build; main wins on what is done.","Run by a person, never by another skill."]},
+
+  hook:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Every session", title:"Session-start hook",
+    sub:"Pulls, checks for updates and nudges, silently when all is well.",
+    what:[
+      "Pulls the latest commits of your branch, only when that needs no merge.",
+      "Checks for a newer orion (your updateMode: ask, auto or off).",
+      "Offers /orion-verify after install and whenever orion's rules change.",
+      "Offers new personal rules for your own ~/.claude/CLAUDE.md, at most once a day.",
+      "Offers /clear-git-resources once branches or worktrees reach their limit (20 each by default)."
+    ],
+    you:["Say yes or no to what it offers."],
+    out:["One line, or nothing."],
+    rules:["Silent on success, and it never blocks a session."]},
+
+  orion:{phase:"D", actor:"agent", touch:"none", kicker:"Install", title:"/orion", cmd:"/orion status | check | update | uninstall",
+    sub:"Shows what is installed, checks for a newer orion, updates or uninstalls.",
+    what:["Status: installed version and skills.","Check and update: fetches the newest orion and refreshes only what orion owns.","Uninstall: removes everything orion owns and leaves your CLAUDE.md and own skills alone."],
+    you:["Commit the result so teammates get it."], out:["An up-to-date installation."],
+    rules:["Never touches the project's own CLAUDE.md, unmarked skills or other settings."]},
+
+  verify:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Health check", title:"/orion-verify", cmd:"/orion-verify",
+    sub:"Checks that your rules, orion's rules, the skills and the settings fit together.",
+    what:["Runs the mechanical checks and fixes what is mechanical.","Reviews CLAUDE.md, your skills and your personal rules file against orion's rules for gaps, duplicates and contradictions.","Reports the rest in a few lines."],
+    you:["Approve any change to something you own."], out:["A consistent setup."],
+    rules:["Asks before touching anything the project or you own."]},
+
+  clear:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Tidy up", title:"/clear-git-resources", cmd:"/clear-git-resources",
+    sub:"Sweeps stale branches, worktrees and leftover files.",
+    what:["Lists every worktree, branch and leftover as delete, ask or keep.","Deletes your own stale items whose work is already safe.","Asks before deleting anyone else's."],
+    you:["Answer for the items it asks about."], out:["A tidy repository."],
+    rules:["Never touches unmerged work, uncommitted changes, main, audit or QA branches, open pull requests or anything in flight."]},
+
+  issuemap:{phase:"D", actor:"agent", touch:"none", kicker:"See the plan", title:"/issue-map", cmd:"/issue-map",
+    sub:"Draws every issue's blocked-by chain, level by level.",
+    what:["Builds docs/issue_map/issue_map.html from the live issues: epics, labels, assignees, click to trace a chain.","/dev-next rebuilds it silently after every claim and merge."],
+    you:["Open it whenever you want the picture."], out:["A local snapshot, never committed."], rules:["The issues stay the truth; the map is only a picture."]},
+
+  handoff:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Next session", title:"/handoff", cmd:"/handoff [what the next session will focus on]",
+    sub:"Packs this conversation into a handoff for the next session or agent.",
+    what:["Captures the goal, state, decisions, dead ends and next steps that live only in the chat.","Points at what is already written down instead of re-pasting it.","Redacts secrets and personal data."],
+    you:["Say where to save it (outside the project)."], out:["A handoff document."], rules:[]},
+
+  handover:{phase:"D", actor:"agent", touch:"none", kicker:"Share", title:"/project-handover", cmd:"/project-handover",
+    sub:"A self-contained HTML handover for clients and new joiners.",
+    what:["Plain-language product context, architecture diagrams, how to build and run it, and a dated epics-and-stories snapshot."],
+    you:["Share the file."], out:["One HTML file in Downloads."], rules:["Read-only: never edits or commits."]},
+
+  writeup:{phase:"D", actor:"agent", touch:"always", kicker:"Report", title:"/generate-project-writeup", cmd:"/generate-project-writeup",
+    sub:"A Word summary of the work delivered, for leadership.",
+    what:["Leads with the economic case: a traditional-team baseline against the actual delivery.","Measured metrics, architecture, features and value delivered."],
+    you:["Confirm the contributors and the start and end dates; supply any business case or rate card."],
+    out:["One .docx in Downloads."], rules:["Invents no numbers: every metric is measured or marked 'not measured'."]}
+};
+
+/* =====================================================================
+   LAYOUT: positions on a 1200 x 980 canvas.
+   ===================================================================== */
+const L = {
+  brief:[70,44,226,118], wayfinder:[348,44,226,118], prd:[626,44,226,118], tickets:[904,44,226,118],
+  quick:[70,204,235,64], backlog:[345,204,785,64],
+  claim:[90,366,150,104], qa:[264,366,150,104], develop:[438,366,150,104], review:[612,366,150,104], merge:[786,366,150,104], audit:[960,366,150,104],
+  records:[70,526,1060,60],
+  harvestqa:[70,642,330,112], harvest:[435,642,330,112], reconcile:[800,642,330,112],
+  hook:[70,846,253,52], orion:[339,846,253,52], verify:[608,846,253,52], clear:[877,846,253,52],
+  issuemap:[70,908,253,52], handoff:[339,908,253,52], handover:[608,908,253,52], writeup:[877,908,253,52]
+};
+const ORDER = ["brief","wayfinder","prd","tickets","quick","backlog","claim","qa","develop","review","merge","audit","records",
+  "harvestqa","harvest","reconcile","hook","orion","verify","clear","issuemap","handoff","handover","writeup"];
+
+/* kind: flow | loop | soft   label: [text, x, y] */
+const EDGES = [
+  {d:"M296 103 H344", kind:"flow", label:["brief",322,94]},
+  {d:"M574 103 H622", kind:"flow", label:["decisions",600,94]},
+  {d:"M852 103 H900", kind:"flow", label:["approved",878,94]},
+  {d:"M1017 162 V200", kind:"flow", label:["epics + stories",1017,183], wide:true},
+  {d:"M305 236 H341", kind:"flow"},
+  {d:"M560 268 V322", kind:"flow", label:["next free story",560,297], wide:true},
+  {d:"M240 418 H260", kind:"flow"},{d:"M414 418 H434", kind:"flow"},{d:"M588 418 H608", kind:"flow"},
+  {d:"M762 418 H782", kind:"flow"},{d:"M936 418 H956", kind:"flow"},
+  {d:"M672 470 V478 H528 V474", kind:"soft", label:["fix rounds",600,479], small:true},
+  {d:"M1035 470 V522", kind:"flow", label:["report + QA record",1035,500], wide:true},
+  {d:"M235 586 V638", kind:"flow", label:["QA due · 5 records",235,612], wide:true},
+  {d:"M600 586 V638", kind:"flow", label:["Harvest due · 10 notes",600,612], wide:true},
+  {d:"M965 586 V638", kind:"flow", label:["Drift found",965,612], wide:true},
+  {d:"M235 754 V778 H1168 V236 H1134", kind:"loop"},
+  {d:"M600 754 V778", kind:"loop"},{d:"M965 754 V778", kind:"loop"},
+  {d:"M1035 754 V794 H30 V183 H739 V166", kind:"loopsoft"}
+];
+const LOOP_LABELS = [["bug issues · new tasks · fixed links",1183,507,"v"],["PRD edits",20,480,"v"]];
+const BANDS = [["A · DEFINE",70,30],["B · BUILD",70,314],["C · LEARN",70,628],["D · ALWAYS AVAILABLE",70,832]];
+
+/* =====================================================================
+   SVG styling, shared by the page and the exported file.
+   ===================================================================== */
+const LIGHT = {bg:"#ffffff",node:"#ffffff",node2:"#f3f5fb",text:"#0f1730",muted:"#55607d",faint:"#8a93ad",line:"#c9d0e2",
+  human:"#b76a00",agent:"#2f6be0",both:"#7a4bdc",store:"#0b927c",container:"#f6f8fd"};
+const DARK  = {bg:"#121a33",node:"#162042",node2:"#1b2650",text:"#e8ecf8",muted:"#a7b2cf",faint:"#6c7796",line:"#34416b",
+  human:"#f4b04a",agent:"#6fa6ff",both:"#b48dff",store:"#3fd3b7",container:"#101834"};
+const vars = o => Object.entries(o).map(([k,v])=>`--g-${k}:${v}`).join(";");
+const SVG_RULES = `
+.og{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.og .bgr{fill:var(--g-bg)}
+.og .band{font:700 11px/1 system-ui,sans-serif;letter-spacing:.14em;fill:var(--g-faint)}
+.og .nd rect.box{fill:var(--g-node);stroke:var(--g-c);stroke-width:1.4}
+.og .nd rect.bar{fill:var(--g-c)}
+.og .nd.store rect.box{fill:var(--g-node2);stroke-dasharray:5 4}
+.og .nd .k{font:700 10px/1 system-ui,sans-serif;letter-spacing:.12em;fill:var(--g-c);text-transform:uppercase}
+.og .nd .t{font:700 15px/1 ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;fill:var(--g-text)}
+.og .nd.sm .t{font-size:13px}
+.og .nd .s{font:12px/1 system-ui,sans-serif;fill:var(--g-muted)}
+.og .nd.human{--g-c:var(--g-human)} .og .nd.agent{--g-c:var(--g-agent)} .og .nd.both{--g-c:var(--g-both)} .og .nd.store{--g-c:var(--g-store)}
+.og .badge circle.o{fill:var(--g-human)} .og .badge.ring circle.o{fill:var(--g-node);stroke:var(--g-human);stroke-width:2}
+.og .badge .p{fill:var(--g-node)} .og .badge.ring .p{fill:var(--g-human)}
+.og .ctr{fill:var(--g-container);stroke:var(--g-agent);stroke-opacity:.45;stroke-width:1.2}
+.og .ctr-t{font:700 15px/1 ui-monospace,Menlo,Consolas,monospace;fill:var(--g-agent)}
+.og .ctr-s{font:12px/1 system-ui,sans-serif;fill:var(--g-muted)}
+.og .e{fill:none;stroke:var(--g-line);stroke-width:1.8;stroke-linejoin:round}
+.og .e.flow{stroke:var(--g-muted);stroke-opacity:.7}
+.og .e.soft{stroke:var(--g-agent);stroke-opacity:.6;stroke-dasharray:3 3;stroke-width:1.3}
+.og .e.loop{stroke:var(--g-store);stroke-width:2.2}
+.og .e.loopsoft{stroke:var(--g-store);stroke-width:1.8;stroke-dasharray:6 5}
+.og .ah{fill:var(--g-muted)} .og .ah.loop{fill:var(--g-store)} .og .ah.soft{fill:var(--g-agent)}
+.og .el rect{fill:var(--g-bg)} .og .el text{font:600 10.5px/1 system-ui,sans-serif;fill:var(--g-muted);text-anchor:middle}
+.og .el.small text{font-size:9.5px;fill:var(--g-agent)}
+.og .ll{font:600 11px/1 system-ui,sans-serif;fill:var(--g-store);text-anchor:middle;letter-spacing:.04em}
+`;
+const PAGE_SVG_CSS = `.og{${vars(LIGHT)}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .og{${vars(DARK)}}}
+:root[data-theme="dark"] .og{${vars(DARK)}}
+${SVG_RULES}
+.og .nd{cursor:pointer;outline:none}
+.og .nd rect.box{transition:stroke-width .15s, filter .15s}
+.og .nd:hover rect.box,.og .nd:focus-visible rect.box{stroke-width:2.6}
+.og .nd.sel rect.box{stroke-width:3;filter:drop-shadow(0 0 10px var(--g-c))}
+.og.dim .nd:not(.sel){opacity:.42}
+.og .nd{transition:opacity .2s}`;
+const EXPORT_SVG_CSS = `.og{${vars(LIGHT)}}
+@media (prefers-color-scheme: dark){.og{${vars(DARK)}}}
+${SVG_RULES}`;
+
+/* =====================================================================
+   DRAWING
+   ===================================================================== */
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("flow");
+const mk = (tag, attrs={}, parent) => { const el = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v); if (parent) parent.appendChild(el); return el; };
+
+function wrap(textEl, str, x, y, maxW, lh, maxLines){
+  const words = str.split(" "); let line = []; let n = 0;
+  let ts = mk("tspan",{x, y}, textEl);
+  for (const w of words){
+    line.push(w); ts.textContent = line.join(" ");
+    if (ts.getComputedTextLength() > maxW && line.length > 1){
+      line.pop(); ts.textContent = line.join(" "); n++;
+      if (maxLines && n >= maxLines){ ts.textContent += " …"; return; }
+      line = [w]; ts = mk("tspan",{x, dy:lh}, textEl); ts.textContent = w;
+    }
+  }
+}
+
+function draw(){
+  const style = mk("style",{}, svg); style.textContent = PAGE_SVG_CSS;
+  const defs = mk("defs",{}, svg);
+  [["ah","ah"],["ahLoop","ah loop"],["ahSoft","ah soft"]].forEach(([id,cls])=>{
+    const m = mk("marker",{id, viewBox:"0 0 10 10", refX:"8.5", refY:"5", markerWidth:"7", markerHeight:"7", orient:"auto-start-reverse"}, defs);
+    mk("path",{d:"M0 0 L10 5 L0 10 z", class:cls}, m);
+  });
+  mk("rect",{class:"bgr", x:0, y:0, width:1200, height:980}, svg);
+  BANDS.forEach(([t,x,y]) => { mk("text",{class:"band", x, y}, svg).textContent = t; });
+
+  // dev-next container
+  mk("rect",{class:"ctr", x:70, y:326, width:1060, height:160, rx:16}, svg);
+  mk("text",{class:"ctr-t", x:90, y:352}, svg).textContent = "/dev-next";
+  mk("text",{class:"ctr-s", x:172, y:352}, svg).textContent = "· one story end to end, with no human once it is agent-ready";
+
+  // edges under nodes
+  const eg = mk("g",{}, svg);
+  EDGES.forEach(e => {
+    const marker = e.kind==="loop" ? (e.d.includes("H1134")?"url(#ahLoop)":"") :
+                   e.kind==="loopsoft" ? "url(#ahLoop)" : e.kind==="soft" ? "url(#ahSoft)" : "url(#ah)";
+    const p = mk("path",{d:e.d, class:"e "+e.kind}, eg); if (marker) p.setAttribute("marker-end", marker);
+  });
+
+  // nodes
+  const ng = mk("g",{}, svg);
+  ORDER.forEach(id => {
+    const n = NODES[id]; const [x,y,w,h] = L[id];
+    const small = h < 70;
+    const g = mk("g",{class:`nd ${n.actor}${small?" sm":""}`, "data-id":id, tabindex:0, role:"button", "aria-label":`${n.title}: ${n.sub}`}, ng);
+    mk("rect",{class:"box", x, y, width:w, height:h, rx:12}, g);
+    mk("rect",{class:"bar", x:x+0.7, y:y+12, width:4, height:h-24, rx:2}, g);
+    if (small){
+      mk("text",{class:"k", x:x+16, y:y+20}, g).textContent = n.kicker;
+      mk("text",{class:"t", x:x+16, y:y+39}, g).textContent = n.title;
+    } else if (h <= 70){
+      mk("text",{class:"k", x:x+18, y:y+24}, g).textContent = n.kicker;
+      mk("text",{class:"t", x:x+18, y:y+45}, g).textContent = n.title;
+    } else {
+      mk("text",{class:"k", x:x+18, y:y+24}, g).textContent = n.kicker;
+      const t = mk("text",{class:"t", x:x+18, y:y+46}, g); wrap(t, n.title, x+18, y+46, w-50, 17, 2);
+      const lines = t.childNodes.length;
+      const s = mk("text",{class:"s", x:x+18, y:y+66+(lines-1)*17}, g);
+      wrap(s, n.gsub || n.sub, x+18, y+66+(lines-1)*17, w-34, 15, Math.floor((h-62-(lines-1)*17)/15));
+    }
+    if (n.touch !== "none"){
+      const b = mk("g",{class:"badge"+(n.touch==="sometimes"?" ring":""), transform:`translate(${x+w-19},${y+18})`}, g);
+      mk("circle",{class:"o", r:9}, b);
+      mk("circle",{class:"p", cx:0, cy:-2.6, r:2.4}, b);
+      mk("path",{class:"p", d:"M-4.4 5 a4.4 4 0 0 1 8.8 0 z"}, b);
+      mk("title",{}, b).textContent = n.touch==="always" ? "Always asks you" : "Asks only when something is unclear";
+    }
+  });
+
+  // backlog and records get a second line of text
+  addLine("backlog", "epics · stories · blockers · labels: the only place work is tracked", 186);
+  addLine("records", "run reports (deferred · friction · tips) + QA records, one branch per developer, never merged", 262);
+
+  // edge labels on top
+  const lg = mk("g",{}, svg);
+  EDGES.filter(e=>e.label).forEach(e=>{
+    const [t,x,y] = e.label; const g = mk("g",{class:"el"+(e.small?" small":"")}, lg);
+    const r = mk("rect",{rx:4}, g); const tx = mk("text",{x, y:y+3.5}, g); tx.textContent = t;
+    const bw = tx.getComputedTextLength()+10; r.setAttribute("x", x-bw/2); r.setAttribute("y", y-7); r.setAttribute("width", bw); r.setAttribute("height", 14);
+    if (!e.wide && !e.small){ r.setAttribute("y", y-8); }
+  });
+  LOOP_LABELS.forEach(([t,x,y,dir])=>{
+    const tx = mk("text",{class:"ll", x, y, transform: dir==="v" ? `rotate(-90 ${x} ${y})` : ""}, svg); tx.textContent = t;
+  });
+}
+function addLine(id, text, offsetX){
+  const [x,y,w,h] = L[id]; const g = svg.querySelector(`.nd[data-id="${id}"]`);
+  const t = mk("text",{class:"s", x:x+offsetX, y:y+45}, g); t.textContent = text;
+}
+
+/* stars in the hero */
+(function stars(){
+  const s = document.getElementById("stars"); const W = 1600, H = 320; s.setAttribute("viewBox",`0 0 ${W} ${H}`); s.setAttribute("preserveAspectRatio","xMidYMid slice");
+  let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+  for (let i=0;i<110;i++){ mk("circle",{cx:rnd()*W, cy:rnd()*H, r:(rnd()*1.2+0.3).toFixed(2), fill:"currentColor", opacity:(rnd()*0.5+0.15).toFixed(2)}, s); }
+  // the belt of Orion, top right
+  const belt = [[1240,70],[1300,92],[1362,112]], arm = [[1180,30],[1420,40],[1210,200],[1440,190]];
+  [[arm[0],belt[0]],[arm[1],belt[2]],[belt[0],arm[2]],[belt[2],arm[3]],[belt[0],belt[1]],[belt[1],belt[2]]].forEach(([a,b])=>
+    mk("line",{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:"currentColor","stroke-opacity":".22","stroke-width":"1"}, s));
+  [...belt,...arm].forEach(([x,y])=>mk("circle",{cx:x,cy:y,r:2.6,fill:"currentColor",opacity:".85"}, s));
+  s.style.color = "var(--muted)";
+})();
+
+/* =====================================================================
+   DETAIL (drawer + cards)
+   ===================================================================== */
+const ACTOR_TXT = {human:"You lead", both:"You and an agent", agent:"An agent leads", store:"Where the work is kept"};
+const TOUCH_TXT = {always:"Asks you", sometimes:"Asks only if unclear", none:"Runs without you"};
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const list = (arr, tag="ul") => arr && arr.length ? `<${tag}>${arr.map(i=>`<li>${esc(i)}</li>`).join("")}</${tag}>` : "";
+function detailHTML(n){
+  return `${n.cmd?`<h4>Run it</h4><code class="cmd">${esc(n.cmd)}</code>`:""}
+    <h4>What happens</h4>${list(n.what,"ol")}
+    <h4>Your part</h4>${list(n.you)}
+    <h4>What it leaves behind</h4>${list(n.out)}
+    ${n.rules&&n.rules.length?`<h4>Rules it never breaks</h4>${list(n.rules)}`:""}
+    ${n.tip?`<div class="note"><b>Tip.</b> ${esc(n.tip)}</div>`:""}`;
+}
+const phaseLine = n => { const p = PHASES.find(x => x.id === n.phase); return `<b>${p.id} · ${esc(p.name)}</b> — ${esc(p.line)}`; };
+const colorOf = a => `var(--${a})`;
+function chips(n){ return `<span class="chip">${ACTOR_TXT[n.actor]}</span>${n.touch!=="none"?`<span class="chip you">● ${TOUCH_TXT[n.touch]}</span>`:`<span class="chip">${TOUCH_TXT[n.touch]}</span>`}`; }
+
+
+/* drawer */
+const drawer = document.getElementById("drawer"), scrim = document.getElementById("scrim");
+let current = null, lastFocus = null;
+function open(id){
+  current = id; const n = NODES[id];
+  if (!drawer.classList.contains("on")) lastFocus = document.activeElement;
+  drawer.style.setProperty("--c", colorOf(n.actor));
+  document.getElementById("drHead").innerHTML = `<div class="phase">${phaseLine(n)}</div><div class="k">${esc(n.kicker)}</div><h2 id="drTitle">${esc(n.title)}</h2><p>${esc(n.sub)}</p><div class="meta">${chips(n)}</div>`;
+  document.getElementById("drBody").innerHTML = detailHTML(n);
+  document.getElementById("drBody").scrollTop = 0;
+  const i = ORDER.indexOf(id); document.getElementById("drPos").textContent = `${i+1} of ${ORDER.length}`;
+  document.getElementById("drPrev").disabled = i === 0; document.getElementById("drNext").disabled = i === ORDER.length-1;
+  svg.querySelectorAll(".nd").forEach(g => g.classList.toggle("sel", g.dataset.id === id));
+  svg.classList.add("dim");
+  drawer.classList.add("on"); scrim.classList.add("on"); drawer.setAttribute("aria-hidden","false");
+  document.getElementById("drClose").focus({preventScroll:true});
+}
+function close(){
+  drawer.classList.remove("on"); scrim.classList.remove("on"); drawer.setAttribute("aria-hidden","true");
+  svg.classList.remove("dim"); svg.querySelectorAll(".nd.sel").forEach(g=>g.classList.remove("sel")); current = null;
+  if (lastFocus) lastFocus.focus({preventScroll:true});
+}
+const step = d => { if (!current) return; const i = ORDER.indexOf(current) + d; if (i>=0 && i<ORDER.length) open(ORDER[i]); };
+
+/* =====================================================================
+   WIRING
+   ===================================================================== */
+draw();
+const deep = location.hash.match(/^#step-(\w+)/); if (deep && NODES[deep[1]]) open(deep[1]);
+svg.addEventListener("click", e => { const g = e.target.closest(".nd"); if (g) open(g.dataset.id); });
+svg.addEventListener("keydown", e => { const g = e.target.closest(".nd"); if (g && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); open(g.dataset.id); }});
+document.getElementById("drClose").onclick = close; scrim.onclick = close;
+document.getElementById("drPrev").onclick = () => step(-1); document.getElementById("drNext").onclick = () => step(1);
+document.addEventListener("keydown", e => {
+  if (!current) return;
+  if (e.key==="Escape") close(); else if (e.key==="ArrowRight") step(1); else if (e.key==="ArrowLeft") step(-1);
+});
+document.getElementById("tour").onclick = () => { document.querySelector(".graph-card").scrollIntoView({behavior:"smooth"}); open(ORDER[0]); };
+
+/* install tabs: default to the reader's system, copy the visible command */
+const tabs = [...document.querySelectorAll(".tabs [role=tab]")];
+function selectTab(tab){
+  tabs.forEach(t => { const on = t === tab; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1;
+    document.getElementById(t.getAttribute("aria-controls")).hidden = !on; });
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => selectTab(t));
+  t.addEventListener("keydown", e => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; selectTab(next); next.focus();
+  });
+});
+if (/Win/i.test(navigator.userAgent)) selectTab(document.getElementById("tab-ps"));
+document.getElementById("copy").onclick = async e => {
+  const b = e.currentTarget, code = document.querySelector(".term pre:not([hidden]) code");
+  try { await navigator.clipboard.writeText(code.textContent); b.textContent = "Copied ✓"; }
+  catch (_) { const r = document.createRange(); r.selectNodeContents(code); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); b.textContent = "Selected: press Ctrl+C"; }
+  setTimeout(() => b.textContent = "Copy", 1800);
+};
+
+const THEME_KEY = "orion-guide-theme";
+try { const t = localStorage.getItem(THEME_KEY); if (t) document.documentElement.dataset.theme = t; } catch(_){}
+document.getElementById("theme").onclick = () => {
+  const now = document.documentElement.dataset.theme ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = now === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next; try { localStorage.setItem(THEME_KEY, next); } catch(_){}
+};
+
+/* export: a standalone SVG that follows the reader's light/dark setting (fit for a README image) */
+document.getElementById("export").onclick = () => {
+  const clone = svg.cloneNode(true);
+  clone.classList.remove("dim"); clone.querySelectorAll(".sel").forEach(g=>g.classList.remove("sel"));
+  clone.querySelectorAll("[tabindex],[role]").forEach(g=>{ g.removeAttribute("tabindex"); g.removeAttribute("role"); });
+  clone.setAttribute("xmlns", NS); clone.setAttribute("width","1200"); clone.setAttribute("height","980");
+  clone.querySelector("style").textContent = EXPORT_SVG_CSS;
+  const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone)], {type:"image/svg+xml"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "orion-workflow.svg"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+};
+</script>
+</body>
+</html>
