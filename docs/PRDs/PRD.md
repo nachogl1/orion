@@ -134,8 +134,8 @@ The loop, from idea to checked software:
   rebuilds it silently after every claim and merge.
 - `harvest` — works through the run reports with the person, in waves, and turns what matters into as few tickets
   as possible.
-- `harvest-qa` — drives the QA records against `main`, one agent at a time, and files one `bug` per failure reproduced
-  twice that no open issue covers.
+- `harvest-qa` — drives the QA records against `main`, one agent at a time, shows the person each failure reproduced
+  twice with its importance, and files a `bug` only for the ones the person chooses.
 - `reconcile-issue-map` — finds drift between the PRDs, the issues and `main`, and fixes each item with the person.
 - `clear-git-resources` — lists stale worktrees, branches and leftover files, deletes the person's own stale ones whose
   work cannot be lost, asks before deleting anyone else's, and never touches unmerged work or the audit and QA resources.

@@ -1,6 +1,6 @@
 ---
 name: harvest-qa
-description: 'ORION - Run the QA checks that every merged /dev-next story leaves behind on the developers'' audit branches — against main, one agent at a time, in as many rounds as it takes until every record is tested — dropping records a later story has superseded or made obsolete, filing one bug issue per confirmed failure (never one an open issue already covers), and keeping a log on main of what was tested, when, on which commit and with what result. Reads only the QA records; never the notes /harvest works through. Use when the user types /harvest-qa, or when a /dev-next run ended with `QA due: run /harvest-qa`.'
+description: 'ORION - Run the QA checks that every merged /dev-next story leaves behind on the developers'' audit branches — against main, one agent at a time, in as many rounds as it takes until every record is tested — dropping records a later story has superseded or made obsolete, showing the person each confirmed failure with its importance and filing a bug issue only for the ones they choose, and keeping a log on main of what was tested, when, on which commit and with what result. Reads only the QA records; never the notes /harvest works through. Use when the user types /harvest-qa, or when a /dev-next run ended with `QA due: run /harvest-qa`.'
 argument-hint: "(no arguments)"
 disable-model-invocation: true
 ---
@@ -13,7 +13,8 @@ disable-model-invocation: true
 `/dev-next` builds, reviews and merges a story, but nobody starts the product and checks the acceptance criteria the way
 a user would. This skill does that **later, against `main`**, from the QA record `/dev-next` writes for every merged
 story (`.claude/skills/dev-next/references/audit.md`, *The QA record*). A person starts it; it then runs unattended
-until every record is tested, and ends with one pull request carrying its log.
+until every record is tested, asks the person what to do with each confirmed failure, and ends with one pull request
+carrying its log.
 
 It is the twin of `/harvest`, and the two never overlap: `/harvest` reads `runs/<run id>/issue-<N>.json` and writes
 `docs/harvest-state.json`; this skill reads `runs/<run id>/qa-<N>.json` and writes `docs/harvest-qa-state.json`.
@@ -43,6 +44,7 @@ fast and wrong here.
      "log": [
        { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "pass", "commit": "<main sha tested>", "date": "<yyyy-mm-dd>" },
        { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "fail", "bug": "<issue number>", "commit": "<main sha tested>", "date": "<yyyy-mm-dd>" },
+       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "fail", "dropped": "<the person's reason, or \"dropped by the person\">", "commit": "<main sha tested>", "date": "<yyyy-mm-dd>" },
        { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "superseded", "by": "<run id>/<N>", "date": "<yyyy-mm-dd>" }
      ],
      "last_qa": "<yyyy-mm-dd>"
@@ -79,7 +81,7 @@ story changed and what it replaced — read it; it is there for this step.
 
 Everything left is the plan. Group it by `seam`, and inside a seam keep the record order. Print the plan in one
 table — check, where it came from (a run on <date> by <their name>, the story in plain words), what will be driven —
-then start. No question is asked; a person started this skill and expects it to finish.
+then start. No question is asked before the findings in phase 3; a person started this skill and expects it to finish.
 
 ## Phase 2 — Rounds
 
@@ -102,22 +104,29 @@ then start. No question is asked; a person started this skill and expects it to 
    `why: "could not reproduce"`, never a bug.
 6. After the last round: `git -C <main checkout> worktree remove <wt root>/qa-<...>`.
 
-## Phase 3 — File, log, ship
+## Phase 3 — Decide, log, ship
 
-1. **One `bug` issue per confirmed failure**, shaped per `.claude/skills/dev-next/references/new-issue.md`: the
+1. **The person decides every confirmed failure; this skill never files on its own judgement.** Two failures in the
+   same flow are one finding. Search the open issues once more for each finding — the dedupe in phase 1 ran before the
+   product was driven, and a teammate may have filed meanwhile. Then show the findings one at a time, most important
+   first, each as one AskUserQuestion question in plain words: what was checked, what was expected, what was seen, the
+   open issue that already covers it (if any) and its **importance** with one sentence on why — `critical` (data loss,
+   security, a core flow unusable), `high` (a feature broken with no workaround), `medium` (broken, with a workaround)
+   or `low` (cosmetic or minor). The options are `File a bug` and `Drop`, the recommended one marked (`Drop` when an
+   open issue already covers it). No confirmed failure → straight to step 3.
+2. **`File a bug`** → one `bug` issue, shaped per `.claude/skills/dev-next/references/new-issue.md`: the
    story's epic as the native parent; `### Seam` from the record; `### Acceptance criteria` = the check's expected
    behaviour; the body carries the exact steps, what was expected, what was seen, the commit tested and the record it
-   came from (`audit/<login>`, run id, issue). Two failures in the same flow are one issue. Search the open issues once
-   more before each `gh issue create` — the dedupe in phase 1 ran before the product was driven, and a teammate may
-   have filed meanwhile. Labels: `story`, `bug` and `needs-human`. That is this skill's choice for every QA bug it
+   came from (`audit/<login>`, run id, issue). Labels: `story`, `bug` and `needs-human`. That is this skill's choice for every QA bug it
    files: the failure was reproduced by an agent, not yet confirmed by a person, so nobody has checked that nothing is
    left to ask. Post its last comment right after creating it, saying what a person must confirm before flipping it to
    `agent-ready` (the steps reproduce for them, and nothing is left to ask). Read every issue back the way `new-issue.md` verifies it.
-2. Write `docs/harvest-qa-state.json`: for every login read, `tested_through` = the newest run id seen this run;
-   `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug`, `superseded` + `by`,
+   **`Drop`** → nothing is filed; the check is logged `fail` with `dropped` and the person's reason.
+3. Write `docs/harvest-qa-state.json`: for every login read, `tested_through` = the newest run id seen this run;
+   `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug` or `dropped`, `superseded` + `by`,
    `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
    `last_qa` = today. A check in `carried` is **not** in `log`. Audit branches are never written to.
-3. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout);
+4. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout);
    write the state file there and add the run's one line to
    `docs/CHANGELOG.md`, newest first (create the file with a `# Changelog` heading if it does not exist). **Run the
    gate** (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite) in that worktree
@@ -131,8 +140,9 @@ then start. No question is asked; a person started this skill and expects it to 
 |---|---|---|---|
 ```
 
-4. Close-out, always last, in plain words: how many checks were read, tested, passed, failed, dropped as superseded or
-   obsolete, already tracked, carried; every bug issue filed, named by what it is about; the pull request link; and,
+5. Close-out, always last, in plain words: how many checks were read, tested, passed, failed, dropped as superseded or
+   obsolete, already tracked, carried; every bug issue filed, named by what it is about, and every failure the person
+   dropped; the pull request link; and,
    first of all if it happened, that the product would not start and what the agent saw.
 
 ## Rules
@@ -144,8 +154,8 @@ then start. No question is asked; a person started this skill and expects it to 
   `/harvest`'s and are never read or written here.
 - **A deduped check counts as tested.** Superseded, obsolete, tracked and nothing-to-test all go to the log with their
   reason, so the same record is never read twice.
-- **Fewer bugs.** One issue per flow; nothing filed that an open issue covers; a failure reproduced once is carried, not
-  filed.
+- **Fewer bugs.** One issue per flow; nothing filed without the person's word; a failure reproduced once is carried,
+  never shown as a finding.
 - **Nothing dropped silently.** Every check this run read is in `log` or `carried`, each with a reason a person can
   check.
 - **Audit branches are read-only here.** `git show`, never checkout, never commit, never merge.

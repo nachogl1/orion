@@ -174,6 +174,14 @@ PRD wins on product, the rules files win on process.
 
 - **Full build and full suite green before the pull request opens, run for real** — reading the code is not proof.
   Every new behaviour has a test.
+- **Test first, then clean code.** Every new behaviour starts as a failing test, then gets the smallest code that
+  makes it pass, then is refactored with the suite green. Clean code: names that say what a thing does, small units
+  with one job each, no dead or commented-out code, no magic values (an unexplained number or string); follow the
+  idiom of the code around it.
+- **Every new test earns its place.** It checks behaviour a user or caller relies on, through the public way in, never
+  the internals; it fails if that behaviour breaks; it repeats no other test (the same behaviour over several inputs is
+  one test over a list of inputs); it never tests a library, trivial code or the test's own mocks. The number of tests
+  follows the story: a few per acceptance criterion plus its edge cases, never dozens.
 - **Never delete, skip or weaken a test. Never widen a timeout to make a run pass. The skip count is baselined; a
   change to it fails.**
 - **Pre-existing failures are still your responsibility:** fix them or surface them explicitly and get an
@@ -224,8 +232,8 @@ PRD wins on product, the rules files win on process.
   QA record beside its run report on `audit/<login>`: the user-level checks for its acceptance criteria and a short
   story of what it changed. `/harvest-qa` is run by a person, never by another skill: it reads the records newer than
   its own bookmark on `main`, drops the ones a later story superseded or made obsolete, drives the rest against `main`
-  one agent at a time, files one `bug` issue per confirmed failure that no open issue covers, and ships its log in its
-  own pull request. A deduped record counts as tested. `/harvest` and `/harvest-qa` never read each other's files.
+  one agent at a time, shows the person each confirmed failure with its importance and files a `bug` issue only for
+  the ones the person chooses, and ships its log in its own pull request. A deduped record counts as tested. `/harvest` and `/harvest-qa` never read each other's files.
   `/dev-next` only counts: at **5 untested records** it ends its run with `QA due: run /harvest-qa`.
 - **Reconciling.** `/reconcile-issue-map` is run by a person, never by another skill. It reads the PRDs, every issue
   with its native links, and the code on `main`, and lists every way they disagree — a PRD section no story covers
@@ -263,7 +271,8 @@ PRD wins on product, the rules files win on process.
 - `/harvest` works through the run reports on the audit branches with the person and turns what matters into tickets
   or rule edits.
 - `/harvest-qa` drives the QA checks every merged story left behind against `main`, in sequential rounds until every
-  record is tested or deduped, and files a `bug` issue only for a failure reproduced twice that nothing open covers.
+  record is tested or deduped, then shows the person each failure reproduced twice, with its importance, and files a
+  `bug` issue only for the ones the person chooses.
 - `/reconcile-issue-map` checks the issues, the PRDs and the code on `main` against each other and fixes the drift
   with the person present: issue edits under the ownership rules, PRD edits and its bookmark in a pull request a
   human merges. The PRD wins on what to build; `main` wins on what is done.
