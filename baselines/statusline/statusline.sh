@@ -20,9 +20,10 @@
 # node/npx (month-to-date cost segment — shows "$..." until available).
 # Caches live under ~/.cache/claude-statusline/.
 #
-# Install: `orion init --statusline` copies this folder ONCE to
-# ~/.claude/statusline. That copy is yours: edit it freely, it is never
-# overwritten by an update. See baselines/statusline/README.md.
+# Install: `orion init --statusline` copies this folder to
+# ~/.claude/statusline. An unedited copy follows each newer orion version by
+# itself; an edited one is merged only on your word, keeping your edits.
+# See baselines/statusline/README.md.
 
 input=$(cat)
 

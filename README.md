@@ -106,6 +106,8 @@ The status bar is not installed by default, because it is a personal setting rat
 
 orion checks for a newer version when you start a session and asks whether you want to update. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
 
+The status bar follows too: once a newer one reaches the project, everyone's status bar picks it up at their next session start. If you changed your own status bar, it is left alone and you are asked whether to merge the new changes into yours.
+
 If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`. The same file holds `branchLimit` (20 by default): once the project has that many branches, local and remote together, the session start offers the `/clear-git-resources` tidy-up; set it higher, or to `off`, if you prefer not to be asked.
 
 ## License

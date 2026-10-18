@@ -30,7 +30,7 @@ Cache files live under `~/.cache/claude-statusline/` — delete the folder to fo
 
 ## Install
 
-This is a **baseline** and a **per-computer** setting: `orion init --statusline` copies this folder **once** to `~/.claude/statusline` and points `statusLine` in `~/.claude/settings.json` at it. From then on the copy is **yours** — edit it freely. `orion update` never touches it, and a re-run of `init` leaves it alone. To start again from the baseline, delete the folder (or pass `--force` together with `--statusline`). Installing is **opt-in**, one decision per computer:
+This is a **baseline** and a **per-computer** setting: `orion init --statusline` copies this folder to `~/.claude/statusline` and points `statusLine` in `~/.claude/settings.json` at it. Installing is **opt-in**, one decision per computer:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash -s -- init --statusline
@@ -53,6 +53,16 @@ Or configure manually — copy the folder wherever you like and point `statusLin
 ```
 
 > The command must be an absolute path (Claude Code does not expand `~` on all platforms). The installers write the correct per-user path for you.
+
+## Updates
+
+Every project with orion carries this baseline in `.claude/orion/statusline/`, refreshed by `orion update` and committed with the rest. At each session start the computer's copy is compared with the project's:
+
+- **You never edited your copy:** it is replaced by the newer baseline, silently.
+- **You edited it:** it is left alone and Claude Code asks whether to merge orion's new changes into yours. `orion.sh statusline merge` does a three-way merge against the baseline your copy came from (kept in `~/.claude/statusline/.orion-base/`), so your edits stay; where you and orion changed the same lines it leaves conflict markers to resolve. `orion.sh statusline skip` declines that version.
+- **An older project** (another project on the same computer with an older orion) never steps your copy back.
+
+A copy installed before orion kept a merge base cannot tell your edits from an older baseline: its merge saves it to `~/.claude/statusline.bak` and installs the new baseline, so you can carry your own changes over by hand. A re-run of `init` leaves an installed copy alone; to start again from the baseline, delete the folder (or pass `--force` together with `--statusline`).
 
 ## Uninstall
 

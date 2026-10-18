@@ -28,7 +28,7 @@ orion is three things, installed **into one project at a time** and committed th
 3. **The installer** — `orion.sh` (bash), with `orion.ps1` as a Windows launcher that only finds Git Bash and runs it.
    A copy of the script lives in the project, so the project can update itself.
 
-Optional and per computer, never per project: a **status line** copied once to `~/.claude/statusline`.
+Optional and per computer: a **status line** at `~/.claude/statusline`. Every project carries orion's baseline of it, and each computer's copy follows the newest one it sees; a copy its owner edited is merged only on their word.
 
 This repository is the source. A merge to `main` is a release; every project picks it up with `orion update`.
 
@@ -62,10 +62,11 @@ Sub-commands of `orion.sh`, run in the project or with `--project <dir>`:
 | Sub-command | Contract |
 |---|---|
 | `init` | Copies every skill with its marker, the baseline, the script and a `VERSION` file (commit SHA) into the project; creates `CLAUDE.md` from the starter if missing, else only adds the import line at the top (replacing the pre-rename import if present); writes `config.json` once (`updateMode`, `source`, `ref`, `branchLimit`); adds one `SessionStart` hook; optionally installs the status line; leaves a one-shot per-computer marker that asks for `/orion-verify`. |
-| `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
-| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`), and the branch-limit offer of `/clear-git-resources` when that skill is installed. Two messages are joined into one line. |
+| `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns, the status line baseline and the commit time (`VERSION` line 4) included; brings an unedited per-computer status line up to date. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
+| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`), and the branch-limit offer of `/clear-git-resources` when that skill is installed. Every session, with no network, it brings an unedited per-computer status line up to the project's newer baseline (never back to an older one) silently, and offers the merge when the copy was edited. Messages are joined into one line. |
 | `verify` | The mechanical post-install check: one line per finding (`ok` / `WARN` / `FAIL`), exit 1 on a `FAIL`, never a fix; consumes the post-install marker. |
 | `status` | What is installed, at which version, the update mode, the branch limit and the current branch count. |
+| `statusline` | `merge`: a three-way merge of the project's newer baseline into an edited per-computer status line, keeping the edits (conflict markers and exit 1 where both changed the same lines; a copy from before the merge base existed is saved to `~/.claude/statusline.bak` and replaced). `skip`: declines that version. |
 | `uninstall` | Removes everything orion owns and the hook and marker; keeps everything the project owns, including the starter `CLAUDE.md` minus the import line. |
 
 Settings edits go through `jq`, then `python3`, then Windows PowerShell, so the hook installs on any machine that has
