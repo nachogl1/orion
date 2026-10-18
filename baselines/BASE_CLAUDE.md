@@ -64,8 +64,9 @@
   the same file; there is no separate issue template to keep in step. **A change wanted now that has no ticket goes
   through `/dev-quick`**: it files the issue to that shape and hands it to `/dev-next` — never built by hand in the
   chat. **When the person asks for a code change in chat without starting a skill, ask once whether to ship it with
-  `/dev-quick`**: yes runs it end to end, merging on green with no further questions (it interviews only when the
-  request is unclear); no changes nothing.
+  `/dev-quick`** (only when `.claude/skills/dev-quick/` is installed and no gate command reads `TBD`): yes runs it end
+  to end, merging on green with no further questions (it interviews only when the request is unclear); no means no
+  change is made, by hand or otherwise.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
   `### References`.
@@ -127,7 +128,8 @@ PRD wins on product, the rules files win on process.
   **"Should we update the PRD with this too?"**, one line per change naming the PRD section it touches. "No" ends it;
   "yes" ships the PRD edit in the pull request the work already has, or in a `docs(prd)` pull request when the work
   was only tickets. The dev skill's mechanical writes — labels, claim comments, `## Decisions (agent-ready)`,
-  `Critical:` issues, closing — never trigger the question.
+  `Critical:` issues, closing — never trigger the question, nor does `/dev-quick`'s fast path, which runs only when
+  nothing the PRD describes changes.
 
 ## Git
 

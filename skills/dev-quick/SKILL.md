@@ -38,7 +38,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 
 | Form | Meaning |
 |---|---|
-| `/dev-quick <what you want>` | One change, in your own words — a sentence or a pasted paragraph. The interview starts from it. |
+| `/dev-quick <what you want>` | One change, in your own words — a sentence or a pasted paragraph. The interview starts from it, unless it takes the fast path. |
 | `/dev-quick` | No words yet → the first question is "What do you want changed?", then the interview as below. |
 
 **One change per run.** A description that turns out to hold two independent changes is split into two issues, each
@@ -63,8 +63,10 @@ decision nobody has made, it is not quick:
 The interview exists to remove guesses, not to slow down a change that holds none. After phase 1, take the fast path
 **only when every one of these holds**; one doubt means the full path, as below:
 
+- The request is **one** change: nothing to split (*One change per run* above).
 - Every phase 2 category — goal, scope, seam, acceptance criteria, blockers, epic, evidence — is evident from the
   request, the code and the project's `CLAUDE.md`, with **one** epic that clearly fits and no open blocker.
+- The seam check of phase 2 (*Seam*: another open story on that folder) runs and finds nothing.
 - No risk item (phase 2, *Risk*), no standing-rule hit, nothing to prepare (phase 3), and nothing the PRD describes
   changes.
 
@@ -127,6 +129,8 @@ A question grounded in the code is answerable; a question asked blind gets a gue
 
 ## Phase 2 — The interview: every question, nothing left to ask
 
+Full path only; a request on *The fast path* skips this phase.
+
 The point of this phase is that `/dev-next` asks nothing. An unasked question becomes a guess the dev agent bakes into
 the code and the reviewer cannot judge; a long interview is cheaper than one wrong guess shipped to `main`.
 
@@ -181,6 +185,8 @@ not in the room.
 4. Nothing to prepare → say so in one line and move on. Most quick changes need nothing here.
 
 ## Phase 4 — Draft once, approve once, file
+
+On *The fast path*, steps 4 and 6 are skipped: draft once and file.
 
 1. **Draft the issue per `.claude/skills/dev-next/references/new-issue.md`** — every heading, in its order (`### Epic`,
    `### Goal`, `### Scope`, `### Seam`, `### Acceptance criteria`, `### References`, `### Blocked by`,
