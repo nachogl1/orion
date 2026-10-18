@@ -58,7 +58,9 @@ Or configure manually — copy the folder wherever you like and point `statusLin
 
 Every project with orion carries this baseline in `.claude/orion/statusline/`, refreshed by `orion update` and committed with the rest. At each session start the computer's copy is compared with the project's:
 
-- **You never edited your copy:** it is replaced by the newer baseline, silently.
+Your copy never changes without your word, whatever the project's update mode:
+
+- **You never edited your copy:** it is left alone and Claude Code asks whether to take the newer baseline. `orion.sh statusline merge` takes it; `orion.sh statusline skip` declines that version.
 - **You edited it:** it is left alone and Claude Code asks whether to merge orion's new changes into yours. `orion.sh statusline merge` does a three-way merge against the baseline your copy came from (kept in `~/.claude/statusline/.orion-base/`), so your edits stay; where you and orion changed the same lines it leaves conflict markers to resolve. `orion.sh statusline skip` declines that version.
 - **An older project** (another project on the same computer with an older orion) never steps your copy back.
 

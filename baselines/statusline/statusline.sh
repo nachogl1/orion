@@ -21,8 +21,8 @@
 # Caches live under ~/.cache/claude-statusline/.
 #
 # Install: `orion init --statusline` copies this folder to
-# ~/.claude/statusline. An unedited copy follows each newer orion version by
-# itself; an edited one is merged only on your word, keeping your edits.
+# ~/.claude/statusline. Each newer orion version is offered and taken only on
+# your word; an edited copy keeps your edits when it is merged in.
 # See baselines/statusline/README.md.
 
 input=$(cat)
