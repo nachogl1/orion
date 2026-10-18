@@ -61,17 +61,17 @@ Sub-commands of `orion.sh`, run in the project or with `--project <dir>`:
 
 | Sub-command | Contract |
 |---|---|
-| `init` | Copies every skill with its marker, the baseline, the script and a `VERSION` file (commit SHA) into the project; creates `CLAUDE.md` from the starter if missing, else only adds the import line at the top (replacing the pre-rename import if present); writes `config.json` once (`updateMode`, `source`, `ref`, `branchLimit`); adds one `SessionStart` hook; optionally installs the status line; leaves a one-shot per-computer marker that asks for `/orion-verify`. |
+| `init` | Copies every skill with its marker, the baseline, the script and a `VERSION` file (commit SHA) into the project; creates `CLAUDE.md` from the starter if missing, else only adds the import line at the top (replacing the pre-rename import if present); writes `config.json` once (`updateMode`, `source`, `ref`, `branchLimit`, `worktreeLimit`); adds one `SessionStart` hook; optionally installs the status line; leaves a one-shot per-computer marker that asks for `/orion-verify`. |
 | `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns, the status line baseline and the commit time (`VERSION` line 4) included; says when the per-computer status line has a newer baseline waiting, and never changes it. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
-| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`), and the branch-limit offer of `/clear-git-resources` when that skill is installed. Every session, with no network, it offers the project's newer status line baseline (never an older one): taking it for an unedited copy, merging it into an edited one, never without the person's word, even under `auto`. Messages are joined into one line. |
+| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`), and the branch- or worktree-limit offer of `/clear-git-resources` when that skill is installed. Every session it first runs `git pull --ff-only` on the branch the session opens in (only the fetch is time-limited; silent unless refused, then one line), and, with no network, it offers the project's newer status line baseline (never an older one): taking it for an unedited copy, merging it into an edited one, never without the person's word, even under `auto`. Messages are joined into one line. |
 | `verify` | The mechanical post-install check: one line per finding (`ok` / `WARN` / `FAIL`), exit 1 on a `FAIL`, never a fix; consumes the post-install marker. |
-| `status` | What is installed, at which version, the update mode, the branch limit and the current branch count. |
+| `status` | What is installed, at which version, the update mode, the branch and worktree limits and the current counts. |
 | `statusline` | `merge`: takes the project's newer baseline; an unedited per-computer status line becomes it, an edited one gets a three-way merge that keeps the edits (conflict markers and exit 1 where both changed the same lines; a copy from before the merge base existed is saved to `~/.claude/statusline.bak` and replaced). `skip`: declines that version. |
 | `uninstall` | Removes everything orion owns and the hook and marker; keeps everything the project owns, including the starter `CLAUDE.md` minus the import line. |
 
 Settings edits go through `jq`, then `python3`, then Windows PowerShell, so the hook installs on any machine that has
 one of the three. The `updateMode` default is `ask`; `branchLimit` defaults to 20 branches (local plus
-remote-tracking) or `off`.
+remote-tracking) and `worktreeLimit` to 20 worktrees, each a number or `off`.
 
 ### The skill set
 
@@ -93,8 +93,8 @@ The loop, from idea to checked software:
 - `harvest-qa` — drives the QA records against `main`, one agent at a time, and files one `bug` per failure reproduced
   twice that no open issue covers.
 - `reconcile-issue-map` — finds drift between the PRDs, the issues and `main`, and fixes each item with the person.
-- `clear-git-resources` — lists stale worktrees, branches and leftover files in three kinds (safe, needs your word,
-  never offered) and deletes only what the person agrees to.
+- `clear-git-resources` — lists stale worktrees, branches and leftover files, deletes the person's own stale ones whose
+  work cannot be lost, asks before deleting anyone else's, and never touches unmerged work or the audit and QA resources.
 
 Around the loop:
 

@@ -155,9 +155,19 @@ PRD wins on product, the rules files win on process.
   take minutes.
 - **Leave nothing behind.** A merged branch is deleted, locally and on the remote; a worktree whose work landed is
   removed. What slips through (a failed run, a pull request a human merged) is swept by `/clear-git-resources`, which
-  the session-start hook offers once the project reaches its branch limit (`branchLimit` in `.claude/orion/config.json`,
-  20 by default): it deletes only what the person agrees to, never `main`, the audit branches, an open pull request or
-  anything in flight.
+  the session-start hook offers once a day when the project reaches its branch limit (local plus remote branches) or
+  its worktree limit (`branchLimit` / `worktreeLimit` in `.claude/orion/config.json`, 20 each by default, a number or
+  `off`). Each stale item is yours or someone else's: yours when the first commit on its branch that is not on `main`
+  carries your `git config user.email`.
+  - **Deleted without asking:** your items whose work is already safe (on `main`, pull request merged, a clean
+    checkout whose commit a branch holds, a dead worktree entry, an old loose file in the worktree root).
+  - **Asked first:** anyone else's stale item or one with no commits of its own, yours whose pull request closed
+    unmerged or whose remote branch is gone, a locked worktree, and an old leftover folder in the worktree root.
+  - **Never touched:** unmerged commits, commits on no branch, uncommitted changes, `main`, the `audit/*` and `qa/*` branches, the `audit-*`
+    and `qa-*` worktrees, an open pull request, anything in flight, other repositories' checkouts.
+- **Every session starts up to date.** The session-start hook runs `git pull --ff-only` (only moves the branch forward,
+  never makes a merge commit) on the branch the session opens in. It is skipped when the branch has no remote copy. A
+  refused pull (the branch went its own way, or local changes block it) is reported in one line and never forced.
 - Conventional Commits: `type(scope): summary`.
 
 ## Definition of done
@@ -256,8 +266,8 @@ PRD wins on product, the rules files win on process.
 - `/reconcile-issue-map` checks the issues, the PRDs and the code on `main` against each other and fixes the drift
   with the person present: issue edits under the ownership rules, PRD edits and its bookmark in a pull request a
   human merges. The PRD wins on what to build; `main` wins on what is done.
-- `/clear-git-resources` lists stale worktrees, branches and leftover files, says what deleting each would lose, and
-  deletes only what the person agrees to.
+- `/clear-git-resources` lists stale worktrees, branches and leftover files, deletes your own stale ones whose work is
+  safe, and asks before deleting anyone else's.
 - `/handoff` packs the current conversation into a handoff document for the next session or agent.
 - `/project-handover` writes a self-contained HTML handover of the project for clients, stakeholders and new joiners.
 - `/generate-project-writeup` writes a Word summary report of the work delivered, for leadership and commercial
