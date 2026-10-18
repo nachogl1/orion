@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+# A newer push to a pull request cancels its older run; every run on main gets a group of its own, so none is cancelled.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   bash-and-python:
     runs-on: ubuntu-latest
@@ -30,6 +35,6 @@ jobs:
       - name: Typecheck (orion.ps1 parses under Windows PowerShell 5.1)
         shell: powershell
         run: '[scriptblock]::Create((Get-Content -Raw orion.ps1)) > $null'
-      - name: Full suite under Git Bash (tests/run.sh)
+      - name: Windows part of the suite under Git Bash (tests/run.sh --windows)
         shell: bash
-        run: bash tests/run.sh
+        run: bash tests/run.sh --windows
