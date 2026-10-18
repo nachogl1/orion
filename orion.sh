@@ -124,22 +124,25 @@ version_sha() { sed -n '1p' "$1" 2>/dev/null || true; }
 short() { printf '%s' "${1:0:7}"; }
 
 # Per-computer, per-project state that must never be committed (the daily
-# update-check stamp, the one-shot "post-install check pending" marker).
+# update-check stamp, the one-shot "post-install check pending" marker, the rules fingerprint last checked).
 cache_file() {  # suffix
     printf '%s/orion/%s.%s' "${XDG_CACHE_HOME:-$HOME/.cache}" "$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)" "$1"
 }
 
 # A fingerprint of the rules orion ships into this project: BASE_CLAUDE.md and every .md file of every
 # orion-managed skill. The session-start hook asks for /orion-verify once each time it changes on this computer.
+# One find and one cat for all of it: a process per file costs seconds under Git Bash, on every session start.
 rules_sum() {
-    local entry
-    {
-        cat "$PROJECT/.claude/orion/BASE_CLAUDE.md" 2>/dev/null
-        for entry in "$PROJECT"/.claude/skills/*/; do
-            [ -f "${entry%/}/$MARKER" ] || continue
-            find "${entry%/}" -type f -name '*.md' | LC_ALL=C sort | while IFS= read -r f; do cat "$f"; done
-        done
-    } | cksum | cut -d' ' -f1
+    local entry f dirs=() files=()
+    if [ -f "$PROJECT/.claude/orion/BASE_CLAUDE.md" ]; then files+=("$PROJECT/.claude/orion/BASE_CLAUDE.md"); fi
+    for entry in "$PROJECT"/.claude/skills/*/; do
+        [ -f "${entry%/}/$MARKER" ] || continue
+        dirs+=("${entry%/}")
+    done
+    if [ ${#dirs[@]} -gt 0 ]; then
+        while IFS= read -r f; do files+=("$f"); done < <(find "${dirs[@]}" -type f -name '*.md' | LC_ALL=C sort)
+    fi
+    if [ ${#files[@]} -gt 0 ]; then cat "${files[@]}" 2>/dev/null || true; fi | cksum | cut -d' ' -f1
 }
 
 rules_mark() {  # [sum]: records that this computer has checked these rules
@@ -807,7 +810,8 @@ cmd_update() {
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
     current="$(version_sha "$dir/VERSION")"
     fetch_source "$source" "$ref"
-    local rules_before; rules_before="$(rules_sum)"
+    # the hint is printed only without --quiet, so an auto-update (capped at 10 s on older hooks) skips the cost
+    local rules_before=""; [ "$quiet" = "1" ] || rules_before="$(rules_sum)"
     # an update run by an older orion.sh copied neither the status line nor the commit time: redo it once
     [ -d "$dir/statusline" ] || force=1
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then

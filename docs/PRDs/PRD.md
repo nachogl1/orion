@@ -67,7 +67,7 @@ Sub-commands of `orion.sh`, run in the project or with `--project <dir>`:
 | `verify` | The mechanical post-install check: one line per finding (`ok` / `WARN` / `FAIL`), exit 1 on a `FAIL`, never a fix; consumes the post-install marker and records the rules it checked on this computer. |
 | `status` | What is installed, at which version, the update mode, the branch limit and the current branch count. |
 | `statusline` | `merge`: takes the project's newer baseline; an unedited per-computer status line becomes it, an edited one gets a three-way merge that keeps the edits (conflict markers and exit 1 where both changed the same lines; a copy from before the merge base existed is saved to `~/.claude/statusline.bak` and replaced). `skip`: declines that version. |
-| `uninstall` | Removes everything orion owns and the hook and marker; keeps everything the project owns, including the starter `CLAUDE.md` minus the import line. |
+| `uninstall` | Removes everything orion owns, the hook, the marker and the rules fingerprint; keeps everything the project owns, including the starter `CLAUDE.md` minus the import line. |
 
 Settings edits go through `jq`, then `python3`, then Windows PowerShell, so the hook installs on any machine that has
 one of the three. The `updateMode` default is `ask`; `branchLimit` defaults to 20 branches (local plus
