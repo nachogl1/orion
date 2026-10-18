@@ -32,16 +32,16 @@ kept.
 Every `ITEM` line carries an action: `auto`, `ask` or `keep`. The scanner decides it; the skill never changes it.
 
 **Whose it is.** An item is the person's own when the first commit on its branch that is not on the default branch
-(with none, its newest commit) carries the email of their git identity (`git config user.email`, read through
-`git var GIT_AUTHOR_IDENT`). A worktree on no branch and a folder or file in the worktree root live on this computer
-only, so they are the person's own. No identity set → nothing counts as theirs, every stale item is `ask`, and a `NOTE`
-line says so.
+(for a branch merged with a merge commit, its tip) carries the email of their git identity (`git config user.email`,
+read through `git var GIT_AUTHOR_IDENT`). A branch with no commits of its own (a fresh start, or fast-forwarded) is
+nobody's, so it is asked about. A worktree on no branch lives on this computer only, so it is the person's own. No
+identity set → nothing counts as theirs, every stale item is `ask`, and a `NOTE` line says so.
 
 | Action | Groups | What it means |
 |---|---|---|
-| **`auto`** — deleted without asking | `wt-prunable` `wt-done` `wt-detached` `br-merged` `br-pr-closed` `rb-merged` `rb-pr-closed` `root-orphan` `root-file` | Stale, the person's own, and nothing can be lost: every commit is on the default branch, its pull request merged at exactly the branch's current commit, a clean checkout on no branch, a worktree entry whose folder is gone, or a folder/file in the worktree root that is not a worktree and is older than `--days` (default 2) |
-| **`ask`** — deleted only on the person's yes | `wt-done` `wt-pr-closed` `br-merged` `br-pr-closed` `br-gone` `rb-merged` `rb-pr-closed` | Stale but someone else's; or the person's own with a pull request closed without merge, a branch that changed after its pull request merged, or a remote branch that was deleted (it may still hold commits that were never pushed) |
-| **`keep`** — never offered, no command | `wt-active` `wt-dirty` `br-unmerged` `rb-unmerged` `wt-open-pr` `br-open-pr` `rb-open-pr` `wt-protected` `br-protected` `rb-protected` `root-recent` `root-other` | Commits not on the default branch with no pull request, uncommitted changes, an open pull request, the default branch, the branch checked out in the main checkout, anything of an issue in `<wt root>/in-flight.json`, folders changed in the last `--days` days, other repositories' checkouts, and the resources other skills use (below) |
+| **`auto`** — deleted without asking | `wt-prunable` `wt-done` `wt-detached` `br-merged` `br-pr-closed` `rb-merged` `rb-pr-closed` `root-file` | Stale, the person's own, and nothing can be lost: every commit is on the default branch, its pull request merged at exactly the branch's current commit, a clean checkout on no branch whose commit a branch holds, a worktree entry whose folder is gone (removed on its own, never with a global prune), or a loose file in the worktree root unchanged for `--days` days (default 2). A locked worktree is never `auto` |
+| **`ask`** — deleted only on the person's yes | `wt-done` `wt-detached` `wt-pr-closed` `br-merged` `br-pr-closed` `br-gone` `rb-merged` `rb-pr-closed` `root-orphan` | Stale but someone else's or nobody's; or the person's own with a pull request closed without merge, a branch that changed after its pull request merged, a remote branch that was deleted (it may still hold commits that were never pushed), or a lock; or a folder in the worktree root that is not a worktree and has nothing changed for `--days` days (its repository may only have moved) |
+| **`keep`** — never offered, no command | `wt-active` `wt-dirty` `br-unmerged` `rb-unmerged` `wt-open-pr` `br-open-pr` `rb-open-pr` `wt-protected` `br-protected` `rb-protected` `root-recent` `root-other` | Commits not on the default branch with no pull request, commits on no branch that no branch holds, uncommitted changes, an open pull request, the default branch, the branch checked out in the main checkout, anything of an issue in `<wt root>/in-flight.json`, worktree-root entries with anything changed in the last `--days` days, other repositories' checkouts, and the resources other skills use (below) |
 
 A group can hold `auto` and `ask` items side by side (`br-merged` holds the person's own and someone else's branches
 already on main); the action on each line decides, never the group.

@@ -160,10 +160,10 @@ PRD wins on product, the rules files win on process.
   `off`). Each stale item is yours or someone else's: yours when the first commit on its branch that is not on `main`
   carries your `git config user.email`.
   - **Deleted without asking:** your items whose work is already safe (on `main`, pull request merged, a clean
-    checkout on no branch, a leftover folder).
-  - **Asked first:** anyone else's stale item, and yours whose pull request closed unmerged or whose remote branch is
-    gone.
-  - **Never touched:** unmerged commits, uncommitted changes, `main`, the `audit/*` and `qa/*` branches, the `audit-*`
+    checkout whose commit a branch holds, a dead worktree entry, an old loose file in the worktree root).
+  - **Asked first:** anyone else's stale item or one with no commits of its own, yours whose pull request closed
+    unmerged or whose remote branch is gone, a locked worktree, and an old leftover folder in the worktree root.
+  - **Never touched:** unmerged commits, commits on no branch, uncommitted changes, `main`, the `audit/*` and `qa/*` branches, the `audit-*`
     and `qa-*` worktrees, an open pull request, anything in flight, other repositories' checkouts.
 - **Every session starts up to date.** The session-start hook runs `git pull --ff-only` (only moves the branch forward,
   never makes a merge commit) on the branch the session opens in. It is skipped when the branch has no remote copy. A

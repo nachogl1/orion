@@ -183,12 +183,14 @@ fetch_source() {  # source ref
 }
 
 # Run a command for at most N seconds, so the session-start hook ends inside its HOOK_TIMEOUT. Git never
-# waits on a password prompt; without timeout or gtimeout (macOS has neither) git aborts a stalled transfer.
+# waits on a password, passphrase or host-key prompt and gives up on an unreachable SSH host after 5 s;
+# without timeout or gtimeout (macOS has neither) git also aborts a stalled transfer.
 limited() {  # seconds command...
     local s="$1"; shift
-    if have timeout; then GIT_TERMINAL_PROMPT=0 timeout "$s" "$@"
-    elif have gtimeout; then GIT_TERMINAL_PROMPT=0 gtimeout "$s" "$@"
-    else GIT_TERMINAL_PROMPT=0 GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
+    local ssh="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=5}"
+    if have timeout; then GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh" timeout "$s" "$@"
+    elif have gtimeout; then GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh" gtimeout "$s" "$@"
+    else GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh" GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
 }
 
 latest_sha() {  # source ref -> prints sha or nothing
@@ -915,9 +917,10 @@ check_pull_ctx() {
     git -C "$PROJECT" config "branch.$branch.remote" >/dev/null 2>&1 || return 0
     limited 8 git -C "$PROJECT" fetch --quiet </dev/null >/dev/null 2>&1 || true
     git -C "$PROJECT" rev-parse -q --verify '@{upstream}' >/dev/null 2>&1 || return 0
-    out="$(git -C "$PROJECT" merge --ff-only --quiet '@{upstream}' </dev/null 2>&1)" && return 0
+    # merge.autoStash off: a pull blocked by local changes is refused and reported, never stashed
+    out="$(git -c merge.autoStash=false -C "$PROJECT" merge --ff-only --quiet '@{upstream}' </dev/null 2>&1)" && return 0
     out="$(printf '%s' "$out" | grep -v '^[[:space:]]*$' | head -n1 | tr -d '\000-\037')"
-    printf '%s' "At session start, git pull --ff-only on branch $branch was refused, so the branch may be behind its remote copy (git said: $(json_escape "$out")). Tell the user in one line; never force, rebase or reset the branch to fix it."
+    printf '%s' "At session start, git pull --ff-only on branch $(json_escape "$branch") was refused, so the branch may be behind its remote copy (git said: $(json_escape "$out")). Tell the user in one line; never force, rebase or reset the branch to fix it."
 }
 
 # A limit from config.json: the number, or nothing when it is off (a value that is not a number falls back to the default).

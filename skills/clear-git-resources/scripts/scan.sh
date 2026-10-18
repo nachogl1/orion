@@ -20,16 +20,20 @@
 #   ITEM    <id>  <name>  auto|ask|keep  <why it is here>  <command that deletes it>   (command empty for keep)
 #   NOTE    <something the person should know>
 #   SUMMARY auto=<n> ask=<n> keep=<n>
-# Whose it is: the person's own when the first commit on the branch that is not on the default branch (with none,
-#       its newest commit) carries the email of their git identity (`git var GIT_AUTHOR_IDENT`). A worktree on no
-#       branch and a folder or file in the worktree root live on this computer only, so they are the person's own.
-# auto: stale, the person's own, and its work cannot be lost (every commit on the default branch, its pull request
-#       merged at exactly this commit, a clean checkout on no branch, a leftover folder or file).
-# ask:  stale, but someone else's, or the person's own with a pull request closed without merge, a branch changed
-#       after its pull request merged, or a deleted remote branch.
-# keep: never offered, no command: unmerged commits with no pull request, uncommitted changes, the default branch,
-#       audit/* and qa/* branches, audit-* and qa-* worktrees and folders, open pull requests, anything in flight,
-#       other repositories' checkouts, anything changed in the last --days days.
+# Whose it is: the person's own when the first commit on the branch that is not on the default branch (for a branch
+#       merged with a merge commit, its tip) carries the email of their git identity (`git var GIT_AUTHOR_IDENT`).
+#       A branch with no commits of its own is nobody's. A worktree on no branch lives on this computer only, so
+#       it is the person's own.
+# auto: stale, the person's own, and its work cannot be lost: every commit on the default branch, its pull request
+#       merged at exactly this commit, a clean checkout on no branch whose commit a branch holds, a worktree entry
+#       whose folder is gone, a loose file in the worktree root unchanged for --days days. Never a locked worktree.
+# ask:  stale, but someone else's or nobody's; or the person's own with a pull request closed without merge, a
+#       branch changed after its pull request merged, a deleted remote branch, a lock; or a folder in the worktree
+#       root that is not a worktree (its repository may only have moved).
+# keep: never offered, no command: unmerged commits with no pull request, commits on no branch, uncommitted changes,
+#       the default branch, audit/* and qa/* branches, audit-* and qa-* worktrees and folders, open pull requests,
+#       anything in flight, other repositories' checkouts, worktree-root entries with anything changed in the last
+#       --days days.
 #
 # Portable bash: runs under Git Bash, macOS bash and Linux. No GNU-only flags.
 
@@ -123,14 +127,22 @@ merged() { g merge-base --is-ancestor "$1" "$BASE" 2>/dev/null; }
 ahead()  { g rev-list --count "$BASE..$1" 2>/dev/null || echo '?'; }
 when()   { g log -1 --format=%cs "$1" 2>/dev/null; }
 norm()   { (cd "$1" 2>/dev/null && pwd -P); }
+recent() { [ -n "$(find "$1" -mtime -"$DAYS" 2>/dev/null | head -n1)" ]; }   # path -> 0 when it or anything inside changed lately
+reachable() { merged "$1" || [ -n "$(g for-each-ref --count=1 --contains "$1" 2>/dev/null)" ]; }   # commit -> 0 when a ref holds it
 tip()    { g rev-parse -q --verify "$1^{commit}" 2>/dev/null; }
 
 # --- whose it is ----------------------------------------------------------------------------------------
 ME=$(g var GIT_AUTHOR_IDENT 2>/dev/null | sed -n 's/.*<\([^>]*\)>.*/\1/p' | tr 'A-Z' 'a-z')
+# The default branch's own commits (its first-parent line): a merged branch whose tip is one of them has no commits
+# of its own (a fresh start, or fast-forwarded), so nobody can be told to own it.
+g rev-list --first-parent "$BASE" 2>/dev/null > "$TMP/first-parent"
 owner() {  # ref -> mine | other
-    local e
+    local e t
     e=$(g log --reverse --format=%ae "$BASE..$1" 2>/dev/null | head -n1)
-    [ -n "$e" ] || e=$(g log -1 --format=%ae "$1" 2>/dev/null)
+    if [ -z "$e" ]; then
+        t=$(tip "$1")
+        [ -n "$t" ] && ! grep -qxF "$t" "$TMP/first-parent" && e=$(g log -1 --format=%ae "$t" 2>/dev/null)
+    fi
     e=$(printf '%s' "$e" | tr 'A-Z' 'a-z')
     if [ -n "$ME" ] && [ "$e" = "$ME" ]; then echo mine; else echo other; fi
 }
@@ -145,14 +157,18 @@ item() {  # group name action why cmd
 
 # --- worktrees ------------------------------------------------------------------------------------------
 : > "$TMP/wt-branches"; : > "$TMP/wt-paths"
-wt_path="" wt_branch="" wt_detached=0 wt_locked=0 wt_prunable=0
+wt_path="" wt_branch="" wt_head="" wt_detached=0 wt_locked=0 wt_prunable=0
 flush_wt() {
     [ -n "$wt_path" ] || return 0
-    local n="$wt_path" why="" dirty=0 a st pst pnum poid who rm_cmd br_cmd
+    local n="$wt_path" why="" dirty=0 a st pst pnum poid who sure rm_cmd br_cmd
     if [ "$(norm "$wt_path")" = "$(norm "$MAIN")" ]; then
         :  # the main checkout itself
     elif [ "$wt_prunable" = "1" ]; then
-        item wt-prunable "$n" auto "registered as a worktree but its folder is gone" "git -C \"$MAIN\" worktree prune"
+        if protected_folder "$wt_path" || { [ -n "$wt_branch" ] && protected_branch "$wt_branch"; }; then
+            item wt-protected "$n" keep "an audit, QA or protected worktree entry whose folder is gone (never touched)" ""
+        else
+            item wt-prunable "$n" auto "registered as a worktree but its folder is gone" "git -C \"$MAIN\" worktree remove --force \"$wt_path\""
+        fi
     else
         norm "$wt_path" >> "$TMP/wt-paths"
         [ -n "$wt_branch" ] && printf '%s\n' "$wt_branch" >> "$TMP/wt-branches"
@@ -175,7 +191,11 @@ flush_wt() {
             [ "$wt_locked" = "1" ] && why="$why, locked"
             item wt-dirty "$n" keep "$why" ""
         elif [ "$wt_detached" = "1" ]; then
-            item wt-detached "$n" auto "on no branch (a temporary checkout), clean" "$rm_cmd"
+            if [ -n "$wt_head" ] && reachable "$wt_head"; then
+                item wt-detached "$n" "$(act mine $((1 - wt_locked)))" "on no branch (a temporary checkout), clean$([ "$wt_locked" = "1" ] && echo ', locked')" "$rm_cmd"
+            else
+                item wt-active "$n" keep "on no branch, with commits no branch holds (deleting would lose them)" ""
+            fi
         else
             st=$(pr_state "$wt_branch"); read -r pst pnum poid <<< "$st"
             who=$(owner "refs/heads/$wt_branch")
@@ -183,10 +203,10 @@ flush_wt() {
                 item wt-open-pr "$n" keep "branch $wt_branch has an open pull request #$pnum" ""
             elif merged "$wt_branch"; then
                 why="branch $wt_branch is already on $DEFAULT, $(whose "$who")"; [ "$wt_locked" = "1" ] && why="$why, locked"
-                item wt-done "$n" "$(act "$who" 1)" "$why" "$rm_cmd$br_cmd"
+                item wt-done "$n" "$(act "$who" $((1 - wt_locked)))" "$why" "$rm_cmd$br_cmd"
             elif [ "$pst" = "MERGED" ] && [ "$(tip "refs/heads/$wt_branch")" = "$poid" ]; then
                 why="branch $wt_branch: pull request #$pnum merged, $(whose "$who")"; [ "$wt_locked" = "1" ] && why="$why, locked"
-                item wt-done "$n" "$(act "$who" 1)" "$why" "$rm_cmd$br_cmd"
+                item wt-done "$n" "$(act "$who" $((1 - wt_locked)))" "$why" "$rm_cmd$br_cmd"
             elif [ "$pst" = "MERGED" ] || [ "$pst" = "CLOSED" ]; then
                 why="branch $wt_branch: pull request #$pnum closed without merge"
                 [ "$pst" = "MERGED" ] && why="branch $wt_branch changed after pull request #$pnum merged"
@@ -199,12 +219,13 @@ flush_wt() {
             fi
         fi
     fi
-    wt_path="" wt_branch="" wt_detached=0 wt_locked=0 wt_prunable=0
+    wt_path="" wt_branch="" wt_head="" wt_detached=0 wt_locked=0 wt_prunable=0
 }
 g worktree list --porcelain 2>/dev/null > "$TMP/worktrees"
 while IFS= read -r line; do
     case "$line" in
         "worktree "*) flush_wt; wt_path="${line#worktree }" ;;
+        "HEAD "*) wt_head="${line#HEAD }" ;;
         "branch refs/heads/"*) wt_branch="${line#branch refs/heads/}" ;;
         detached) wt_detached=1 ;;
         locked*) wt_locked=1 ;;
@@ -273,7 +294,7 @@ if [ -d "$WT_ROOT" ]; then
         [ -e "$p" ] || continue
         n=$(basename "$p")
         [ "$n" = "in-flight.json" ] && continue
-        old=0; [ -n "$(find "$p" -maxdepth 0 -mtime +"$DAYS" 2>/dev/null)" ] && old=1
+        old=1; recent "$p" && old=0
         if [ -d "$p" ]; then
             grep -qxF "$(norm "$p")" "$TMP/wt-paths" 2>/dev/null && continue   # one of ours, listed above
             if [ -f "$p/.git" ]; then
@@ -281,11 +302,12 @@ if [ -d "$WT_ROOT" ]; then
                 case "$gitdir" in /*|[A-Za-z]:*) ;; *) gitdir="$p/$gitdir" ;; esac
                 if [ -d "$gitdir" ]; then item root-other "$p" keep "a worktree of another repository" ""
                 elif protected_folder "$p"; then item root-other "$p" keep "an audit or QA run's folder another skill may use (never touched)" ""
-                else item root-orphan "$p" auto "was a worktree, but the repository it belonged to no longer knows it" "rm -rf \"$p\""; fi
+                elif [ "$old" = "1" ]; then item root-orphan "$p" ask "was a worktree, but the repository it belonged to no longer knows it (its repository may only have moved)" "rm -rf \"$p\""
+                else item root-recent "$p" keep "was a worktree, changed in the last $DAYS days" ""; fi
             elif [ -d "$p/.git" ]; then item root-other "$p" keep "a full clone of a repository" ""
             elif in_flight "$n"; then item root-other "$p" keep "folder of an issue in flight (in-flight.json)" ""
             elif protected_folder "$p"; then item root-other "$p" keep "an audit or QA run's folder another skill may use (never touched)" ""
-            elif [ "$old" = "1" ]; then item root-orphan "$p" auto "a plain folder, not a worktree, older than $DAYS days" "rm -rf \"$p\""
+            elif [ "$old" = "1" ]; then item root-orphan "$p" ask "a plain folder, not a worktree, nothing in it changed for $DAYS days" "rm -rf \"$p\""
             else item root-recent "$p" keep "a plain folder changed in the last $DAYS days" ""; fi
         else
             if [ "$old" = "1" ]; then item root-file "$p" auto "a loose file older than $DAYS days" "rm -f \"$p\""
