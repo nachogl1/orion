@@ -1,7 +1,6 @@
 # PRD — GLOBAL_CLAUDE.md: personal rules orion offers
 
-**Status: approved by the owner on 2026-10-18.** The open questions at the end are answered before the first ticket
-is cut.
+**Status: approved by the owner on 2026-10-18**, and its open questions answered the same day (see "Decisions").
 Once shipped, it is folded into `docs/PRDs/PRD.md`.
 
 ## Problem and users
@@ -31,7 +30,7 @@ work with have to be copied by hand from someone who already has them, and they 
 
 ### 2. The ORION GLOBAL section in the person's own file
 
-- Everything a person accepts lives in one section **at the top** of their `~/.claude/CLAUDE.md`:
+- Everything a person accepts lives in one section **at the end** of their `~/.claude/CLAUDE.md`:
 
   ```markdown
   # ORION GLOBAL — last updated 2026-10-18T14:05Z
@@ -44,6 +43,7 @@ work with have to be copied by hand from someone who already has them, and they 
   accepted everything, part or nothing.
 - A person who declines everything still gets the heading, the timestamp and the end line with nothing between,
   so the same clauses are not offered again.
+- Accepted clauses keep their date marker, so a later change to one can be matched with what the person has.
 - A changed clause that the person accepted earlier is shown as old and new side by side and replaced in place only
   if they say yes.
 - The person may edit the section freely. Editing the timestamp is their own responsibility; orion trusts it.
@@ -51,10 +51,12 @@ work with have to be copied by hand from someone who already has them, and they 
 
 ### 3. The discussion
 
-- The `orion` skill gains an action, **`/orion global`**: it reads the project copy of `GLOBAL_CLAUDE.md` and the
-  person's section, lists the clauses dated after the timestamp (or all of them when there is no section), asks
-  about them in batches with clickable options (accept, skip, accept with an edit), writes only inside the section,
-  and moves the timestamp.
+- **No skill.** The person talks it through with the agent. The steps the agent follows sit in a short block at the
+  top of `GLOBAL_CLAUDE.md` (not a clause, never copied): read the project copy and the person's section, list the
+  clauses dated after the timestamp (or all of them when there is no section), ask about them in batches with
+  clickable options (accept, skip, accept with an edit), write only inside the section, and move the timestamp.
+- The agent follows those steps when the session-start offer asks for it, or whenever the person asks to go
+  through orion's personal rules.
 - It never edits anything in the person's file outside the section, and it shows the final section before saving.
 
 ### 4. The offer at session start: always asked, never automatic
@@ -62,11 +64,14 @@ work with have to be copied by hand from someone who already has them, and they 
 - The `check` hook (no network, still silent on success, exit 0 on every failure, at most one JSON line, its message
   joined to the others as the status line offer is) reads the project copy of `GLOBAL_CLAUDE.md` and the heading
   line of `~/.claude/CLAUDE.md`. When a clause is newer than the timestamp, or there is no section yet, it asks
-  Claude Code to offer `/orion global` with the AskUserQuestion tool, once a day per computer.
+  Claude Code to offer the discussion with the AskUserQuestion tool, once a day per computer.
 - **This offer ignores `updateMode: auto`.** As with the status line, the person's own file changes only on their
   word, here through the discussion. `auto` may refresh the project copy of `GLOBAL_CLAUDE.md`;
   not answering means nothing else changes.
-- Right after `init`, the post-install message also asks for the discussion, once `/orion-verify` has run.
+- **`updateMode: off` silences the offer**, as it silences the update check. The person can still ask the agent at
+  any time.
+- Right after `init`, the post-install message also asks for the discussion, once `/orion-verify` has run, unless
+  the update mode is `off`.
 - The hook never writes to `~/.claude/CLAUDE.md`.
 
 ## Do not build
@@ -80,21 +85,21 @@ work with have to be copied by hand from someone who already has them, and they 
 ## Acceptance bar
 
 - The CI chain is green with the commands in `CLAUDE.md`, and the full suite adds these checks:
-  - `check` offers `/orion global` when there is no section, and when a clause is newer than the timestamp.
+  - `check` offers the discussion when there is no section, and when a clause is newer than the timestamp.
+  - `check` under `off` never offers it.
   - `check` stays silent about it when every clause is older than the timestamp, and when it already offered today.
   - `check` under `auto` never writes `~/.claude/CLAUDE.md`.
   - `uninstall` leaves `~/.claude/CLAUDE.md` byte for byte as it was.
   - Every clause in `GLOBAL_CLAUDE.md` carries a valid date marker, and a clause changed against `origin/main`
     carries a newer date than before (otherwise the change would never be offered).
 - `verify` reports a missing project copy of `GLOBAL_CLAUDE.md` as a `FAIL`.
-- `CLAUDE.md` (the boundary on what orion touches outside the project, and the wiring notes), `BASE_CLAUDE.md`'s
-  skill list, `PRD.md` (the "Do not build" line about a user-level install), the README and `docs/CHANGELOG.md`
+- `CLAUDE.md` (the boundary on what orion touches outside the project, and the wiring notes), `PRD.md` (the "Do not build" line about a user-level install), the README and `docs/CHANGELOG.md`
   describe the change.
 
-## Open questions
+## Decisions
 
-| Question | Recommended answer | Decides |
-|---|---|---|
-| Does `updateMode: off` also silence the offer? | Yes: `off` means orion stays quiet. | Owner |
-| Is `/orion global` an action of the `orion` skill or a skill of its own? | An action of `orion`: one fewer skill to install and verify. | Owner |
-| Is the section at the top of the person's file, or at the end? | The top, as asked. | Owner |
+| Question | Answer (owner, 2026-10-18) |
+|---|---|
+| Does `updateMode: off` also silence the offer? | Yes: `off` means orion stays quiet. |
+| Does the discussion need a skill? | No: the person talks it through with the agent, which follows the steps at the top of `GLOBAL_CLAUDE.md`. |
+| Is the section at the top of the person's file, or at the end? | At the end. |
