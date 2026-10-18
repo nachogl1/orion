@@ -4,6 +4,8 @@ Newest first. One line per pull request: what changed and why it matters to some
 
 - The mandatory rules now ask for tests written first, clean code, and new tests that each earn their place, so suites stop filling with tests that add nothing; `/harvest-qa` no longer files bugs on its own and instead shows the person each confirmed failure with its importance, filing only the ones they choose.
 
+- The README's header image now says what orion is (plan, build, review, learn: the AI development lifecycle for Claude Code) in the guide page's colours, instead of "claude code skills".
+
 - orion has a guide page on GitHub Pages: the whole workflow as a clickable graph (who leads each step, where you decide, what every skill does and leaves behind) plus the install steps, and the README shows the same graph in place of the old diagram, so a newcomer sees how the skills fit together at a glance.
 
 - The personal rules orion offers (`GLOBAL_CLAUDE.md`) are replaced by the reply, working and git rules its owner actually uses, so the clauses people are offered are ones proven in daily work; everyone who went through the old ones is offered the new set.
