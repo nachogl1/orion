@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # tests/run.sh - the full suite of the orion repo: syntax checks, then orion.sh driven end to end against
 # throw-away projects. Everything runs in a sandbox (its own HOME, cache and temp folder), never touches
-# the network (a fake `git` answers the update check) and leaves nothing behind.
+# the network (a fake `git` answers the update check) and leaves nothing behind. One check reads the local
+# origin/main ref to compare GLOBAL_CLAUDE.md's clause dates with main's: run `git fetch origin main` first (CI does).
 #
 # usage: bash tests/run.sh             prints one line per check, exits 1 when any check fails
 #        bash tests/run.sh --windows   only the part that differs on Windows (syntax, round trip, every settings
@@ -78,6 +79,12 @@ run_check() {  # extra env assignments go before the call: runs the INSTALLED co
 }
 consume_marker() { bash "$ORION" verify --project "$P" >/dev/null 2>&1 || true; }   # verify clears the one-shot marker
 nothing_left_in_tmp() { [ -z "$(ls -A "$SB/tmp" 2>/dev/null)" ]; }
+# A personal rules file whose ORION GLOBAL section has seen every clause, so the personal rules offer stays quiet
+# in the checks that expect silence; the personal rules section below uses a HOME of its own.
+seen_all_personal_rules() {  # home
+    mkdir -p "$1/.claude"; printf '# ORION GLOBAL — last updated 9999-12-31T23:59Z\n<!-- /ORION GLOBAL -->\n' > "$1/.claude/CLAUDE.md"
+}
+seen_all_personal_rules "$HOME"
 
 echo "syntax"
 check "orion.sh parses" bash -n "$ORION"
@@ -296,6 +303,62 @@ newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
 rm -f "$P/.claude/orion/BASE_CLAUDE.md"
 check "verify fails when a core file is missing" eval '! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  core-files" "$SB/out"'
+newproj; init ask; rm -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+check "verify fails when the project copy of GLOBAL_CLAUDE.md is missing" eval '! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  core-files.*GLOBAL_CLAUDE.md" "$SB/out"'
+
+echo "personal rules (GLOBAL_CLAUDE.md is offered clause by clause; orion never writes the person's own file)"
+GLOBAL="$REPO/baselines/global/GLOBAL_CLAUDE.md"
+STAMP_RE='[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]Z'
+# One line per clause (every bullet or numbered item below the first "## " heading): "<date> <text>", or "BAD <line>"
+# for a clause without a valid date marker and for any other text among the clauses.
+clauses() {  # file
+    tr -d '\r' < "$1" | awk '
+        /^## / { s = 1; next }
+        !s || /^#/ || NF == 0 { next }
+        /^([-*]|[0-9]+\.) / && match($0, / <!-- orion:[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]Z -->$/) {
+            print substr($0, RSTART + 12, 17) " " substr($0, 1, RSTART - 1); next }
+        { print "BAD " $0 }'
+}
+check "GLOBAL_CLAUDE.md has clauses, each carrying a valid date marker" eval '[ -n "$(clauses "$GLOBAL")" ] && ! clauses "$GLOBAL" | grep -q "^BAD "'
+check "no clause is dated in the future (it would be offered again every day)" eval '[ -z "$(clauses "$GLOBAL" | awk -v now="$(date -u +%Y-%m-%dT%H:%MZ)" '"'"'$1 > now'"'"')" ]'
+# A clause changed or added against origin/main must carry a date newer than every clause there, or a person who
+# went through the old file would never be offered it. CI fetches origin/main before the suite.
+changed_clauses_are_newer() {
+    local old="$SB/global-main" newest
+    "$REAL_GIT" -C "$REPO" rev-parse -q --verify origin/main >/dev/null || { echo "    origin/main not found: fetch it first"; return 1; }
+    "$REAL_GIT" -C "$REPO" show origin/main:baselines/global/GLOBAL_CLAUDE.md > "$old" 2>/dev/null || return 0   # new file: every clause is new
+    newest="$(clauses "$old" | cut -d' ' -f1 | grep -x "$STAMP_RE" | LC_ALL=C sort | tail -n1)"
+    clauses "$old" | cut -d' ' -f2- > "$SB/global-main-texts"
+    clauses "$GLOBAL" | while IFS=' ' read -r d text; do
+        grep -qxF -- "$text" "$SB/global-main-texts" && continue
+        [[ "$d" > "$newest" ]] || { echo "    changed clause not dated after $newest: $text"; exit 1; }
+    done
+}
+check "every clause changed against origin/main is dated after every clause there" changed_clauses_are_newer
+GH="$SB/home-global"; mkdir -p "$GH"; PERSONAL="$GH/.claude/CLAUDE.md"
+NEWEST="$(clauses "$GLOBAL" | cut -d' ' -f1 | LC_ALL=C sort | tail -n1)"
+gl_check() { HOME="$GH" run_check "$@"; }
+asked_global() { grep -q "GLOBAL_CLAUDE.md" "$SB/hook"; }
+section() { mkdir -p "$GH/.claude"; printf '# my own rules\n\n- keep this\n\n# ORION GLOBAL — last updated %s\n<!-- /ORION GLOBAL -->\n' "$1" > "$PERSONAL"; }
+newproj; HOME="$GH" init ask
+check "right after init, the post-install message also offers the discussion" eval 'gl_check && grep -q orion-verify "$SB/hook" && asked_global && hook_out_ok "$SB/hook"'
+check "the project carries GLOBAL_CLAUDE.md, listed in the manifest" eval '[ -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md" ] && grep -qx "global/GLOBAL_CLAUDE.md" "$P/.claude/orion/.orion-manifest"'
+check "no ORION GLOBAL section yet: the discussion is offered, in one JSON line" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
+check "and the hook wrote no personal rules file" eval '[ ! -e "$PERSONAL" ]'
+check "it is offered once a day per computer" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global'
+printf '%s' "$(( $(date +%s) - 86401 ))" > "$XDG_CACHE_HOME/orion/global-offered"
+check "and offered again once that day has passed" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
+section 2000-01-01T00:00Z
+check "a clause newer than the section's timestamp is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
+section "$NEWEST"
+check "every clause as old as the timestamp or older: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
+section 2000-01-01T00:00Z; set_cfg updateMode '"off"'
+check "off mode never offers it" eval 'gl_check --force && [ ! -s "$SB/hook" ]'
+newproj; HOME="$GH" init off
+check "nor does the post-install message under off" eval 'gl_check && grep -q orion-verify "$SB/hook" && ! asked_global'
+set_cfg updateMode '"auto"'; cp "$PERSONAL" "$SB/personal-before"
+check "auto mode only offers it and never writes the person's file" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && cmp -s "$SB/personal-before" "$PERSONAL"'
+check "uninstall leaves the person's file byte for byte as it was" eval 'HOME="$GH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && cmp -s "$SB/personal-before" "$PERSONAL"'
 
 echo "config, manifest and copies"
 newproj
@@ -308,7 +371,7 @@ check "uninstall with Windows line endings in the manifest removes everything" e
 
 echo "status line (the project carries orion's copy; the computer's copy takes the newest only on the person's word)"
 # A computer of its own (HOME) and a source repository of its own, with commit times set by hand so "newer" is certain.
-SLH="$SB/home-sl"; SLFILE="$SLH/.claude/statusline/statusline.sh"; mkdir -p "$SLH" "$SB/home-none"
+SLH="$SB/home-sl"; SLFILE="$SLH/.claude/statusline/statusline.sh"; mkdir -p "$SLH" "$SB/home-none"; seen_all_personal_rules "$SLH"
 SLSRC="$SB/sl-src"; mkdir -p "$SLSRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$SLSRC/"
 sl_commit() { ( cd "$SLSRC" && "$REAL_GIT" -c core.autocrlf=false add . && GIT_COMMITTER_DATE="$1" GIT_AUTHOR_DATE="$1" "$REAL_GIT" commit -qm "$1" ); }
 sl_release() {  # date line text: a new orion release whose status line gains <text> after line <line>

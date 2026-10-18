@@ -25,6 +25,8 @@ jobs:
         run: |
           missing=$(grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md || true)
           if [ -n "$missing" ]; then echo "missing ORION - prefix:"; echo "$missing"; exit 1; fi
+      - name: Fetch main (the suite compares GLOBAL_CLAUDE.md's clause dates with origin/main)
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
       - name: Full suite (tests/run.sh)
         run: bash tests/run.sh
 

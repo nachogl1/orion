@@ -2,6 +2,8 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- orion now offers recommended personal rules for each person's own `~/.claude/CLAUDE.md` (`GLOBAL_CLAUDE.md`, copied into every project): the session start offers a walk-through once a day while a rule is new to that computer (never under `off`), the person accepts, skips or rewords each clause, and only the ORION GLOBAL section at the end of their file ever changes, on their word; the GLOBAL_CLAUDE.md PRD is folded into `PRD.md`.
+
 - `/orion-verify` is offered again each time orion's rules change on a computer (an update, an automatic update or a teammate's pull), and it now also checks the person's own rules file for clashes, so a rule change can no longer slip in unchecked.
 - The `GLOBAL_CLAUDE.md` PRD records its three answers: no skill (the agent follows steps in the file), `off` silences the offer, and the section sits at the end of the person's file.
 - CI on a pull request no longer waits about 4 minutes for the Windows job: it runs only the part of the suite that differs on Windows (`tests/run.sh --windows`), Ubuntu still runs it all, and a newer push cancels the older run, so parallel agents stop queueing behind slow checks.

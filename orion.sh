@@ -31,6 +31,7 @@
 #   .claude/orion/orion.sh            this script
 #   .claude/orion/BASE_CLAUDE.md      the mandatory rules, imported by CLAUDE.md
 #   .claude/orion/statusline/         the status line baseline each computer's copy follows
+#   .claude/orion/global/             GLOBAL_CLAUDE.md, the personal rules offered for ~/.claude/CLAUDE.md
 #   .claude/orion/VERSION             commit the files came from (and its commit time)
 #   .claude/orion/.orion-manifest     the list above
 # What orion creates ONCE and never touches again (yours):
@@ -66,7 +67,7 @@ say()  { printf '%s\n' "$*"; }
 warn() { printf 'orion: %s\n' "$*" >&2; }
 die()  { warn "$*"; exit 1; }
 
-usage() { sed -n '2,43p' "$0" 2>/dev/null || true; exit 0; }
+usage() { sed -n '2,44p' "$0" 2>/dev/null || true; exit 0; }
 
 # The documented install is `curl ... | bash`, so stdin is the script itself: a question is still possible
 # when the terminal can be opened directly (/dev/tty), which is what ask() reads from in that case.
@@ -508,16 +509,18 @@ apply_core() {  # source ref update-mode
     [ -f "$dir/ORION.md" ] && { rm -f "$dir/ORION.md"; say "  -    .claude/orion/ORION.md (the rules now live in BASE_CLAUDE.md)"; }
     # every project carries orion's status line, so each computer can follow the newest one it sees
     rm -rf "$dir/statusline"; cp -R "$SRC_DIR/baselines/statusline" "$dir/statusline"
+    # only the offer of orion's personal rules: nothing imports it, the person takes clauses on their word
+    rm -rf "$dir/global"; cp -R "$SRC_DIR/baselines/global" "$dir/global"
     # line 4, the source's commit time, tells a newer status line from an older one
     printf '%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" > "$dir/VERSION"
     { printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest"
-      ( cd "$SRC_DIR/baselines" && find statusline -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
+      ( cd "$SRC_DIR/baselines" && find statusline global -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
         printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s,\n  "worktreeLimit": %s\n}\n' \
             "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" "$WORKTREE_LIMIT_DEFAULT" > "$dir/config.json"
         say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT and worktreeLimit $WORKTREE_LIMIT_DEFAULT, a number or off)"
     fi
-    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/} @ $(short "$SRC_SHA")"
+    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/, global/} @ $(short "$SRC_SHA")"
 }
 
 # The project's own CLAUDE.md: created once with the project-specific slots the
@@ -830,8 +833,8 @@ cmd_update() {
     fetch_source "$source" "$ref"
     # the hint is printed only without --quiet, so an auto-update (capped at 10 s on older hooks) skips the cost
     local rules_before=""; [ "$quiet" = "1" ] || rules_before="$(rules_sum)"
-    # an update run by an older orion.sh copied neither the status line nor the commit time: redo it once
-    [ -d "$dir/statusline" ] || force=1
+    # an update run by an older orion.sh left out the status line, the commit time or the personal rules: redo it once
+    { [ -d "$dir/statusline" ] && [ -d "$dir/global" ]; } || force=1
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then
         say "orion is already at $(short "$current") - nothing to do (pass --force to re-copy anyway)"
         settings_raise_hook_timeout "$PROJECT/.claude/settings.json"
@@ -863,7 +866,7 @@ cmd_check() {
         esac
     done
     PROJECT="$(resolve_project "$project")" || exit 0
-    local dir="$PROJECT/.claude/orion" now ctx tidy pending pulled
+    local dir="$PROJECT/.claude/orion" now ctx tidy pending pulled global
     [ -f "$dir/VERSION" ] || exit 0
     pulled="$(check_pull_ctx)"
     # A fresh init leaves a one-shot marker: ask for the post-install check instead of an update.
@@ -873,13 +876,15 @@ cmd_check() {
         rm -f "$pending" 2>/dev/null || true
         rules_mark
         ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
+        global="$(check_global_ctx 1 "$(date +%s)")"
+        [ -n "$global" ] && ctx="$ctx After /orion-verify: $global"
         [ -n "$pulled" ] && ctx="$ctx After that: $pulled"
         printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
         exit 0
     fi
     now=$(date +%s)
     ctx="$(check_update_ctx "$force" "$now")"
-    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
+    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_global_ctx "$force" "$now")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
     done
@@ -907,8 +912,8 @@ check_update_ctx() {  # force now
     current="$(version_sha "$dir/VERSION")"
     latest="$(latest_sha "$source" "$ref")"
     [ -n "$latest" ] || return 0
-    # same commit, but an update run by an older orion.sh left out the status line copy: offer it once more
-    [ "$latest" = "$current" ] && [ -d "$dir/statusline" ] && return 0
+    # same commit, but an update run by an older orion.sh left out the status line or personal rules copy: offer it once more
+    [ "$latest" = "$current" ] && [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && return 0
     case "$mode" in
         auto)
             # A process of its own: a failed fetch ends only that process (this hook still answers and
@@ -954,6 +959,46 @@ check_statusline_ctx() {
     elif [ "$sync" = "offer" ]; then
         printf '%s' "orion's status line has changed, and the copy on this computer (~/.claude/statusline) carries the user's own edits, so it was not replaced. Ask the user with the AskUserQuestion tool whether to merge orion's new status line changes into theirs (options: 'Merge them in' recommended, 'Keep mine as it is'). If yes, run 'bash .claude/orion/orion.sh statusline merge' from the project root: it keeps their edits (a copy installed before orion could merge is saved to ~/.claude/statusline.bak and replaced), and if it reports lines both changed, resolve the conflict markers in the named files with the user. If no, run 'bash .claude/orion/orion.sh statusline skip' so this version is not offered again."
     fi
+}
+
+# --------------------------------------------------------------------------
+# personal rules (offered, never written). Every project carries orion's GLOBAL_CLAUDE.md in .claude/orion/global;
+# what the person accepts lives in the ORION GLOBAL section at the end of their own ~/.claude/CLAUDE.md, whose
+# heading timestamp is the only record of what was offered. orion.sh only reads that file.
+# --------------------------------------------------------------------------
+GLOBAL_DATE_RE='[0-9]\{4\}-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]Z'
+global_copy() { printf '%s' "$PROJECT/.claude/orion/global/GLOBAL_CLAUDE.md"; }
+personal_rules() { printf '%s' "$HOME/.claude/CLAUDE.md"; }
+
+# The timestamp on the person's ORION GLOBAL heading line, or nothing when there is no section.
+global_stamp() {
+    local f; f="$(personal_rules)"
+    [ -f "$f" ] || return 0
+    tr -d '\r' < "$f" | sed -n "s/^# ORION GLOBAL.* last updated \($GLOBAL_DATE_RE\).*/\1/p" | head -n1
+}
+
+# How many clauses of the project's GLOBAL_CLAUDE.md are dated after that timestamp (all of them without one).
+# The ISO dates share one fixed width, so comparing them as text compares them in time.
+global_newer() {
+    local f; f="$(global_copy)"
+    [ -f "$f" ] || { printf '0'; return 0; }
+    tr -d '\r' < "$f" | sed -n "s/.* <!-- orion:\($GLOBAL_DATE_RE\) -->\$/\1/p" | awk -v t="$(global_stamp)" '$0 > t { n++ } END { print n+0 }'
+}
+
+# Local only: offer the personal rules discussion while a clause is newer than the person's section, at most once a
+# day per computer (any project) and never under updateMode off, in any other mode only offered. Prints the context or nothing.
+check_global_ctx() {  # force now
+    local n stamp last
+    [ "$(config_get "$PROJECT/.claude/orion/config.json" updateMode ask)" = "off" ] && return 0
+    n="$(global_newer)"
+    [ "$n" -gt 0 ] 2>/dev/null || return 0
+    stamp="${XDG_CACHE_HOME:-$HOME/.cache}/orion/global-offered"
+    if [ "$1" != "1" ] && [ -f "$stamp" ]; then
+        last=$(cat "$stamp" 2>/dev/null || echo 0)
+        [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
+    fi
+    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
+    printf '%s' "orion recommends personal rules for the user's own rules file (~/.claude/CLAUDE.md), and $n of them have not been offered on this computer yet. Ask the user with the AskUserQuestion tool whether to go through them now (options: 'Go through them now' recommended, 'Not now'). If yes, follow the steps at the top of .claude/orion/global/GLOBAL_CLAUDE.md exactly as written: the user's file changes only inside its ORION GLOBAL section and only on their word. If no, continue with their request: it is offered again tomorrow, and the user can ask to go through orion's personal rules any time."
 }
 
 # Every session: bring the branch the session opens on up to date with its remote copy, fast-forward only, as
@@ -1068,7 +1113,8 @@ cmd_uninstall() {
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"
     rm -f "$(cache_file verify-pending)" "$(cache_file rules-checked)" 2>/dev/null || true
-    say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone."
+    say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone,"
+    say "and so was your own ~/.claude/CLAUDE.md: the personal rules you accepted are yours."
 }
 
 # The answer to the session-start status line offer: take orion's changes (merged into an edited copy), or skip this version.
@@ -1112,8 +1158,8 @@ cmd_verify() {
 
     # 1. the files orion owns
     n=""
-    for f in orion.sh BASE_CLAUDE.md VERSION .orion-manifest config.json; do [ -f "$dir/$f" ] || n="$n $f"; done
-    if [ -z "$n" ]; then v_ok core-files ".claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, .orion-manifest, config.json} present"
+    for f in orion.sh BASE_CLAUDE.md VERSION .orion-manifest config.json global/GLOBAL_CLAUDE.md; do [ -f "$dir/$f" ] || n="$n $f"; done
+    if [ -z "$n" ]; then v_ok core-files ".claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, .orion-manifest, config.json, global/GLOBAL_CLAUDE.md} present"
     else v_fail core-files "missing in .claude/orion:$n (fix: bash .claude/orion/orion.sh update --force, or init if orion.sh itself is gone)"; fi
     mode="$(config_get "$cfg" updateMode ask)"
     case "$mode" in ask|auto|off) v_ok config-update-mode "updateMode is '$mode'" ;;
