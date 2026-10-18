@@ -166,6 +166,8 @@ flush_wt() {
     elif [ "$wt_prunable" = "1" ]; then
         if protected_folder "$wt_path" || { [ -n "$wt_branch" ] && protected_branch "$wt_branch"; }; then
             item wt-protected "$n" keep "an audit, QA or protected worktree entry whose folder is gone (never touched)" ""
+        elif [ "$wt_detached" = "1" ] && ! { [ -n "$wt_head" ] && reachable "$wt_head"; }; then
+            item wt-active "$n" keep "its folder is gone, but it was on no branch with commits no branch holds (removing it would lose them)" ""
         else
             item wt-prunable "$n" auto "registered as a worktree but its folder is gone" "git -C \"$MAIN\" worktree remove --force \"$wt_path\""
         fi

@@ -183,14 +183,17 @@ fetch_source() {  # source ref
 }
 
 # Run a command for at most N seconds, so the session-start hook ends inside its HOOK_TIMEOUT. Git never
-# waits on a password, passphrase or host-key prompt and gives up on an unreachable SSH host after 5 s;
-# without timeout or gtimeout (macOS has neither) git also aborts a stalled transfer.
+# waits on a password prompt; with no SSH command of the person's own (GIT_SSH_COMMAND, GIT_SSH or
+# core.sshCommand), plain ssh never waits on a passphrase or host-key prompt and gives up on an unreachable
+# host after 5 s. Without timeout or gtimeout (macOS has neither) git also aborts a stalled transfer.
 limited() {  # seconds command...
     local s="$1"; shift
-    local ssh="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes -o ConnectTimeout=5}"
-    if have timeout; then GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh" timeout "$s" "$@"
-    elif have gtimeout; then GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh" gtimeout "$s" "$@"
-    else GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="$ssh" GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
+    if [ -z "${GIT_SSH_COMMAND:-}${GIT_SSH:-}" ] && ! git -C "${PROJECT:-.}" config core.sshCommand >/dev/null 2>&1; then
+        set -- env GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=5" "$@"
+    fi
+    if have timeout; then GIT_TERMINAL_PROMPT=0 timeout "$s" "$@"
+    elif have gtimeout; then GIT_TERMINAL_PROMPT=0 gtimeout "$s" "$@"
+    else GIT_TERMINAL_PROMPT=0 GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
 }
 
 latest_sha() {  # source ref -> prints sha or nothing

@@ -202,6 +202,7 @@ done
 "$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/wt-lost" && "$REAL_GIT" -C "$SB/wt/wt-lost" commit -q --allow-empty -m "only here"
 "$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/wt-gone" && rm -rf "$SB/wt/wt-gone"
 "$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/audit-gone" && rm -rf "$SB/wt/audit-gone"
+"$REAL_GIT" -C "$P" worktree add -q --detach "$SB/wt/lost-gone" && "$REAL_GIT" -C "$SB/wt/lost-gone" commit -q --allow-empty -m "only there" && rm -rf "$SB/wt/lost-gone"
 mkdir -p "$SB/wt/old-dir" "$SB/wt/old-busy" && : > "$SB/wt/old-busy/fresh.txt" && touch -t 200001010000 "$SB/wt/old-dir" "$SB/wt/old-busy"
 bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt" > "$SB/scan"
 item_is() { awk -F'\t' -v g="$1" -v n="$2" -v a="$3" '$1=="ITEM" && $2==g && $3 ~ n && $4==a { f=1 } END { exit !f }' "$SB/scan"; }
@@ -214,19 +215,20 @@ check "a locked worktree is asked about, never deleted unasked" item_is wt-done 
 check "a worktree on no branch holding commits nothing else has is kept" item_is wt-active 'wt-lost$' keep
 check "a worktree entry whose folder is gone is removed alone, not with a global prune" eval 'item_is wt-prunable "wt-gone$" auto && grep "^ITEM	wt-prunable	[^	]*wt-gone" "$SB/scan" | grep -q "worktree remove --force"'
 check "an audit worktree entry whose folder is gone is kept" item_is wt-protected 'audit-gone$' keep
+check "an entry whose folder is gone, holding commits no branch has, is kept" item_is wt-active 'lost-gone$' keep
 check "a leftover folder in the worktree root is asked about" item_is root-orphan 'old-dir$' ask
 check "a folder with a recently changed file inside is kept" item_is root-recent 'old-busy$' keep
 check "unmerged work is kept, with no command" eval 'item_is br-unmerged "^mine-wip$" keep && ! awk -F"\t" '"'"'$3=="mine-wip" && $6!=""'"'"' "$SB/scan" | grep -q .'
 check "the audit worktree is kept, with its reason" eval 'item_is wt-protected "audit-dev$" keep && grep -q "^ITEM	wt-protected	.*audit-dev	.*audit/dev" "$SB/scan"'
 check "the QA worktree is kept, never offered" eval 'item_is wt-protected "qa-20000101-000000$" keep && ! grep -q "^ITEM	wt-[a-z]*	[^	]*qa-20000101-000000	[^	]*	[^	]*	." "$SB/scan"'
 check "no command in the scan touches an audit or qa branch" eval '! grep -q "branch -D \"audit/" "$SB/scan" && ! awk -F"\t" '"'"'$1=="ITEM" && $3 ~ /(^|\/)qa\// && $6!=""'"'"' "$SB/scan" | grep -q .'
-check "the scanner counts worktrees" eval 'grep -q "^COUNT	.*worktrees=8 " "$SB/scan"'
+check "the scanner counts worktrees" eval 'grep -q "^COUNT	.*worktrees=9 " "$SB/scan"'
 check "the summary counts auto, ask and keep" eval 'grep -q "^SUMMARY	auto=[0-9]* ask=[1-9][0-9]* keep=[1-9][0-9]*$" "$SB/scan"'
-set_cfg branchLimit 99; set_cfg worktreeLimit 8
-check "the hook offers the tidy-up at 8 worktrees" eval 'run_check --force && grep -q "has 8 git worktrees" "$SB/hook" && hook_out_ok "$SB/hook"'
-check "status shows the worktree count" eval 'bash "$ORION" status --project "$P" | grep -q "worktrees now: 8"'
+set_cfg branchLimit 99; set_cfg worktreeLimit 9
+check "the hook offers the tidy-up at 9 worktrees" eval 'run_check --force && grep -q "has 9 git worktrees" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "status shows the worktree count" eval 'bash "$ORION" status --project "$P" | grep -q "worktrees now: 9"'
 check "verify reads the worktree limit" eval 'bash "$ORION" verify --project "$P" | grep -q "ok    config-worktree-limit"'
-set_cfg worktreeLimit 9
+set_cfg worktreeLimit 10
 check "below both limits: silent" eval 'run_check --force && [ ! -s "$SB/hook" ]'
 
 echo "check pulls the branch the session opens on (fast-forward only, every session)"
