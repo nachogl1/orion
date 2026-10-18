@@ -71,7 +71,7 @@ flowchart TD
     reconcile -.-> backlog
 ```
 
-A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/clear-git-resources` tidies up the branches, worktrees and leftover files the loop leaves behind (it lists what looks stale, says what deleting each one would lose, and deletes only what you agree to; the session-start hook offers it once the project has 20 or more branches), `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
+A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/clear-git-resources` tidies up the branches, worktrees and leftover files the loop leaves behind (it deletes your own stale leftovers whose work is already safe, asks before deleting anyone else's, and never touches unfinished work; the session-start hook offers it once the project has 20 or more branches or 20 or more worktrees), `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
 
 ## Install
 
@@ -108,7 +108,7 @@ orion checks for a newer version when you start a session and asks whether you w
 
 The status bar is offered too: once a newer one reaches the project, everyone is asked at their next session start whether to take it, even with automatic updates on. If you changed your own status bar, saying yes merges the new changes into yours and keeps your edits.
 
-If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`. The same file holds `branchLimit` (20 by default): once the project has that many branches, local and remote together, the session start offers the `/clear-git-resources` tidy-up; set it higher, or to `off`, if you prefer not to be asked.
+If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`. The same file holds `branchLimit` and `worktreeLimit` (20 each by default): once the project has that many branches (local and remote together) or that many worktrees, the session start offers the `/clear-git-resources` tidy-up; set them higher, or to `off`, if you prefer not to be asked. Every session also starts by pulling the latest commits of the branch you are on, only when that can be done without a merge; if it cannot, you are told in one line.
 
 ## License
 

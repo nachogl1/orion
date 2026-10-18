@@ -11,7 +11,8 @@
 #   orion.sh init      [--source <git url|path>] [--ref <branch>] [--update-mode ask|auto|off]
 #                      [--statusline|--no-statusline] [--force]
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
-#   orion.sh check     [--force]        # session-start hook: newer orion? too many branches? (once a day each)
+#   orion.sh check     [--force]        # session-start hook: pull the branch (every session); newer orion?
+#                                       # too many branches or worktrees? (once a day each)
 #   orion.sh verify                     # mechanical post-install checks, one line per finding, no fixes
 #   orion.sh status                     # what is installed, which version, which update mode
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
@@ -36,8 +37,9 @@
 #   CLAUDE.md                         created with the project-specific slots if missing; otherwise
 #                                     only the import line for BASE_CLAUDE.md is added at the top
 #   .claude/orion/config.json         updateMode: ask | auto | off (chosen during init), source/ref, and
-#                                     branchLimit (default 20, or off): the branch count at which the
-#                                     session-start hook offers /clear-git-resources
+#                                     branchLimit and worktreeLimit (default 20 each, or off): the branch
+#                                     or worktree count at which the session-start hook offers
+#                                     /clear-git-resources
 #   .claude/settings.json             one SessionStart hook entry is added (removed on uninstall)
 
 set -euo pipefail
@@ -49,11 +51,13 @@ IMPORT_LINE="Mandatory rules, owned and refreshed by orion (never edit the copy)
 OLD_IMPORT_LINE="@.claude/orion/ORION.md"   # what orion wrote before the rules moved to BASE_CLAUDE.md
 HOOK_NEEDLE="/.claude/orion/orion.sh"
 HOOK_CMD='bash "${CLAUDE_PROJECT_DIR}/.claude/orion/orion.sh" check'
-# The session-start hook's time budget in seconds: 8 s update check + 10 s fetch + copying the files, which
-# under Git Bash on Windows alone can take over 10 s. Installs that carry a lower value are raised on update.
+# The session-start hook's time budget in seconds: 8 s pull fetch + 8 s update check + 10 s fetch + copying the
+# files, which under Git Bash on Windows alone can take over 10 s. Installs that carry a lower value are raised
+# on update.
 HOOK_TIMEOUT=60
 CHECK_INTERVAL_SECONDS=86400
 BRANCH_LIMIT_DEFAULT=20
+WORKTREE_LIMIT_DEFAULT=20
 
 # --------------------------------------------------------------------------
 # helpers
@@ -62,7 +66,7 @@ say()  { printf '%s\n' "$*"; }
 warn() { printf 'orion: %s\n' "$*" >&2; }
 die()  { warn "$*"; exit 1; }
 
-usage() { sed -n '2,41p' "$0" 2>/dev/null || true; exit 0; }
+usage() { sed -n '2,43p' "$0" 2>/dev/null || true; exit 0; }
 
 # The documented install is `curl ... | bash`, so stdin is the script itself: a question is still possible
 # when the terminal can be opened directly (/dev/tty), which is what ask() reads from in that case.
@@ -119,6 +123,15 @@ branch_count() {  # project-dir
     git -C "$1" for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null | grep -vc '/HEAD$' || true
 }
 
+# The worktree count they share: every worktree but the main checkout, entries whose folder is gone included.
+# scan.sh runs this exact expression for its worktree total: change both together.
+worktree_count() {  # project-dir
+    local n
+    n=$(git -C "$1" worktree list --porcelain 2>/dev/null | grep -c '^worktree ' || true)
+    [ "${n:-0}" -gt 0 ] && n=$((n-1))
+    printf '%s' "${n:-0}"
+}
+
 version_sha() { sed -n '1p' "$1" 2>/dev/null || true; }
 
 short() { printf '%s' "${1:0:7}"; }
@@ -170,9 +183,14 @@ fetch_source() {  # source ref
 }
 
 # Run a command for at most N seconds, so the session-start hook ends inside its HOOK_TIMEOUT. Git never
-# waits on a password prompt; without timeout or gtimeout (macOS has neither) git aborts a stalled transfer.
+# waits on a password prompt; with no SSH command of the person's own (GIT_SSH_COMMAND, GIT_SSH or
+# core.sshCommand), plain ssh never waits on a passphrase or host-key prompt and gives up on an unreachable
+# host after 5 s. Without timeout or gtimeout (macOS has neither) git also aborts a stalled transfer.
 limited() {  # seconds command...
     local s="$1"; shift
+    if [ -z "${GIT_SSH_COMMAND:-}${GIT_SSH:-}" ] && ! git -C "${PROJECT:-.}" config core.sshCommand >/dev/null 2>&1; then
+        set -- env GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=5" "$@"
+    fi
     if have timeout; then GIT_TERMINAL_PROMPT=0 timeout "$s" "$@"
     elif have gtimeout; then GIT_TERMINAL_PROMPT=0 gtimeout "$s" "$@"
     else GIT_TERMINAL_PROMPT=0 GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
@@ -474,9 +492,9 @@ apply_core() {  # source ref update-mode
     { printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest"
       ( cd "$SRC_DIR/baselines" && find statusline -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
-        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s\n}\n' \
-            "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" > "$dir/config.json"
-        say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT, a number or off)"
+        printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s,\n  "worktreeLimit": %s\n}\n' \
+            "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" "$WORKTREE_LIMIT_DEFAULT" > "$dir/config.json"
+        say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT and worktreeLimit $WORKTREE_LIMIT_DEFAULT, a number or off)"
     fi
     say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/} @ $(short "$SRC_SHA")"
 }
@@ -822,20 +840,22 @@ cmd_check() {
         esac
     done
     PROJECT="$(resolve_project "$project")" || exit 0
-    local dir="$PROJECT/.claude/orion" now ctx tidy pending
+    local dir="$PROJECT/.claude/orion" now ctx tidy pending pulled
     [ -f "$dir/VERSION" ] || exit 0
+    pulled="$(check_pull_ctx)"
     # A fresh init leaves a one-shot marker: ask for the post-install check instead of an update.
     # Without the /orion-verify skill there is nothing to ask for, so the marker waits for it (or for `verify`).
     pending="$(cache_file verify-pending)"
     if [ -f "$pending" ] && [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ]; then
         rm -f "$pending" 2>/dev/null || true
         ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
+        [ -n "$pulled" ] && ctx="$ctx After that: $pulled"
         printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
         exit 0
     fi
     now=$(date +%s)
     ctx="$(check_update_ctx "$force" "$now")"
-    for tidy in "$(check_statusline_ctx)" "$(check_branches_ctx "$force" "$now")"; do
+    for tidy in "$(check_statusline_ctx)" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
     done
@@ -901,23 +921,54 @@ check_statusline_ctx() {
     fi
 }
 
-# The daily branch-count check behind /clear-git-resources: only when that skill is installed, only
-# from the local ref store (no network), silent below the limit. Prints the context or nothing.
+# Every session: bring the branch the session opens on up to date with its remote copy, fast-forward only, as
+# `git pull --ff-only` does (never a merge commit, never a rebase). Only the fetch is time-limited, so a slow
+# network can never cut the checkout short. Silent when it pulled, had nothing to pull, could not reach the
+# remote, or the session is on no branch or a branch with no remote copy; prints the context when refused.
+check_pull_ctx() {
+    local branch out
+    have git || return 0
+    branch="$(git -C "$PROJECT" symbolic-ref -q --short HEAD 2>/dev/null)" || return 0
+    git -C "$PROJECT" config "branch.$branch.remote" >/dev/null 2>&1 || return 0
+    limited 8 git -C "$PROJECT" fetch --quiet </dev/null >/dev/null 2>&1 || true
+    git -C "$PROJECT" rev-parse -q --verify '@{upstream}' >/dev/null 2>&1 || return 0
+    # merge.autoStash off: a pull blocked by local changes is refused and reported, never stashed
+    out="$(git -c merge.autoStash=false -C "$PROJECT" merge --ff-only --quiet '@{upstream}' </dev/null 2>&1)" && return 0
+    out="$(printf '%s' "$out" | grep -v '^[[:space:]]*$' | head -n1 | tr -d '\000-\037')"
+    printf '%s' "At session start, git pull --ff-only on branch $(json_escape "$branch") was refused, so the branch may be behind its remote copy (git said: $(json_escape "$out")). Tell the user in one line; never force, rebase or reset the branch to fix it."
+}
+
+# A limit from config.json: the number, or nothing when it is off (a value that is not a number falls back to the default).
+limit_of() {  # key default
+    local v
+    v="$(config_get "$PROJECT/.claude/orion/config.json" "$1" "$2")"
+    case "$v" in off|0) ;; *[!0-9]*|"") printf '%s' "$2" ;; *) printf '%s' "$v" ;; esac
+}
+
+# The daily branch- and worktree-count check behind /clear-git-resources: only when that skill is installed,
+# local only (no network), silent below both limits. Prints the context or nothing.
 check_branches_ctx() {  # force now
-    local cfg="$PROJECT/.claude/orion/config.json" limit stamp last n
+    local blimit wlimit stamp last n w over=""
     [ -f "$PROJECT/.claude/skills/clear-git-resources/SKILL.md" ] || return 0
     have git || return 0
-    limit="$(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")"
-    case "$limit" in off|0) return 0 ;; *[!0-9]*|"") limit="$BRANCH_LIMIT_DEFAULT" ;; esac
+    blimit="$(limit_of branchLimit "$BRANCH_LIMIT_DEFAULT")"; wlimit="$(limit_of worktreeLimit "$WORKTREE_LIMIT_DEFAULT")"
+    [ -n "$blimit$wlimit" ] || return 0
     stamp="$(cache_file branches-check)"
     if [ "$1" != "1" ] && [ -f "$stamp" ]; then
         last=$(cat "$stamp" 2>/dev/null || echo 0)
         [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
     fi
-    n="$(branch_count "$PROJECT")"
-    [ "${n:-0}" -ge "$limit" ] 2>/dev/null || return 0
+    n="$(branch_count "$PROJECT")"; w="$(worktree_count "$PROJECT")"
+    if [ -n "$blimit" ] && [ "${n:-0}" -ge "$blimit" ] 2>/dev/null; then
+        over="has $n git branches (local plus remote-tracking; the limit is $blimit, branchLimit)"
+    fi
+    if [ -n "$wlimit" ] && [ "${w:-0}" -ge "$wlimit" ] 2>/dev/null; then
+        [ -n "$over" ] && over="$over and "
+        over="${over}has $w git worktrees (the limit is $wlimit, worktreeLimit)"
+    fi
+    [ -n "$over" ] || return 0
     mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
-    printf '%s' "This project has $n git branches (local plus remote-tracking), at or above the limit of $limit set as branchLimit in .claude/orion/config.json. Before anything else, ask the user with the AskUserQuestion tool whether to tidy up now (options: 'Show me what can go' recommended, 'Not now'). If they say yes, run the /clear-git-resources skill (.claude/skills/clear-git-resources/SKILL.md) exactly as written: it lists the stale worktrees, branches and leftover files in plain words and deletes only what the user agrees to. If they say no, continue with their request and do not mention it again this session."
+    printf '%s' "This project $over, set in .claude/orion/config.json. Before anything else, ask the user with the AskUserQuestion tool whether to tidy up now (options: 'Tidy up now' recommended, 'Not now'). If they say yes, run the /clear-git-resources skill (.claude/skills/clear-git-resources/SKILL.md) exactly as written: it deletes the user's own stale worktrees and branches whose work cannot be lost by itself, asks before deleting anyone else's stale ones, and never touches unmerged work or the audit and QA resources. If they say no, continue with their request and do not mention it again this session."
 }
 
 cmd_status() {
@@ -931,6 +982,7 @@ cmd_status() {
     say "source:     $(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"
     say "updateMode: $(config_get "$cfg" updateMode ask)   (edit .claude/orion/config.json: ask | auto | off)"
     say "branchLimit: $(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")   (branches now: $(branch_count "$PROJECT"); the hook offers /clear-git-resources at the limit; a number or off)"
+    say "worktreeLimit: $(config_get "$cfg" worktreeLimit "$WORKTREE_LIMIT_DEFAULT")   (worktrees now: $(worktree_count "$PROJECT"); the hook offers /clear-git-resources at the limit; a number or off)"
     shopt -s nullglob
     for entry in "$PROJECT"/.claude/skills/*/; do
         [ -f "${entry%/}/$MARKER" ] && { say "skill:      $(basename "$entry")"; n=$((n+1)); }
@@ -1032,9 +1084,15 @@ cmd_verify() {
         *) v_fail config-update-mode "updateMode is '$mode' in .claude/orion/config.json; must be ask, auto or off" ;; esac
     mode="$(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")"
     case "$mode" in
-        off) v_ok config-branch-limit "branchLimit is off (the hook never offers /clear-git-resources)" ;;
+        off) v_ok config-branch-limit "branchLimit is off (the hook never offers /clear-git-resources for branches)" ;;
         ""|*[!0-9]*) v_fail config-branch-limit "branchLimit is '$mode' in .claude/orion/config.json; must be a whole number or off" ;;
         *) v_ok config-branch-limit "branchLimit is $mode (branches now: $(branch_count "$PROJECT"))" ;;
+    esac
+    mode="$(config_get "$cfg" worktreeLimit "$WORKTREE_LIMIT_DEFAULT")"
+    case "$mode" in
+        off) v_ok config-worktree-limit "worktreeLimit is off (the hook never offers /clear-git-resources for worktrees)" ;;
+        ""|*[!0-9]*) v_fail config-worktree-limit "worktreeLimit is '$mode' in .claude/orion/config.json; must be a whole number or off" ;;
+        *) v_ok config-worktree-limit "worktreeLimit is $mode (worktrees now: $(worktree_count "$PROJECT"))" ;;
     esac
     [ ! -f "$cfg" ] || json_valid "$cfg" || v_fail config-json ".claude/orion/config.json is not valid JSON"
 
