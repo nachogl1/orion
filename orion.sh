@@ -645,6 +645,12 @@ statusline_merge() {
         say "status line: replaced with orion's newest; your old copy is in ~/.claude/statusline.bak - carry over any change of your own from there"
         return
     fi
+    if [ "$(tree_sum "$dest")" = "$(tree_sum "$dest/$SL_BASE")" ]; then
+        # no edits of the person's own (line endings aside): nothing to keep, take orion's as it is
+        sl_seed "$src" "$t"
+        say "status line: orion's newest taken"
+        return
+    fi
     have git || die "git is required to merge the status line"
     new="$(mktemp)"
     while IFS= read -r f; do

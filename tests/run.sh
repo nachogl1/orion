@@ -229,7 +229,9 @@ check "a newer baseline is offered to an unedited copy in one JSON line, never t
 set_cfg updateMode '"auto"'
 check "auto mode still only offers it" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && grep -q "Take it" "$SB/hook" && ! grep -q "^# orion v2" "$SLFILE"'
 set_cfg updateMode '"off"'
-check "statusline merge takes it for an unedited copy" eval 'sl_cmd merge && grep -q "^# orion v2" "$SLFILE" && sl_check --force && [ ! -s "$SB/hook" ]'
+awk '{ printf "%s
+", $0 }' "$SLFILE" > "$SB/crlf" && cat "$SB/crlf" > "$SLFILE"   # saved by a Windows editor: still unedited
+check "statusline merge takes it for an unedited copy, Windows line endings and all" eval 'sl_cmd merge && grep -q "^# orion v2" "$SLFILE" && ! grep -q "<<<<<<<" "$SLFILE" && sl_check --force && [ ! -s "$SB/hook" ]'
 check "without Windows line endings, so bash can still run it" eval '! grep -q "$(printf "\r")" "$SLFILE"'
 sl_put "$SB/sl-v1" "$T1"
 check "an older project never steps the computer's copy back" eval 'sl_check --force && [ ! -s "$SB/hook" ] && grep -q "^# orion v2" "$SLFILE"'
