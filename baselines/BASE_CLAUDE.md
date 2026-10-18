@@ -62,8 +62,11 @@
 - **Every new issue, whoever files it, follows `.claude/skills/dev-next/references/new-issue.md`**: body headings,
   labels, the native parent and blocking links with their read-back checks. A person writing a ticket by hand follows
   the same file; there is no separate issue template to keep in step. **A change wanted now that has no ticket goes
-  through `/dev-quick`**: it interviews until nothing is left to ask, files the issue to that shape and hands it to
-  `/dev-next` — never built by hand in the chat.
+  through `/dev-quick`**: it files the issue to that shape and hands it to `/dev-next` — never built by hand in the
+  chat. **When the person asks for a code change in chat without starting a skill, ask once whether to ship it with
+  `/dev-quick`** (only when `.claude/skills/dev-quick/` is installed and no gate command reads `TBD`): yes runs it end
+  to end, merging on green with no further questions (it interviews only when the request is unclear); no means no
+  change is made, by hand or otherwise.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
   `### References`.
@@ -125,7 +128,8 @@ PRD wins on product, the rules files win on process.
   **"Should we update the PRD with this too?"**, one line per change naming the PRD section it touches. "No" ends it;
   "yes" ships the PRD edit in the pull request the work already has, or in a `docs(prd)` pull request when the work
   was only tickets. The dev skill's mechanical writes — labels, claim comments, `## Decisions (agent-ready)`,
-  `Critical:` issues, closing — never trigger the question.
+  `Critical:` issues, closing — never trigger the question, nor does `/dev-quick`'s fast path, which runs only when
+  nothing the PRD describes changes.
 
 ## Git
 
@@ -239,7 +243,8 @@ PRD wins on product, the rules files win on process.
 - `/prd-to-tickets` turns a PRD under `docs/PRDs/` into epics and stories with the person present: existing open
   issues become blockers, never duplicates; both blocker forms are set and read back; nothing is filed `agent-ready`
   with a question left.
-- `/dev-quick` turns a change wanted now, with no ticket yet, into an `agent-ready` issue and hands it to `/dev-next`.
+- `/dev-quick` turns a change wanted now, with no ticket yet, into an `agent-ready` issue and hands it to `/dev-next`;
+  agents offer it for every code change asked for in chat.
 - `/dev-next` takes the next free story end to end: claim, build in a worktree, fresh-agent review, merge on green,
   close, report.
 - `/issue-map` draws the blocked-by graph of every issue, level by level, into `docs/issue_map/issue_map.html` — a

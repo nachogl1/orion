@@ -1,8 +1,7 @@
 ---
 name: dev-quick
-description: ORION - Turn a change you want right now, with no ticket yet, into an agent-ready GitHub issue and ship it end to end. Interviews you until nothing is left to ask, lists anything you must prepare first (a secret in .env, a service, a decision from someone else), files the issue per the dev-next issue shape, then hands it to /dev-next as the engine — claim, worktree, fresh-agent review, merge on green CI, close, audit — with no further questions. Works with GitHub Issues only, like dev-next. Use when the user types /dev-quick, or says "I want to change this now, there is no ticket for it".
+description: ORION - Turn a change you want right now, with no ticket yet, into an agent-ready GitHub issue and ship it end to end. A clear request ships with no questions; an unclear one gets an interview until nothing is left to ask, a list of anything you must prepare first (a secret in .env, a service, a decision from someone else) and one look at the draft. It files the issue per the dev-next issue shape, then hands it to /dev-next as the engine — claim, worktree, fresh-agent review, merge on green CI, close, audit — with no further questions. Works with GitHub Issues only, like dev-next. Use when the user types /dev-quick, says "I want to change this now, there is no ticket for it", or says yes when offered /dev-quick for a code change asked for in chat.
 argument-hint: "What you want changed, in your own words"
-disable-model-invocation: true
 ---
 
 # /dev-quick
@@ -20,7 +19,8 @@ sub-skill on the issue this skill files. Nothing in that pipeline is copied here
 
 **The human is in the loop until the issue is filed, and never after.** Three things happen with you present: the
 interview (as many rounds as it takes until there is nothing left to ask), the ground preparation (things only you can
-do before an agent starts), and one look at the drafted issue before it is filed. From the moment `/dev-next` takes
+do before an agent starts), and one look at the drafted issue before it is filed — none of them when the request is
+already clear (*The fast path* below). From the moment `/dev-next` takes
 over, the run is autonomous: anything it cannot resolve becomes `needs-human` on the issue, and you hear about it in
 the close-out, not mid-run.
 
@@ -38,7 +38,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 
 | Form | Meaning |
 |---|---|
-| `/dev-quick <what you want>` | One change, in your own words — a sentence or a pasted paragraph. The interview starts from it. |
+| `/dev-quick <what you want>` | One change, in your own words — a sentence or a pasted paragraph. The interview starts from it, unless it takes the fast path. |
 | `/dev-quick` | No words yet → the first question is "What do you want changed?", then the interview as below. |
 
 **One change per run.** A description that turns out to hold two independent changes is split into two issues, each
@@ -57,6 +57,23 @@ decision nobody has made, it is not quick:
   stories.
 - Offer the one honest alternative: file **only the first story** now, if it stands on its own and is useful alone,
   and leave the rest to planning. Never file the whole thing as one over-sized `agent-ready` issue.
+
+## The fast path — a clear request ships with no questions
+
+The interview exists to remove guesses, not to slow down a change that holds none. After phase 1, take the fast path
+**only when every one of these holds**; one doubt means the full path, as below:
+
+- The request is **one** change: nothing to split (*One change per run* above).
+- Every phase 2 category — goal, scope, seam, acceptance criteria, blockers, epic, evidence — is evident from the
+  request, the code and the project's `CLAUDE.md`, with **one** epic that clearly fits and no open blocker.
+- The seam check of phase 2 (*Seam*: another open story on that folder) runs and finds nothing.
+- No risk item (phase 2, *Risk*), no standing-rule hit, nothing to prepare (phase 3), and nothing the PRD describes
+  changes.
+
+Then say so in one line ("Clear request: filing and shipping it with no questions"), skip the phase 2 questions and
+phase 3, and in phase 4 skip the draft look (step 4) and the PRD question (step 6). `## Decisions (agent-ready)` still
+records every category, each answer followed by where it was evident from. The dedupe pass of phase 1 runs as always,
+and phase 5 runs unchanged.
 
 ## Roles
 
@@ -111,6 +128,8 @@ A question grounded in the code is answerable; a question asked blind gets a gue
    the first-story-only alternative.
 
 ## Phase 2 — The interview: every question, nothing left to ask
+
+Full path only; a request on *The fast path* skips this phase.
 
 The point of this phase is that `/dev-next` asks nothing. An unasked question becomes a guess the dev agent bakes into
 the code and the reviewer cannot judge; a long interview is cheaper than one wrong guess shipped to `main`.
@@ -167,6 +186,8 @@ not in the room.
 
 ## Phase 4 — Draft once, approve once, file
 
+On *The fast path*, steps 4 and 6 are skipped: draft once and file.
+
 1. **Draft the issue per `.claude/skills/dev-next/references/new-issue.md`** — every heading, in its order (`### Epic`,
    `### Goal`, `### Scope`, `### Seam`, `### Acceptance criteria`, `### References`, `### Blocked by`,
    `### Evidence expected`; `### External reference` only for an `outside-change`), the process footer, names not bare
@@ -180,7 +201,7 @@ not in the room.
    change fixes a defect. `outside-change` + `needs-human` when it touches a repository the team does not own (then
    phase 5 never runs). An issue found in phase 1 step 2 that already carried a readiness label is re-labelled the same
    way, never left with both.
-4. **Show the whole draft to the person once** — title, labels, body, decisions — and ask for one of: file it as-is,
+4. **Show the whole draft to the person once** (skipped on the fast path) — title, labels, body, decisions — and ask for one of: file it as-is,
    change something (then show it again), or stop here (nothing is filed, the answers are printed so they are not
    lost). This is the last look before an autonomous run; it is not a new interview round.
 5. **File it:** body to a UTF-8 file, `gh issue create --title "<title>" --label story --label <readiness>
@@ -189,7 +210,7 @@ not in the room.
    sub-issue link to the epic and the native `blocked_by` relation for every `### Blocked by` line, **each read back
    and checked**; a mismatch is fixed before anything else happens. `needs-human` → post the reason as the last
    comment now.
-6. **Ask once, after filing:** "Should we update the PRD with this too?" — one line naming the section it would
+6. **Ask once, after filing** (skipped on the fast path)**:** "Should we update the PRD with this too?" — one line naming the section it would
    touch, only when the project keeps a requirements document and the change alters something a reader of it would
    care about. "No" ends it; "yes" is a line for `/dev-next`'s dev agent, added under `## Decisions (agent-ready)`
    ("also update `<PRD section>` in the same pull request"), so it ships in the story's own pull request.
@@ -225,7 +246,8 @@ closed").
 0. **Never push to `main`.** The change lands only as `/dev-next`'s pull request, merged by `/dev-next` on green CI.
 1. **Nothing is filed `agent-ready` with a question left.** If you can think of a question, ask it. The interview has
    no cap; the autonomous run has no questions.
-2. **Nothing is filed without the person's look at the draft.** One look, then it is theirs.
+2. **Nothing is filed without the person's look at the draft** — except on the fast path, where nothing was left to
+   ask. One look, then it is theirs.
 3. **The dedupe pass is mandatory.** Never a second issue for something an open issue already covers; never a deferral
    to a closed one.
 4. **This session never writes application code** — before or after the hand-over.

@@ -3,7 +3,7 @@
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
 - The status line now follows orion updates: every project carries orion's copy, an unedited copy on each computer picks up a newer one at the next session start, and an edited one is merged in (`orion.sh statusline merge`, edits kept) or declined (`statusline skip`) on its owner's word, so a status line change reaches every developer.
-
+- Agents now offer `/dev-quick` for every code change asked for in chat, and a yes ships it end to end with no further questions: a clear request skips the interview and the draft look, and the skill can be started by the agent, not only by typing it.
 - `BASE_CLAUDE.md` and the starter `CLAUDE.md` no longer suggest an example boundary: each project writes its own boundaries, if it has any.
 - Small fixes to `BASE_CLAUDE.md` (TLDR after any problem, `fix/` branches allowed, the AI-model rule only for projects that call a model, a neutral boundary example), and the `-vN` skill-versioning rule is gone: every skill is edited in place.
 - The commit-email rule and its CI check are gone: emails in commits are allowed again, so pull requests merge with GitHub's normal squash merge.
