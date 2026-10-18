@@ -2,6 +2,7 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- orion has a guide page on GitHub Pages: the whole workflow as a clickable graph (who leads each step, where you decide, what every skill does and leaves behind) plus the install steps, and the README shows the same graph in place of the old diagram, so a newcomer sees how the skills fit together at a glance.
 - The personal rules orion offers (`GLOBAL_CLAUDE.md`) are replaced by the reply, working and git rules its owner actually uses, so the clauses people are offered are ones proven in daily work; everyone who went through the old ones is offered the new set.
 
 - orion now offers recommended personal rules for each person's own `~/.claude/CLAUDE.md` (`GLOBAL_CLAUDE.md`, copied into every project): the session start offers a walk-through once a day while a rule is new to that computer (never under `off`), the person accepts, skips or rewords each clause, and only the ORION GLOBAL section at the end of their file ever changes, on their word; the GLOBAL_CLAUDE.md PRD is folded into `PRD.md`.

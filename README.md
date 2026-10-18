@@ -27,49 +27,11 @@ orion's skills are built around one way of working, from a first idea to finishe
 4. **Build, review, merge.** `/dev-next` picks the next free story and takes it all the way: it claims it, builds the change on its own branch, has a fresh agent review it, merges once the automatic checks pass, closes the story and writes an audit of how the run went. After every claim and merge it refreshes `/issue-map`, the live picture of what is blocked by what.
 5. **Check the work and learn from it.** `/harvest-qa` re-tests every finished story against the main branch and files a bug for anything that fails. `/harvest` goes through the notes each run left behind (problems spotted, things that slowed it down, tips) with you and turns what matters into tasks. Both feed new issues back into the list, so the loop continues. `/reconcile-issue-map` is the periodic sanity check that the issues, the PRDs and the code still describe the same product.
 
-```mermaid
-flowchart TD
-    idea([A loose idea])
+<p align="center">
+  <a href="https://nachogl1.github.io/orion/"><img src="docs/guide/orion-workflow.svg" alt="The orion workflow: define (stakeholders and brief, /wayfinder, the PRD, /prd-to-tickets), build (/dev-next: claim, Q&amp;A, develop, review, merge, audit), learn (/harvest-qa, /harvest, /reconcile-issue-map), and the skills that are always available" width="100%"/></a>
+</p>
 
-    subgraph s1 ["1. Find out what to build"]
-        wayfinder["/wayfinder<br/>names the destination and settles<br/>the open questions one at a time"]
-    end
-
-    subgraph s2 ["2. Write it down"]
-        prd[["The PRD<br/>what the software should do"]]
-    end
-
-    subgraph s3 ["3. Cut it into work"]
-        tickets["/prd-to-tickets<br/>epics and stories built for parallel work"]
-        quick["/dev-quick<br/>a change with no ticket yet"]
-        backlog[("GitHub Issues")]
-    end
-
-    subgraph s4 ["4. Build, review, merge"]
-        devnext["/dev-next<br/>claim, build, fresh-agent review,<br/>merge on green checks, close, audit"]
-        map["/issue-map<br/>what is blocked by what"]
-    end
-
-    subgraph s5 ["5. Check the work and learn from it"]
-        records[("Audit notes and QA records")]
-        harvestqa["/harvest-qa<br/>re-tests finished stories on main"]
-        harvest["/harvest<br/>turns the notes into decisions with you"]
-        reconcile["/reconcile-issue-map<br/>issues, PRDs and code still agree?"]
-    end
-
-    idea --> wayfinder --> prd --> tickets --> backlog
-    quick --> backlog
-    backlog --> devnext
-    devnext -- "after every claim and merge" --> map
-    devnext -- "leaves behind" --> records
-    records --> harvestqa
-    records --> harvest
-    harvestqa -- "bug issues" --> backlog
-    harvest -- "new tasks" --> backlog
-    devnext -- "when drift is spotted" --> reconcile
-    reconcile -.-> prd
-    reconcile -.-> backlog
-```
+**[Open the interactive guide](https://nachogl1.github.io/orion/)**: click any box to see what happens at that step, what you do and what it leaves behind. Amber boxes are steps you lead, violet ones you take with an agent, blue ones an agent leads, and teal ones are where the work is kept; a person badge marks where you decide.
 
 A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/clear-git-resources` tidies up the branches, worktrees and leftover files the loop leaves behind (it deletes your own stale leftovers whose work is already safe, asks before deleting anyone else's, and never touches unfinished work; the session-start hook offers it once the project has 20 or more branches or 20 or more worktrees), `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
 

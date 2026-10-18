@@ -1,0 +1,34 @@
+name: pages
+
+# Publishes the guide (docs/guide/, a single self-contained page) to GitHub Pages whenever it changes on main.
+# Nothing else in the repository is published.
+on:
+  push:
+    branches: [main]
+    paths: ['docs/guide/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a deploy in progress is never cancelled half-way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/guide
+      - id: deployment
+        uses: actions/deploy-pages@v4

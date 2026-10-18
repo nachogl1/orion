@@ -93,6 +93,17 @@ check "clear-git-resources scan.sh parses" bash -n "$REPO/skills/clear-git-resou
 check "issue_map.py compiles" "$PY" -m py_compile "$REPO/skills/issue-map/scripts/issue_map.py"
 check "build_docx.py compiles" "$PY" -m py_compile "$REPO/skills/generate-project-writeup/assets/build_docx.py"
 
+echo "guide page (docs/guide/, published to GitHub Pages)"
+GUIDE="$REPO/docs/guide/index.html"
+# Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
+guide_names_every_skill() {
+    [ -f "$GUIDE" ] || return 1
+    local d; for d in "$REPO"/skills/*/; do grep -qF "\"/$(basename "$d")\"" "$GUIDE" || return 1; done
+}
+check "the guide names every skill" guide_names_every_skill
+check "the guide loads no script or stylesheet from elsewhere" eval '[ -f "$GUIDE" ] && ! grep -qiE "<script[^>]*src=|<link[^>]*stylesheet|@import" "$GUIDE"'
+check "the README shows the guide's graph and links the page" eval '[ -f "$REPO/docs/guide/orion-workflow.svg" ] && grep -qF "docs/guide/orion-workflow.svg" "$REPO/README.md" && grep -qF "github.io/orion" "$REPO/README.md"'
+
 echo "round trip (init / update / check / uninstall)"
 newproj
 check "init" init ask
