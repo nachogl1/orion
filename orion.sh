@@ -523,8 +523,8 @@ apply_core() {  # source ref update-mode
     rm -rf "$dir/statusline"; cp -R "$SRC_DIR/baselines/statusline" "$dir/statusline"
     # only the offer of orion's personal rules: nothing imports it, the person takes clauses on their word
     rm -rf "$dir/global"; cp -R "$SRC_DIR/baselines/global" "$dir/global"
-    # line 4, the source's commit time, tells a newer status line from an older one;
-    # line 5, orion's version number, tells the update check whether a release is newer
+    # line 4, the source's commit time, is for information only; line 5, orion's version number, tells the
+    # update check whether a release is newer, and the computer's status line whether this project's copy is
     printf '%s\n%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" "$(source_number "$SRC_DIR")" > "$dir/VERSION"
     { printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest"
       ( cd "$SRC_DIR/baselines" && find statusline global -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
@@ -621,7 +621,7 @@ retire_user_level_copies() {
 # --------------------------------------------------------------------------
 # status line (optional, per computer). Every project carries orion's copy in .claude/orion/statusline; the
 # computer's copy is offered the newest one it sees and takes it (or merges it in) only on the person's word.
-#   ~/.claude/statusline/.orion-baseline   commit time and checksum of the newest baseline this computer took or skipped
+#   ~/.claude/statusline/.orion-baseline   orion version number and checksum of the newest baseline this computer took or skipped
 #   ~/.claude/statusline/.orion-base/      the baseline the computer's copy was made from (the merge base)
 # --------------------------------------------------------------------------
 SL_STAMP=".orion-baseline"
@@ -658,7 +658,7 @@ sl_seed() {  # src stamp
 }
 sl_restore() { local dest; dest="$(sl_home)"; [ -d "$dest" ] || [ ! -d "$dest.old" ] || mv "$dest.old" "$dest"; }
 
-# Record the newest baseline this computer has seen (taken, merged or skipped): its commit time, then its checksum.
+# Record the newest baseline this computer has seen (taken, merged or skipped): its orion version number, then its checksum.
 sl_mark() {  # stamp src [statusline-dir]
     printf '%s\n%s\n' "$1" "$(tree_sum "$2" | cksum)" > "${3:-$(sl_home)}/$SL_STAMP"
 }
@@ -666,7 +666,7 @@ sl_mark() {  # stamp src [statusline-dir]
 sl_number() { case "$1" in ""|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac; }
 sl_stamp() { sl_number "$(sed -n '1p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r')"; }
 sl_seen() { sed -n '2p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r'; }
-project_stamp() { sl_number "$(sed -n '4p' "$PROJECT/.claude/orion/VERSION" 2>/dev/null | tr -d '\r')"; }
+project_stamp() { sl_number "$(version_number "$PROJECT/.claude/orion/VERSION")"; }
 
 # Compare the computer's status line with this project's copy when that copy is newer. It never changes what
 # the status line shows without the person's word. Prints "new" (an unedited copy: taking orion's waits for
@@ -743,7 +743,7 @@ install_statusline() {  # force
     if [ -f "$dest/statusline.sh" ] && [ "$1" != "1" ]; then
         say "  =    statusline (already installed - yours to edit; newer orion versions are merged in on your word)"
     else
-        sl_seed "$src" "${SRC_TIME:-0}"
+        sl_seed "$src" "$(sl_number "$(source_number "$SRC_DIR")")"
         say "  +    statusline -> ~/.claude/statusline"
     fi
     settings_set_statusline "$HOME/.claude/settings.json" "bash \"$dest/statusline.sh\""
@@ -892,7 +892,7 @@ cmd_update() {
     fetch_source "$source" "$ref"
     # the hint is printed only without --quiet, so an auto-update (capped at 10 s on older hooks) skips the cost
     local rules_before=""; [ "$quiet" = "1" ] || rules_before="$(rules_sum)"
-    # an update run by an older orion.sh left out the status line, the commit time or the personal rules: redo it once
+    # an update run by an older orion.sh left out the status line or the personal rules: redo it once
     { [ -d "$dir/statusline" ] && [ -d "$dir/global" ]; } || force=1
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then
         say "orion is already at $(short "$current") - nothing to do (pass --force to re-copy anyway)"
@@ -1034,25 +1034,23 @@ check_statusline_ctx() {
 # --------------------------------------------------------------------------
 # personal rules (offered, never written). Every project carries orion's GLOBAL_CLAUDE.md in .claude/orion/global;
 # what the person accepts lives in the ORION GLOBAL section at the end of their own ~/.claude/CLAUDE.md, whose
-# heading timestamp is the only record of what was offered. orion.sh only reads that file.
+# heading version number is the only record of what was offered. orion.sh only reads that file.
 # --------------------------------------------------------------------------
-GLOBAL_DATE_RE='[0-9]\{4\}-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]Z'
 global_copy() { printf '%s' "$PROJECT/.claude/orion/global/GLOBAL_CLAUDE.md"; }
 personal_rules() { printf '%s' "$HOME/.claude/CLAUDE.md"; }
 
-# The timestamp on the person's ORION GLOBAL heading line, or nothing when there is no section.
+# The version number on the person's ORION GLOBAL heading line (# ORION GLOBAL — v<N>), or nothing when there is no section.
 global_stamp() {
     local f; f="$(personal_rules)"
     [ -f "$f" ] || return 0
-    tr -d '\r' < "$f" | sed -n "s/^# ORION GLOBAL.* last updated \($GLOBAL_DATE_RE\).*/\1/p" | head -n1
+    tr -d '\r' < "$f" | sed -n 's/^# ORION GLOBAL.* v\([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n1
 }
 
-# How many clauses of the project's GLOBAL_CLAUDE.md are dated after that timestamp (all of them without one).
-# The ISO dates share one fixed width, so comparing them as text compares them in time.
+# How many clauses of the project's GLOBAL_CLAUDE.md carry a version marker higher than that number (all of them without one).
 global_newer() {
     local f; f="$(global_copy)"
     [ -f "$f" ] || { printf '0'; return 0; }
-    tr -d '\r' < "$f" | sed -n "s/.* <!-- orion:\($GLOBAL_DATE_RE\) -->\$/\1/p" | awk -v t="$(global_stamp)" '$0 > t { n++ } END { print n+0 }'
+    tr -d '\r' < "$f" | sed -n 's/.* <!-- orion:v\([0-9][0-9]*\) -->$/\1/p' | awk -v t="$(global_stamp)" 't == "" || $0 + 0 > t + 0 { n++ } END { print n+0 }'
 }
 
 # Local only: offer the personal rules discussion while a clause is newer than the person's section, at most once a

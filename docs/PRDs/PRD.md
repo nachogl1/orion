@@ -70,8 +70,8 @@ Sub-commands of `orion.sh`, run in the project or with `--project <dir>`:
 | Sub-command | Contract |
 |---|---|
 | `init` | Copies every skill with its marker, the baseline, the script and a `VERSION` file (commit SHA, commit time, version number) into the project; creates `CLAUDE.md` from the starter if missing, else only adds the import line at the top (replacing the pre-rename import if present); writes `config.json` once (`updateMode`, `source`, `ref`, `branchLimit`, `worktreeLimit`); adds one `SessionStart` hook; optionally installs the status line; warns when git ignores files it installed; leaves a one-shot per-computer marker that asks for `/orion-verify`, and its closing message puts `/orion-verify` before the first commit. |
-| `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns, the status line baseline, `GLOBAL_CLAUDE.md`, the commit time (`VERSION` line 4) and the version number (line 5) included; says when the per-computer status line has a newer baseline waiting, and never changes it; says to run `/orion-verify` when it changed the rules. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
-| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, every session with no network, the offer of `/orion-verify` once each time orion's rules (`BASE_CLAUDE.md` and every `.md` file of an orion skill) differ from the last ones checked on this computer, seen after an `auto` update or the session-start pull in the same session; and at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`) — only when a release tag `v<N>` is higher than the project's version number (with no number on either side, or a `ref` other than `main`, any new commit counts) — and the branch- or worktree-limit offer of `/clear-git-resources` when that skill is installed. Every session it first runs `git pull --ff-only` on the branch the session opens in (only the fetch is time-limited; silent unless refused, then one line), and, with no network, it offers the project's newer status line baseline (never an older one): taking it for an unedited copy, merging it into an edited one, never without the person's word, even under `auto`; and, at most once a day per computer and never under `off`, the offer to go through orion's personal rules while a clause is newer than the person's ORION GLOBAL section (never a write to their file). Messages are joined into one line. |
+| `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns, the status line baseline, `GLOBAL_CLAUDE.md`, the commit time (`VERSION` line 4) and the version number (line 5) included; says when the per-computer status line has a newer baseline waiting (one from a higher version number), and never changes it; says to run `/orion-verify` when it changed the rules. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
+| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, every session with no network, the offer of `/orion-verify` once each time orion's rules (`BASE_CLAUDE.md` and every `.md` file of an orion skill) differ from the last ones checked on this computer, seen after an `auto` update or the session-start pull in the same session; and at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`) — only when a release tag `v<N>` is higher than the project's version number (with no number on either side, or a `ref` other than `main`, any new commit counts) — and the branch- or worktree-limit offer of `/clear-git-resources` when that skill is installed. Every session it first runs `git pull --ff-only` on the branch the session opens in (only the fetch is time-limited; silent unless refused, then one line), and, with no network, it offers the project's newer status line baseline (one from a higher version number than the computer's copy last took or skipped, never a lower one): taking it for an unedited copy, merging it into an edited one, never without the person's word, even under `auto`; and, at most once a day per computer and never under `off`, the offer to go through orion's personal rules while a clause carries a higher version number than the person's ORION GLOBAL section (never a write to their file). Messages are joined into one line. |
 | `verify` | The mechanical post-install check: one line per finding (`ok` / `WARN` / `FAIL`), exit 1 on a `FAIL`, never a fix; warns about every installed file git ignores (and about a whole ignored folder, which needs `<folder>/*` plus re-includes) and about a folder the baseline names that the project keeps under another path; consumes the post-install marker and records the rules it checked on this computer. |
 | `status` | What is installed, at which version number and commit, the update mode, the branch and worktree limits and the current counts. |
 | `statusline` | `merge`: takes the project's newer baseline; an unedited per-computer status line becomes it, an edited one gets a three-way merge that keeps the edits (conflict markers and exit 1 where both changed the same lines; a copy from before the merge base existed is saved to `~/.claude/statusline.bak` and replaced). `skip`: declines that version. |
@@ -90,31 +90,32 @@ own `~/.claude/CLAUDE.md`, one per computer. orion offers them, never pushes the
   `<project>/.claude/orion/global/` and listed in the manifest. Nothing imports it. It may repeat rules
   `BASE_CLAUDE.md` already makes for projects, and nothing in it names or describes a real person, team, company or
   machine.
-- **A clause** is one bullet or numbered item under the file's headings, on one line ending in an invisible UTC date
-  marker, `<!-- orion:2026-10-18T10:00Z -->`: the moment it was last added or changed. A changed clause gets a date
-  newer than every clause on `main`, or nobody who went through the old file would be offered it.
+- **A clause** is one bullet or numbered item under the file's headings, on one line ending in an invisible version
+  marker, `<!-- orion:v2 -->`: the orion version number that last added or changed it. A changed clause gets a number
+  higher than every clause on `main` (and no higher than `ORION_VERSION`), or nobody who went through the old file
+  would be offered it.
 - **The ORION GLOBAL section** at the end of the person's file holds what they accepted, under the same headings, each
   clause keeping its marker:
 
   ```markdown
-  # ORION GLOBAL — last updated 2026-10-18T14:05Z
+  # ORION GLOBAL — v2
   …accepted clauses…
   <!-- /ORION GLOBAL -->
   ```
 
-  The heading timestamp is the only record of what was offered: a clause dated after it is offered, one dated before
-  it is not. After every discussion it moves to the newest clause date in the file that was offered (not the clock,
-  so a clause dated between the two can never be missed), whether the person accepted everything, part or nothing;
-  declining everything still leaves the heading and the end line. A changed clause the person accepted earlier is
-  shown old and new side by side and replaced in place only on a yes. The person may edit the section freely; orion
-  trusts the timestamp.
+  The heading's version number is the only record of what was offered: a clause marked with a higher number is
+  offered, one marked with the same or a lower number is not. After every discussion it moves to the highest clause
+  number in the file that was offered, whether the person accepted everything, part or nothing; declining everything
+  still leaves the heading and the end line. A changed clause the person accepted earlier is shown old and new side
+  by side and replaced in place only on a yes. The person may edit the section freely; orion trusts the number. A
+  heading in any other form (such as the timestamps orion used before) counts as no section: there is no migration.
 - **The discussion** needs no skill: the agent follows the steps at the top of `GLOBAL_CLAUDE.md` (not a clause,
   never copied) when the session-start offer asks for it or whenever the person asks — read both files, list the
-  clauses newer than the timestamp (all of them without a section), ask in batches with clickable options (accept,
-  skip, accept with an edit), write only inside the section, move the timestamp, show the final section before
+  clauses above the heading's number (all of them without a section), ask in batches with clickable options (accept,
+  skip, accept with an edit), write only inside the section, move the number, show the final section before
   saving.
 - **The offer at session start:** `check` reads the project copy and the heading line of `~/.claude/CLAUDE.md`, with
-  no network, and while a clause is newer than the timestamp (or there is no section) asks Claude Code to offer the
+  no network, and while a clause carries a higher number than the heading (or there is no section) asks Claude Code to offer the
   discussion with the AskUserQuestion tool, once a day per computer, its message joined to the others. It ignores
   `updateMode: auto` (the person's file changes only through the discussion) and is silenced by `off`. Right after
   `init` the post-install message asks for it too, after `/orion-verify`, unless the mode is `off`.
@@ -208,8 +209,8 @@ A change to orion is done when all of these hold:
   `uninstall --yes`, after which nothing orion owns is left (`.claude/orion` and `.claude/skills` gone, no mention of
   orion in `CLAUDE.md` or `settings.json`). It runs after every edit to `orion.sh` or `orion.ps1`.
 - **The `check` contract holds:** silent on success, exit 0 on every failure, at most one JSON line.
-- **The personal rules hold:** every clause of `GLOBAL_CLAUDE.md` carries a valid date marker, none in the future,
-  and one changed against `origin/main` is dated after every clause there; `check` offers the discussion without a
+- **The personal rules hold:** every clause of `GLOBAL_CLAUDE.md` carries a valid version marker, none above
+  `ORION_VERSION`, and one changed against `origin/main` carries a higher number than every clause there; `check` offers the discussion without a
   section or with a newer clause, never under `off`, at most once a day, and never writes `~/.claude/CLAUDE.md`
   (not under `auto`, not on `uninstall`); `verify` reports a missing project copy as a `FAIL`.
 - **`verify` on a fresh install** exits 0 with only the unfilled-slot warning.

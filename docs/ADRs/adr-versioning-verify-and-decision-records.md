@@ -1,6 +1,7 @@
 # ADR — a version number for orion, a stronger post-install check, and decision records instead of per-change PRDs
 
-**Status: approved by the owner on 2026-10-19.**
+**Status: approved by the owner on 2026-10-19; amended the same day (decision 1: the status line and the personal
+rules follow the version number too).**
 
 ## Context
 
@@ -31,8 +32,11 @@ Using orion in real projects showed seven problems:
    `orion.sh`) raises it by one; the suite fails a change to those files that does not. After a merge that raised it,
    a GitHub job tags the commit `v<N>`. Each project records the number it installed. The session-start check reads
    the tags in the same single quick call it makes today and offers an update only when a higher number exists; a
-   source without such tags falls back to today's commit comparison. The status line and the personal rules keep
-   their own timestamps.
+   source without such tags falls back to today's commit comparison. The status line and the personal rules follow
+   the same number (amended): each personal rule carries the version that last changed it (`<!-- orion:v<N> -->`)
+   and the person's ORION GLOBAL heading the version they last went through (`# ORION GLOBAL — v<N>`); the
+   computer's status line records the version of the copy it last took or skipped. No migration from the old
+   timestamps: orion has one user, who rewrites their own file by hand.
 2. **`/orion-verify` checks folder locations.** It collects every folder path the base rules and the installed skills
    assume, and flags each one the project keeps somewhere else (a folder that does not exist yet stays quiet: the
    skills create it later). For each, it offers to **move** the folder to the expected place with a git move, on the

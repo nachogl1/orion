@@ -2,7 +2,7 @@
 # tests/run.sh - the full suite of the orion repo: syntax checks, then orion.sh driven end to end against
 # throw-away projects. Everything runs in a sandbox (its own HOME, cache and temp folder), never touches
 # the network (a fake `git` answers the update check) and leaves nothing behind. One check reads the local
-# origin/main ref to compare GLOBAL_CLAUDE.md's clause dates with main's: run `git fetch origin main` first (CI does).
+# origin/main ref to compare GLOBAL_CLAUDE.md's clause version markers with main's: run `git fetch origin main` first (CI does).
 #
 # usage: bash tests/run.sh             prints one line per check, exits 1 when any check fails
 #        bash tests/run.sh --windows   only the part that differs on Windows (syntax and guide checks, round trip, every settings
@@ -87,7 +87,7 @@ nothing_left_in_tmp() { [ -z "$(ls -A "$SB/tmp" 2>/dev/null)" ]; }
 # A personal rules file whose ORION GLOBAL section has seen every clause, so the personal rules offer stays quiet
 # in the checks that expect silence; the personal rules section below uses a HOME of its own.
 seen_all_personal_rules() {  # home
-    mkdir -p "$1/.claude"; printf '# ORION GLOBAL — last updated 9999-12-31T23:59Z\n<!-- /ORION GLOBAL -->\n' > "$1/.claude/CLAUDE.md"
+    mkdir -p "$1/.claude"; printf '# ORION GLOBAL — v999999\n<!-- /ORION GLOBAL -->\n' > "$1/.claude/CLAUDE.md"
 }
 seen_all_personal_rules "$HOME"
 
@@ -359,38 +359,37 @@ check "once it is where the rules expect it: no warning" eval 'bash "$ORION" ver
 
 echo "personal rules (GLOBAL_CLAUDE.md is offered clause by clause; orion never writes the person's own file)"
 GLOBAL="$REPO/baselines/global/GLOBAL_CLAUDE.md"
-STAMP_RE='[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]Z'
-# One line per clause (every bullet or numbered item below the first "## " heading): "<date> <text>", or "BAD <line>"
-# for a clause without a valid date marker and for any other text among the clauses.
+# One line per clause (every bullet or numbered item below the first "## " heading): "<version> <text>", or
+# "BAD <line>" for a clause without a valid version marker and for any other text among the clauses.
 clauses() {  # file
     tr -d '\r' < "$1" | awk '
         /^## / { s = 1; next }
         !s || /^#/ || NF == 0 { next }
-        /^([-*]|[0-9]+\.) / && match($0, / <!-- orion:[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]Z -->$/) {
-            print substr($0, RSTART + 12, 17) " " substr($0, 1, RSTART - 1); next }
+        /^([-*]|[0-9]+\.) / && match($0, / <!-- orion:v[0-9]+ -->$/) {
+            print substr($0, RSTART + 13, RLENGTH - 17) " " substr($0, 1, RSTART - 1); next }
         { print "BAD " $0 }'
 }
-check "GLOBAL_CLAUDE.md has clauses, each carrying a valid date marker" eval '[ -n "$(clauses "$GLOBAL")" ] && ! clauses "$GLOBAL" | grep -q "^BAD "'
-check "no clause is dated in the future (it would be offered again every day)" eval '[ -z "$(clauses "$GLOBAL" | awk -v now="$(date -u +%Y-%m-%dT%H:%MZ)" '"'"'$1 > now'"'"')" ]'
-# A clause changed or added against origin/main must carry a date newer than every clause there, or a person who
+check "GLOBAL_CLAUDE.md has clauses, each carrying a valid version marker" eval '[ -n "$(clauses "$GLOBAL")" ] && ! clauses "$GLOBAL" | grep -q "^BAD "'
+check "no clause carries a version above ORION_VERSION (it would be offered again every day)" eval '[ -z "$(clauses "$GLOBAL" | awk -v v="$(tr -d " \t\r\n" < "$REPO/ORION_VERSION")" '"'"'$1 + 0 > v + 0'"'"')" ]'
+# A clause changed or added against origin/main must carry a version higher than every clause there, or a person who
 # went through the old file would never be offered it. CI fetches origin/main before the suite.
 changed_clauses_are_newer() {
     local old="$SB/global-main" newest
     "$REAL_GIT" -C "$REPO" rev-parse -q --verify origin/main >/dev/null || { echo "    origin/main not found: fetch it first"; return 1; }
     "$REAL_GIT" -C "$REPO" show origin/main:baselines/global/GLOBAL_CLAUDE.md > "$old" 2>/dev/null || return 0   # new file: every clause is new
-    newest="$(clauses "$old" | cut -d' ' -f1 | grep -x "$STAMP_RE" | LC_ALL=C sort | tail -n1)"
+    newest="$(clauses "$old" | cut -d' ' -f1 | grep -x '[0-9][0-9]*' | sort -n | tail -n1)"
     clauses "$old" | cut -d' ' -f2- > "$SB/global-main-texts"
     clauses "$GLOBAL" | while IFS=' ' read -r d text; do
         grep -qxF -- "$text" "$SB/global-main-texts" && continue
-        [[ "$d" > "$newest" ]] || { echo "    changed clause not dated after $newest: $text"; exit 1; }
+        [ "$d" -gt "${newest:-0}" ] || { echo "    changed clause not marked above v${newest:-0}: $text"; exit 1; }
     done
 }
-check "every clause changed against origin/main is dated after every clause there" changed_clauses_are_newer
+check "every clause changed against origin/main carries a version above every clause there" changed_clauses_are_newer
 GH="$SB/home-global"; mkdir -p "$GH"; PERSONAL="$GH/.claude/CLAUDE.md"
-NEWEST="$(clauses "$GLOBAL" | cut -d' ' -f1 | LC_ALL=C sort | tail -n1)"
+NEWEST="$(clauses "$GLOBAL" | cut -d' ' -f1 | sort -n | tail -n1)"
 gl_check() { HOME="$GH" run_check "$@"; }
 asked_global() { grep -q "GLOBAL_CLAUDE.md" "$SB/hook"; }
-section() { mkdir -p "$GH/.claude"; printf '# my own rules\n\n- keep this\n\n# ORION GLOBAL — last updated %s\n<!-- /ORION GLOBAL -->\n' "$1" > "$PERSONAL"; }
+section() { mkdir -p "$GH/.claude"; printf '# my own rules\n\n- keep this\n\n# ORION GLOBAL — v%s\n<!-- /ORION GLOBAL -->\n' "$1" > "$PERSONAL"; }
 newproj; HOME="$GH" init ask
 check "right after init, the post-install message also offers the discussion" eval 'gl_check && grep -q orion-verify "$SB/hook" && asked_global && hook_out_ok "$SB/hook"'
 check "the project carries GLOBAL_CLAUDE.md, listed in the manifest" eval '[ -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md" ] && grep -qx "global/GLOBAL_CLAUDE.md" "$P/.claude/orion/.orion-manifest"'
@@ -399,11 +398,11 @@ check "and the hook wrote no personal rules file" eval '[ ! -e "$PERSONAL" ]'
 check "it is offered once a day per computer" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global'
 printf '%s' "$(( $(date +%s) - 86401 ))" > "$XDG_CACHE_HOME/orion/global-offered"
 check "and offered again once that day has passed" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
-section 2000-01-01T00:00Z
-check "a clause newer than the section's timestamp is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
+section 1
+check "a clause above the section's version number is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 section "$NEWEST"
-check "every clause as old as the timestamp or older: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
-section 2000-01-01T00:00Z; set_cfg updateMode '"off"'
+check "every clause at the section's version number or below: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
+section 1; set_cfg updateMode '"off"'
 check "off mode never offers it" eval 'gl_check --force && [ ! -s "$SB/hook" ]'
 newproj; HOME="$GH" init off
 check "nor does the post-install message under off" eval 'gl_check && grep -q orion-verify "$SB/hook" && ! asked_global'
@@ -421,30 +420,30 @@ awk '{printf "%s\r\n", $0}' "$P/.claude/orion/.orion-manifest" > "$SB/m" && mv "
 check "uninstall with Windows line endings in the manifest removes everything" eval 'bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ]'
 
 echo "status line (the project carries orion's copy; the computer's copy takes the newest only on the person's word)"
-# A computer of its own (HOME) and a source repository of its own, with commit times set by hand so "newer" is certain.
+# A computer of its own (HOME) and a source repository of its own, whose ORION_VERSION each commit sets by hand.
 SLH="$SB/home-sl"; SLFILE="$SLH/.claude/statusline/statusline.sh"; mkdir -p "$SLH" "$SB/home-none"; seen_all_personal_rules "$SLH"
 SLSRC="$SB/sl-src"; mkdir -p "$SLSRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$SLSRC/"
-sl_commit() { ( cd "$SLSRC" && "$REAL_GIT" -c core.autocrlf=false add . && GIT_COMMITTER_DATE="$1" GIT_AUTHOR_DATE="$1" "$REAL_GIT" commit -qm "$1" ); }
-sl_release() {  # date line text: a new orion release whose status line gains <text> after line <line>
+sl_commit() { printf '%s\n' "$1" > "$SLSRC/ORION_VERSION"; ( cd "$SLSRC" && "$REAL_GIT" -c core.autocrlf=false add . && "$REAL_GIT" commit -qm "v$1" ); }
+sl_release() {  # number line text: orion release <number>, whose status line gains <text> after line <line>
     local f="$SLSRC/baselines/statusline/statusline.sh"
     awk -v n="$2" -v t="$3" '{ print } NR == n { print t }' "$f" > "$SB/sl" && cat "$SB/sl" > "$f"; sl_commit "$1"
 }
-sl_put() {  # dir time: the project's copy as a teammate's git pull brings it
+sl_put() {  # dir number: the project's copy as a teammate's git pull brings it
     rm -rf "$P/.claude/orion/statusline"; cp -R "$1" "$P/.claude/orion/statusline"
-    { sed -n '1,3p' "$P/.claude/orion/VERSION"; printf '%s\n' "$2"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
+    { sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '%s\n' "$2"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
 }
-sl_pull() { sl_put "$SLSRC/baselines/statusline" "$("$REAL_GIT" -C "$SLSRC" log -1 --format=%ct)"; }
+sl_pull() { sl_put "$SLSRC/baselines/statusline" "$(cat "$SLSRC/ORION_VERSION")"; }
 sl_check() { HOME="$SLH" run_check "$@"; }
 sl_cmd() { HOME="$SLH" bash "$P/.claude/orion/orion.sh" statusline "$1" --project "$P" >"$SB/out" 2>&1; }
-"$REAL_GIT" -C "$SLSRC" init -q -b main; sl_commit 2026-01-01T00:00:00Z
+"$REAL_GIT" -C "$SLSRC" init -q -b main; sl_commit 1
 newproj
 check "init --statusline seeds the computer's copy and its merge base" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" init --project "$P" --statusline --update-mode off >"$SB/out" 2>&1 && [ -f "$SLFILE" ] && [ -f "$SLH/.claude/statusline/.orion-base/statusline.sh" ]'
 consume_marker
 check "the project carries orion's status line, listed in the manifest" eval '[ -f "$P/.claude/orion/statusline/statusline.sh" ] && grep -qx "statusline/statusline.sh" "$P/.claude/orion/.orion-manifest"'
-check "VERSION records the source's commit time" eval '[ "$(sed -n 4p "$P/.claude/orion/VERSION")" = "$("$REAL_GIT" -C "$SLSRC" log -1 --format=%ct)" ]'
+check "VERSION records the source's version number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = "$(cat "$SLSRC/ORION_VERSION")" ]'
 check "same baseline: check is silent" eval 'sl_check --force && [ ! -s "$SB/hook" ]'
-cp -R "$P/.claude/orion/statusline" "$SB/sl-v1"; T1="$(sed -n 4p "$P/.claude/orion/VERSION")"
-sl_release 2026-02-01T00:00:00Z 2 '# orion v2'; sl_pull
+cp -R "$P/.claude/orion/statusline" "$SB/sl-v1"; T1="$(sed -n 5p "$P/.claude/orion/VERSION")"
+sl_release 2 2 '# orion v2'; sl_pull
 awk '{ printf "%s\r\n", $0 }' "$P/.claude/orion/statusline/statusline.sh" > "$SB/crlf" && mv "$SB/crlf" "$P/.claude/orion/statusline/statusline.sh"
 check "a newer baseline is offered to an unedited copy in one JSON line, never taken on its own" eval 'sl_check --force && grep -q "Take it" "$SB/hook" && hook_out_ok "$SB/hook" && ! grep -q "^# orion v2" "$SLFILE"'
 set_cfg updateMode '"auto"'
@@ -456,20 +455,20 @@ check "without Windows line endings, so bash can still run it" eval '! grep -q "
 sl_put "$SB/sl-v1" "$T1"
 check "an older project never steps the computer's copy back" eval 'sl_check --force && [ ! -s "$SB/hook" ] && grep -q "^# orion v2" "$SLFILE"'
 printf '# mine\n' >> "$SLFILE"
-sl_release 2026-03-01T00:00:00Z 2 '# orion v3'; sl_pull
+sl_release 3 2 '# orion v3'; sl_pull
 check "an edited copy is not replaced: check offers the merge in one JSON line" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && hook_out_ok "$SB/hook" && ! grep -q "^# orion v3" "$SLFILE"'
 check "statusline merge keeps the edits and takes orion's changes" eval 'sl_cmd merge && grep -q "^# orion v3" "$SLFILE" && grep -q "^# mine" "$SLFILE" && ! grep -q "<<<<<<<" "$SLFILE"'
 check "after the merge, check is silent" eval 'sl_check --force && [ ! -s "$SB/hook" ]'
-sl_release 2026-04-01T00:00:00Z 2 '# orion v4'; sl_pull
+sl_release 4 2 '# orion v4'; sl_pull
 check "statusline skip keeps the copy as it is" eval 'sl_cmd skip && ! grep -q "^# orion v4" "$SLFILE" && grep -q "^# mine" "$SLFILE"'
 check "and that baseline is not offered again" eval 'sl_check --force && [ ! -s "$SB/hook" ]'
 check "merge from a project no newer than the computer's copy changes nothing" eval 'cp "$SLFILE" "$SB/before" && sl_cmd merge && grep -q "nothing to" "$SB/out" && cmp -s "$SB/before" "$SLFILE"'
 sl_put "$SB/sl-v1" "$T1"
 check "skip from an older project never steps the stamp back" eval 'sl_cmd skip; sl_pull && sl_check --force && [ ! -s "$SB/hook" ]'
-printf 'x\n' > "$SLSRC/unrelated.txt"; sl_commit 2026-04-15T00:00:00Z; sl_pull
-check "a release that leaves the status line alone does not offer a merge" eval 'sl_check --force && [ ! -s "$SB/hook" ] && [ "$(sed -n 1p "$SLH/.claude/statusline/.orion-baseline")" = "$(sed -n 4p "$P/.claude/orion/VERSION")" ]'
+printf 'x\n' > "$SLSRC/unrelated.txt"; sl_commit 5; sl_pull
+check "a release that leaves the status line alone does not offer a merge" eval 'sl_check --force && [ ! -s "$SB/hook" ] && [ "$(sed -n 1p "$SLH/.claude/statusline/.orion-baseline")" = "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
 printf '# mine at the end\n' >> "$SLFILE"
-sl_release 2026-05-01T00:00:00Z "$(wc -l < "$SLSRC/baselines/statusline/statusline.sh" | tr -d ' ')" '# orion v5 at the end'; sl_pull
+sl_release 6 "$(wc -l < "$SLSRC/baselines/statusline/statusline.sh" | tr -d ' ')" '# orion v5 at the end'; sl_pull
 check "a clashing edit: merge names the file to fix and exits 1" eval '! sl_cmd merge && grep -q "statusline.sh" "$SB/out" && grep -q "<<<<<<<" "$SLFILE"'
 # A copy installed before orion kept a merge base: no .orion-base, and a stamp reading "orion".
 rm -rf "$SLH/.claude/statusline/.orion-base"; printf 'orion' > "$SLH/.claude/statusline/.orion-baseline"
@@ -478,33 +477,33 @@ check "and its merge saves the old copy to statusline.bak, then takes orion's" e
 rm -rf "$SLH/.claude/statusline/.orion-base"; printf 'orion' > "$SLH/.claude/statusline/.orion-baseline"
 check "an older install that matches is adopted silently" eval 'sl_check --force && [ ! -s "$SB/hook" ] && [ -f "$SLH/.claude/statusline/.orion-base/statusline.sh" ]'
 printf 'k=v\n' > "$SLH/.claude/statusline/.mine"
-sl_release 2026-05-15T00:00:00Z 2 '# orion v5b'; sl_pull
+sl_release 7 2 '# orion v5b'; sl_pull
 check "a dot file of the person's own counts as an edit and is never deleted" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && [ -f "$SLH/.claude/statusline/.mine" ]'
 check "a merge takes orion's changes and keeps that dot file" eval 'sl_cmd merge && grep -q "^# orion v5b" "$SLFILE" && [ -f "$SLH/.claude/statusline/.mine" ]'
 rm -f "$SLH/.claude/statusline/.mine"
-printf 'old\n' > "$SLSRC/baselines/statusline/dropped.txt"; sl_commit 2026-05-20T00:00:00Z; sl_pull; sl_cmd merge
-rm -f "$SLSRC/baselines/statusline/dropped.txt"; sl_release 2026-05-25T00:00:00Z 2 '# orion v5c'; sl_pull
+printf 'old\n' > "$SLSRC/baselines/statusline/dropped.txt"; sl_commit 8; sl_pull; sl_cmd merge
+rm -f "$SLSRC/baselines/statusline/dropped.txt"; sl_release 9 2 '# orion v5c'; sl_pull
 check "a merge removes an unchanged file orion dropped" eval '[ -f "$SLH/.claude/statusline/dropped.txt" ] && sl_cmd merge && [ ! -e "$SLH/.claude/statusline/dropped.txt" ] && grep -q "^# orion v5c" "$SLFILE"'
-# An install made by an older orion.sh: no status line copy in the project and no commit time in VERSION.
+# An install made by an older orion.sh: no status line copy in the project and no version number in VERSION.
 HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1
 rm -rf "$P/.claude/orion/statusline"; sed -n '1,3p' "$P/.claude/orion/VERSION" > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
-check "update at the same commit still adds what an older orion.sh did not copy" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/statusline/statusline.sh" ] && [ -n "$(sed -n 4p "$P/.claude/orion/VERSION")" ]'
+check "update at the same commit still adds what an older orion.sh did not copy" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/statusline/statusline.sh" ] && [ -n "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
 rm -rf "$P/.claude/orion/statusline"; set_cfg updateMode '"ask"'
 check "check offers the update to a project an older orion.sh updated, though the commit is the same" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 set_cfg updateMode '"off"'; HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1
 : > "$SLH/.claude/statusline/.DS_Store"
-sl_release 2026-05-26T00:00:00Z 2 '# orion v5d'; sl_pull
+sl_release 10 2 '# orion v5d'; sl_pull
 check "a file the system drops in the folder (.DS_Store) is not an edit" eval 'sl_check --force && grep -q "Take it" "$SB/hook" && sl_cmd merge && grep -q "^# orion v5d" "$SLFILE"'
 mv "$SLH/.claude/statusline" "$SLH/.claude/statusline.old"
-sl_release 2026-05-27T00:00:00Z 2 '# orion v5e'; sl_pull
+sl_release 11 2 '# orion v5e'; sl_pull
 check "a replace cut short half-way is restored, then offered the new one" eval 'sl_check --force && [ ! -e "$SLH/.claude/statusline.old" ] && [ -f "$SLFILE" ] && grep -q "Take it" "$SB/hook" && sl_cmd merge && grep -q "^# orion v5e" "$SLFILE"'
 rm -f "$SLH/.claude/statusline/README.md"
-sl_release 2026-05-28T00:00:00Z 2 '# orion v5f'; sl_pull
+sl_release 12 2 '# orion v5f'; sl_pull
 check "a file the person deleted and orion left alone stays deleted on merge" eval 'sl_cmd merge && [ ! -e "$SLH/.claude/statusline/README.md" ] && grep -q "^# orion v5f" "$SLFILE"'
 cp "$SLH/.claude/statusline/.orion-base/README.md" "$SLH/.claude/statusline/README.md"   # unedited again for the tests below
 # a baseline with a sub-folder, so uninstall below must remove more than flat files
-mkdir -p "$SLSRC/baselines/statusline/sub"; printf 'x\n' > "$SLSRC/baselines/statusline/sub/f.txt"; sl_commit 2026-05-30T00:00:00Z
-sl_release 2026-06-01T00:00:00Z 2 '# orion v6'
+mkdir -p "$SLSRC/baselines/statusline/sub"; printf 'x\n' > "$SLSRC/baselines/statusline/sub/f.txt"; sl_commit 13
+sl_release 14 2 '# orion v6'
 check "update says a newer status line waits and leaves an unedited copy alone" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "statusline merge" "$SB/out" && ! grep -q "^# orion v6" "$SLFILE"'
 check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
 check "uninstall removes the project's copy and leaves the computer's" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ]'
