@@ -38,12 +38,17 @@ mkdir -p "$SB/home" "$SB/bin"
 export HOME="$SB/home" XDG_CACHE_HOME="$SB/cache"
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
 
-# The fake git: `ls-remote` answers $FAKE_LS_SHA when set, `clone` fails when $FAKE_CLONE_FAIL=1 and hangs when
-# $FAKE_CLONE_HANG=1; all else is real git. The fake cp: the first copy sleeps $FAKE_CP_SLEEP seconds when set,
-# so a copy is slower than the hook's fetch limit without racing a wall clock.
+# The fake git: `ls-remote` answers $FAKE_LS_SHA when set, with a release tag v<N> for each number in $FAKE_LS_TAGS,
+# `clone` fails when $FAKE_CLONE_FAIL=1 and hangs when $FAKE_CLONE_HANG=1; all else is real git. The fake cp: the
+# first copy sleeps $FAKE_CP_SLEEP seconds when set, so a copy is slower than the hook's fetch limit without racing
+# a wall clock.
 cat > "$SB/bin/git" <<EOF
 #!/usr/bin/env bash
-if [ "\${1:-}" = ls-remote ] && [ -n "\${FAKE_LS_SHA:-}" ]; then printf '%s\trefs/heads/main\n' "\$FAKE_LS_SHA"; exit 0; fi
+if [ "\${1:-}" = ls-remote ] && [ -n "\${FAKE_LS_SHA:-}" ]; then
+    printf '%s\t%s\n' "\$FAKE_LS_SHA" "\${3:-refs/heads/main}"
+    for t in \${FAKE_LS_TAGS:-}; do printf '%s\trefs/tags/v%s\n' "\$FAKE_LS_SHA" "\$t"; done
+    exit 0
+fi
 if [ "\${1:-}" = clone ] && [ "\${FAKE_CLONE_FAIL:-}" = 1 ]; then exit 1; fi
 if [ "\${1:-}" = clone ] && [ "\${FAKE_CLONE_HANG:-}" = 1 ]; then sleep 60; exit 1; fi
 exec "$REAL_GIT" "\$@"
@@ -178,6 +183,28 @@ check "working auto-update: the slow copy really ran" eval '[ -e "$SB/cp-slept" 
 check "working auto-update: every file of every skill was copied" eval '[ "$(cd "$SRC/skills" && find . -mindepth 2 -type f | grep -v /__pycache__/ | sort)" = "$(cd "$P/.claude/skills" && find . -mindepth 2 -type f ! -name .orion-managed | sort)" ]'
 check "working auto-update: the project is now at the source commit" eval '[ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
 check "working auto-update: no temporary clone left behind" nothing_left_in_tmp
+
+echo "version number (an update is offered only when a release raised it)"
+NUM="$(tr -d ' \t\r\n' < "$REPO/ORION_VERSION")"
+newproj; init ask; consume_marker
+check "ORION_VERSION is a whole number" eval 'case "$NUM" in ""|*[!0-9]*) false ;; esac'
+check "init records orion's version number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = "$NUM" ]'
+check "status shows it" eval 'bash "$ORION" status --project "$P" | grep -q "version:    orion $NUM,"'
+check "a newer commit without a higher release number: silent" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && [ ! -s "$SB/hook" ]'
+check "a higher release number: the update is offered by number, in one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM $((NUM+1))" run_check --force && grep -q "newer orion.*orion $((NUM+1))" "$SB/hook" && hook_out_ok "$SB/hook"'
+set_cfg ref '"other"'
+check "a ref other than main goes by commit, not by release number" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && grep -q "newer orion" "$SB/hook"'
+# A pull request that changes what projects receive must raise the number, or no project is offered it.
+# CI fetches origin/main before the suite.
+number_raised_with_shipped_files() {
+    local main_num
+    "$REAL_GIT" -C "$REPO" rev-parse -q --verify origin/main >/dev/null || { echo "    origin/main not found: fetch it first"; return 1; }
+    "$REAL_GIT" -C "$REPO" diff --quiet origin/main -- skills baselines orion.sh && return 0
+    main_num="$("$REAL_GIT" -C "$REPO" show origin/main:ORION_VERSION 2>/dev/null | tr -d ' \t\r\n')"
+    [ -n "$main_num" ] || return 0   # main has no number yet: this change brings the first one
+    [ "$NUM" -gt "$main_num" ] 2>/dev/null || { echo "    files projects receive changed, but ORION_VERSION ($NUM) is not above main's ($main_num)"; return 1; }
+}
+check "a change to the files projects receive raises ORION_VERSION above origin/main's" number_raised_with_shipped_files
 
 echo "upgrade from an install whose hook still has the old 20 s limit"
 # The older script, as far as this matters: it writes a 20 s hook and never raises it. CI checks out no
@@ -316,6 +343,15 @@ rm -f "$P/.claude/orion/BASE_CLAUDE.md"
 check "verify fails when a core file is missing" eval '! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  core-files" "$SB/out"'
 newproj; init ask; rm -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "verify fails when the project copy of GLOBAL_CLAUDE.md is missing" eval '! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  core-files.*GLOBAL_CLAUDE.md" "$SB/out"'
+newproj; "$REAL_GIT" -C "$P" init -q; printf '.claude/\n' > "$P/.gitignore"
+check "init warns when git ignores the files it installed" eval 'init ask && grep -q "ignored by .gitignore" "$SB/out"'
+check "verify names them and says an ignored .claude/ must become .claude/*" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  git-ignored: .*\.claude/\*" "$SB/out"'
+printf '.claude/*\n!.claude/orion/\n!.claude/skills/\n!.claude/settings.json\n' > "$P/.gitignore"
+check "with .claude/* and the re-includes nothing orion installed is ignored" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    git-tracked" "$SB/out"'
+mkdir -p "$P/docs/product/PRDs" && : > "$P/docs/product/PRDs/PRD.md"
+check "a folder the rules name, kept elsewhere: verify offers the move" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  folder-misplaced: the rules expect docs/PRDs/, but the project keeps it at docs/product/PRDs/" "$SB/out"'
+mkdir -p "$P/docs/PRDs"
+check "once it is where the rules expect it: no warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    folders" "$SB/out"'
 
 echo "personal rules (GLOBAL_CLAUDE.md is offered clause by clause; orion never writes the person's own file)"
 GLOBAL="$REPO/baselines/global/GLOBAL_CLAUDE.md"

@@ -163,6 +163,7 @@ aside.drawer.on{transform:none}
     <div class="nav-links">
       <a href="#how">How it works</a>
       <a href="#install">Install</a>
+      <a class="hide-sm" href="#parts">What you get</a>
       <a class="hide-sm" href="#updates">Updates</a>
       <a class="hide-sm" href="https://github.com/nachogl1/orion">GitHub</a>
       <button class="btn icon" id="theme" aria-label="Switch colour theme">◐</button>
@@ -252,17 +253,31 @@ aside.drawer.on{transform:none}
         </ul>
       </li>
       <li class="step">
-        <h3>Commit what it added</h3>
-        <p>Save the new files to the project like any other change, so your teammates get orion with their next pull.</p>
+        <h3>Open Claude Code and run the check first</h3>
+        <p>Run <code>/orion-verify</code> before your first commit (the first session also asks for it). It checks that everything fits together: your project's <code>CLAUDE.md</code>, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical, and asks before changing anything that is yours: filling in the build and test commands it finds in your project, moving a folder the rules expect somewhere else (your PRDs, say), and un-ignoring orion's files if your <code>.gitignore</code> would keep them from your team. Repeat it any time.</p>
       </li>
       <li class="step">
-        <h3>Open Claude Code in the project</h3>
-        <p>The first session runs a one-time check that everything fits together: your project's <code>CLAUDE.md</code>, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical, asks before changing anything that is yours, and tells you what is left. Repeat it any time with <code>/orion-verify</code>.</p>
+        <h3>Commit what it added</h3>
+        <p>Save the new files to the project like any other change, so your teammates get orion with their next pull.</p>
       </li>
     </ol>
 
     <div class="alt">Prefer to let the assistant do it? Open Claude Code in your project and say <b>"set up orion in this project"</b>.</div>
     <div class="caution"><b>Use it with care.</b> orion tells an AI assistant how to work in your project, and the assistant will run commands and edit files on your machine. Review what you install, keep your work saved, and use it at your own risk. It is under constant improvement and is provided as-is.</div>
+  </section>
+
+  <section class="sec wrap" id="parts" aria-labelledby="partsTitle">
+    <div class="sec-head">
+      <div class="eyebrow">What you get</div>
+      <h2 id="partsTitle">What orion installs, and how each part is updated</h2>
+      <p>Four parts. Three live in the project and reach your teammates with a clone; one lives only on your computer. orion has one version number, raised each time something a project receives changes.</p>
+    </div>
+    <div class="grid3">
+      <div class="tile"><h3>The base rules</h3><p><b>Where:</b> <code>.claude/orion/BASE_CLAUDE.md</code>, imported by your <code>CLAUDE.md</code>. <b>Owner:</b> orion; never edit the copy. <b>Updates:</b> replaced on every update. When they change, the next session offers <code>/orion-verify</code> once, to check they still fit your project.</p></div>
+      <div class="tile"><h3>The skills</h3><p><b>Where:</b> <code>.claude/skills/&lt;name&gt;/</code>, each marked with an <code>.orion-managed</code> file. <b>Owner:</b> orion; your own skills (no marker) are never touched. <b>Updates:</b> replaced on every update.</p></div>
+      <div class="tile"><h3>Your personal rules</h3><p><b>Where:</b> offered for your own <code>~/.claude/CLAUDE.md</code>, on this computer only. <b>Owner:</b> you. <b>Updates:</b> each rule orion offers carries a timestamp, and your file's ORION GLOBAL heading records when you last went through them. A rule newer than that heading is offered, at most once a day; nothing is written without your yes.</p></div>
+      <div class="tile"><h3>The status bar (optional)</h3><p><b>Where:</b> <code>~/.claude/statusline</code>, on this computer only; the project carries orion's copy. <b>Owner:</b> you. <b>Updates:</b> it records the time of the orion copy it came from. When the project brings a newer one, the session start offers it: an unedited copy is replaced, an edited one gets orion's changes merged in, and you can skip that version.</p></div>
+    </div>
   </section>
 
   <section class="sec wrap" id="updates" aria-labelledby="updTitle">
@@ -272,7 +287,7 @@ aside.drawer.on{transform:none}
       <p>Nothing changes without your say-so. The update mode and the tidy-up limits live in <code>.claude/orion/config.json</code>.</p>
     </div>
     <div class="grid3">
-      <div class="tile"><h3>Updates</h3><p>Each session start checks for a newer orion. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
+      <div class="tile"><h3>Updates</h3><p>Once a day the session start compares the orion version number your project has with the newest release, and offers an update only when there is a higher one. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
       <div class="tile"><h3>Your personal rules</h3><p>At most once a day, orion offers rules for your own <code>~/.claude/CLAUDE.md</code>. You accept, skip or reword each one; nothing is written without your yes, and the rest of your file is never touched.</p></div>
       <div class="tile"><h3>A tidy repository</h3><p>Once the project reaches <code>branchLimit</code> or <code>worktreeLimit</code> (20 each by default), the session start offers <code>/clear-git-resources</code>. Set them higher, or to <code>off</code>.</p></div>
     </div>
@@ -333,21 +348,22 @@ const NODES = {
       "Next sessions: picks the next free ticket, settles it, records the answer on the map, and turns fog into new tickets as it clears."
     ],
     you:["Answer the grilling questions and react to the prototypes.","Start one session per ticket: research tickets run alongside."],
-    out:["A map issue on GitHub with every decision recorded under Settled.","Decisions ready to be written into a PRD."],
+    out:["A map issue on GitHub with every decision recorded under Settled.","Decisions ready for you to write into a PRD or an ADR."],
     rules:["It decides, it does not build (unless the map's Notes say building is in scope).","Every blocker is set twice: GitHub's native link and a Blocked by section in the body.","If the path is already clear and fits one session, it says a map would only add overhead and stops."],
     tip:"Run the first session as a long conversation. The better the destination, the fewer tickets you need."},
 
-  prd:{phase:"A", actor:"both", touch:"always", kicker:"3 · Specify", title:"The PRD", cmd:"docs/PRDs/PRD.md\ndocs/PRDs/PRD<SummaryName>.md   (one per big change)",
+  prd:{phase:"A", actor:"both", touch:"always", kicker:"3 · Specify", title:"The PRD", cmd:"docs/PRDs/PRD.md                 (yours: you write or provide it)\ndocs/ADRs/adr-<change-name>.md   (one per hard-to-reverse decision)",
     sub:"The product requirements document: the north star every later step reads.",
     what:[
       "Holds the product facts: vocabulary, scope, the do-not-build list, the acceptance bar and the build decisions.",
-      "An agent writes a draft only when you ask for it, from the brief and the settled map.",
+      "Written or provided by you, on your terms, usually after a /wayfinder map. An agent never drafts one on its own: for a big change it only asks whether you want one.",
+      "A hard-to-reverse decision gets an ADR instead: a short record of the context, the decision, its consequences and the alternatives, in docs/ADRs/.",
       "The UX prototype in docs/ux/prototypes/ sits beside it and leads every screen."
     ],
-    you:["Read the draft and approve it: it counts as the PRD only then.","Merge its docs(prd) pull request yourself."],
-    out:["An approved PRD on main.","(For front-end work) a UX prototype every screen story will follow."],
-    rules:["A PRD is never created automatically. No ticket and no code for a big change until its PRD is approved.","Disagreement is a bug: the PRD wins on product, the rules files win on process.","Rules files never restate the product: they point at the PRD."],
-    tip:"Small fixes and tweaks need no PRD. Every big change gets its own."},
+    you:["Write or provide the PRD, and merge its pull request yourself.","Confirm when an ADR is needed, and approve it before any ticket or code for that change."],
+    out:["A PRD on main.","An ADR for each decision that is costly to undo.","(For front-end work) a UX prototype every screen story will follow."],
+    rules:["Three sizes of change: a fix or a tweak needs no document; a hard-to-reverse decision needs an ADR you approve first; a big change only gets the question whether you want a PRD.","Disagreement is a bug: the PRD wins on product, the rules files win on process.","Rules files never restate the product: they point at the PRD."],
+    tip:"An approved ADR does not change the PRD by itself: fold it in the next time you update the PRD."},
 
   tickets:{phase:"A", actor:"both", touch:"always", kicker:"4 · Split", title:"/prd-to-tickets", cmd:"/prd-to-tickets",
     sub:"Cuts the PRD into epics and stories built so several agents can work side by side.",
@@ -373,7 +389,7 @@ const NODES = {
     ],
     you:["Nothing, when the request is clear.","Answer the interview and prepare what it lists, when it is not."],
     out:["One agent-ready issue, shipped and merged by /dev-next."],
-    rules:["One change per run: a request holding two changes becomes two issues.","Whenever you ask for a code change in chat, the agent offers /dev-quick. Saying no means no change is made, by hand or otherwise.","A change big enough to need a PRD is the wrong job for /dev-quick."]},
+    rules:["One change per run: a request holding two changes becomes two issues.","Whenever you ask for a code change in chat, the agent offers /dev-quick. Saying no means no change is made, by hand or otherwise.","A change that needs an ADR or a PRD is the wrong job for /dev-quick."]},
 
   backlog:{phase:"A", actor:"store", touch:"none", kicker:"Source of truth", title:"GitHub Issues",
     sub:"Epics, stories, blockers and labels: the only place work is tracked.",
@@ -520,7 +536,7 @@ const NODES = {
 
   verify:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Health check", title:"/orion-verify", cmd:"/orion-verify",
     sub:"Checks that your rules, orion's rules, the skills and the settings fit together.",
-    what:["Runs the mechanical checks and fixes what is mechanical.","Reviews CLAUDE.md, your skills and your personal rules file against orion's rules for gaps, duplicates and contradictions.","Reports the rest in a few lines."],
+    what:["Runs the mechanical checks and fixes what is mechanical.","Reviews CLAUDE.md, your skills and your personal rules file against orion's rules for gaps, duplicates and contradictions.","Proposes the build and test commands it finds in your project for every blank one, so /dev-next can run.","Offers to move a folder the rules expect (such as docs/PRDs/) that your project keeps elsewhere.","Offers the exact .gitignore lines when orion's files would not reach your team.","Reports the rest in a few lines."],
     you:["Approve any change to something you own."], out:["A consistent setup."],
     rules:["Asks before touching anything the project or you own."]},
 

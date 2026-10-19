@@ -57,7 +57,20 @@ project wrote:
 | `settings-json`, `config-json`, `config-update-mode` | Read the file, repair the syntax or the value (`ask`, `auto` or `off`); if the intent is unclear, ask |
 
 `WARN` lines are **reported** (slots, a locally edited rules copy, a user-level skill shadowing a project one) except
-`git-ignored`, which **needs a yes**: propose the `.gitignore` lines that un-ignore the listed paths.
+these two, which **need a yes**:
+
+- `git-ignored` — teammates would not get orion with a clone. Read `.gitignore` (and any nested one the files sit
+  under), then propose the exact lines that make every listed file tracked, and show them as a before/after. Git
+  cannot re-include a file inside an ignored folder, so a line ignoring a whole folder (`.claude/`, `.claude`) is
+  rewritten as `<folder>/*` followed by re-includes (`!.claude/orion/`, `!.claude/skills/`,
+  `!.claude/settings.json`), never just followed by `!` lines. Personal files stay ignored (`.claude/settings.local.json`
+  and anything the project already ignores that orion did not install). After the edit, re-run `verify` and confirm
+  `git-tracked` reads `ok`.
+- `folder-misplaced` — the rules name a folder (such as `docs/PRDs/`) that the project keeps under another path, so
+  the skills would look in the wrong place. Offer to **move** it to where the rules expect it, with the command the
+  finding prints (`git mv`; plain `mv` for a folder git does not track yet). Before asking, search the project for
+  links to the old path and list them, since the move breaks them; on a yes, update those links too. Never offer to
+  change where the rules look instead.
 
 Re-run `verify` after fixing until it exits 0 — no `FAIL` left; `WARN` lines may remain, they are handled above. If a
 fix fails twice, stop and report the error instead of retrying.
@@ -78,8 +91,16 @@ Then judge the project's file against the mandatory one:
    stack and layout, worktrees, boundaries, pending questions). Judge by content, not by heading: a section counts
    as present when the file states its facts anywhere, under any heading. A section that is **absent** is **needs a
    yes**: propose adding it with its slots. A section present but incomplete, or still holding `TBD` or
-   `<placeholder>` values, is **reported** as still to fill — that is the user's homework, not a breach.
-4. **Stale references** — a path, command or file the project's `CLAUDE.md` names that does not exist in the project.
+   `<placeholder>` values, is **reported** as still to fill — that is the user's homework, not a breach — except the
+   commands below.
+4. **The blank commands** — every row of the commands table that still reads `TBD` stops the skills that rely on it
+   (`/dev-next` cannot run with one in its gate). For each, work out the real command from the project's own files,
+   in this order: the CI workflow (the gate must run the same chain as CI), then the package or build files
+   (`package.json` scripts, a `Makefile`, `*.csproj` / `*.sln`, `pyproject.toml`, `Cargo.toml`, `go.mod`, …), then
+   the README. Each is **needs a yes**: the row, the proposed command, and the file and line it came from. Fill the
+   ones accepted; leave a row as `TBD` when nothing in the project tells the command, and say so. Never run a
+   proposed command to test it.
+5. **Stale references** — a path, command or file the project's `CLAUDE.md` names that does not exist in the project.
    **Reported**.
 
 Edit only after a yes, with the smallest change: never reorder or rewrite the rest of the file.

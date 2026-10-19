@@ -25,8 +25,8 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
   the issue shape, the labels and the native links every ticket here follows. Missing → stop and say so.
 - GitHub Issues as the tracker, `gh` signed in to the repository `origin` points at. A `CLAUDE.md` naming another
   tracker → stop and say this skill needs GitHub Issues.
-- A PRD under `docs/PRDs/`. No PRD → stop: the standing rule is "a PRD before any ticket", and this skill does not
-  write one. Point at `/wayfinder` when the person is still finding the way to a PRD.
+- A PRD under `docs/PRDs/`. No PRD → stop: by the standing rule a PRD is the person's to write or provide, and this
+  skill never writes one. Point at `/wayfinder` when the person is still finding the way to a PRD.
 - `.claude/skills/issue-map/` is optional: when installed, the map is rebuilt silently at the end.
 
 ## Arguments

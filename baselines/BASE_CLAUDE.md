@@ -94,10 +94,15 @@ acceptance bar, the build decisions — is read from `docs/PRDs/PRD.md` (every P
 one), never restated in a rules file. Until PRD v1 exists the pre-PRDs there stand in. **Disagreement is a bug**: the
 PRD wins on product, the rules files win on process.
 
-- **Every big change gets its own PRD first**, at `docs/PRDs/PRD<SummaryName>.md`, before any ticket or code for it
-  exists. Small fixes and tweaks need none. **A PRD is never created automatically**: an agent that finds a change
-  big enough to need one stops and says so, writes a draft only when the person asks for it, and the draft counts as
-  the PRD only once the person has read it and approved it. No ticket and no code for that change until then.
+- **Three sizes of change, three kinds of record.**
+  - **A fix or a tweak:** no document.
+  - **A hard-to-reverse decision** (a new mechanism, a format, a dependency, a change of scope: something costly to
+    undo, or that a later reader will ask "why?" about) gets an **ADR** (a short decision record: context, decision,
+    consequences, alternatives) at `docs/ADRs/adr-<change-name>.md`. The agent proposes it and the person confirms
+    one is needed; the person approves the ADR before any ticket or code for that change exists.
+  - **A big change or a product update:** the agent only asks whether the person wants a PRD. Creating or updating a
+    PRD is the person's process, on their terms — planned with `/wayfinder`, then written or provided by the person.
+    **An agent never drafts a PRD on its own.**
 - **No real production data in the repository.** The project's `CLAUDE.md` names the sensitive data classes. Synthetic
   or de-identified fixtures only. **No personal data anywhere** — not in prompts, logs, tests, fixtures, issues or git
   history — and never run anything against production.

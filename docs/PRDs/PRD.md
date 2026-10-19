@@ -1,8 +1,8 @@
 # PRD — orion: skills, rules and an installer for Claude Code projects
 
 **Status: approved by the owner on 2026-10-17.** This is the PRD for orion.
-It describes orion as it is today; it plans no new work. Every later big change gets its own
-`docs/PRDs/PRD<SummaryName>.md` and, once shipped, is folded into this file.
+It describes orion as it is today; it plans no new work. Its owner updates it on their own terms; a hard-to-reverse
+decision in between is recorded as an ADR under `docs/ADRs/` and folded into this file when the owner next updates it.
 
 ## Problem and users
 
@@ -33,7 +33,9 @@ Optional and per computer: a **status line** at `~/.claude/statusline`. Every pr
 Offered to each person: **personal rules** for their own user-level `CLAUDE.md` (`~/.claude/CLAUDE.md`), talked
 through clause by clause and taken only on their word (see "Personal rules" under Scope).
 
-This repository is the source. A merge to `main` is a release; every project picks it up with `orion update`.
+This repository is the source. orion carries one **version number** (`ORION_VERSION`, a whole number) that every
+change to what a project receives raises; a merge that raises it is tagged `v<N>` and is a release, which every
+project picks up with `orion update`.
 
 ## Vocabulary
 
@@ -44,7 +46,9 @@ This repository is the source. A merge to `main` is a release; every project pic
 | Baseline / `BASE_CLAUDE.md` | The one mandatory rules file, generic and slot-free, overwritten in projects on update. |
 | Starter `CLAUDE.md` | The slot-only project rules file `init` writes once when the project has none; yours from then on. |
 | Slot | A project fact the starter asks for (commands, stack, worktree root, boundaries); `TBD` until filled. |
-| PRD | Product requirements document under `docs/PRDs/`: the north star for what a project builds. |
+| PRD | Product requirements document under `docs/PRDs/`: the north star for what a project builds; written or provided by the person, never drafted by an agent on its own. |
+| ADR | A decision record at `docs/ADRs/adr-<change-name>.md` (context, decision, consequences, alternatives) for a hard-to-reverse decision; approved by the person before any ticket or code. |
+| Version number | `ORION_VERSION` in this repository, line 5 of a project's `.claude/orion/VERSION`; raised by every change to what a project receives, tagged `v<N>` on `main`. |
 | Epic / story | A group of work / one buildable piece of it. Agents build stories only. Epic → story is a native GitHub sub-issue. |
 | Blocker | An issue that must be CLOSED first; set both as GitHub's native relation and under `### Blocked by`. |
 | Seam | The folder or module a story owns, so two stories on one folder are caught before they collide. |
@@ -65,11 +69,11 @@ Sub-commands of `orion.sh`, run in the project or with `--project <dir>`:
 
 | Sub-command | Contract |
 |---|---|
-| `init` | Copies every skill with its marker, the baseline, the script and a `VERSION` file (commit SHA) into the project; creates `CLAUDE.md` from the starter if missing, else only adds the import line at the top (replacing the pre-rename import if present); writes `config.json` once (`updateMode`, `source`, `ref`, `branchLimit`, `worktreeLimit`); adds one `SessionStart` hook; optionally installs the status line; leaves a one-shot per-computer marker that asks for `/orion-verify`. |
-| `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns, the status line baseline, `GLOBAL_CLAUDE.md` and the commit time (`VERSION` line 4) included; says when the per-computer status line has a newer baseline waiting, and never changes it; says to run `/orion-verify` when it changed the rules. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
-| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, every session with no network, the offer of `/orion-verify` once each time orion's rules (`BASE_CLAUDE.md` and every `.md` file of an orion skill) differ from the last ones checked on this computer, seen after an `auto` update or the session-start pull in the same session; and at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`), and the branch- or worktree-limit offer of `/clear-git-resources` when that skill is installed. Every session it first runs `git pull --ff-only` on the branch the session opens in (only the fetch is time-limited; silent unless refused, then one line), and, with no network, it offers the project's newer status line baseline (never an older one): taking it for an unedited copy, merging it into an edited one, never without the person's word, even under `auto`; and, at most once a day per computer and never under `off`, the offer to go through orion's personal rules while a clause is newer than the person's ORION GLOBAL section (never a write to their file). Messages are joined into one line. |
-| `verify` | The mechanical post-install check: one line per finding (`ok` / `WARN` / `FAIL`), exit 1 on a `FAIL`, never a fix; consumes the post-install marker and records the rules it checked on this computer. |
-| `status` | What is installed, at which version, the update mode, the branch and worktree limits and the current counts. |
+| `init` | Copies every skill with its marker, the baseline, the script and a `VERSION` file (commit SHA, commit time, version number) into the project; creates `CLAUDE.md` from the starter if missing, else only adds the import line at the top (replacing the pre-rename import if present); writes `config.json` once (`updateMode`, `source`, `ref`, `branchLimit`, `worktreeLimit`); adds one `SessionStart` hook; optionally installs the status line; warns when git ignores files it installed; leaves a one-shot per-computer marker that asks for `/orion-verify`, and its closing message puts `/orion-verify` before the first commit. |
+| `update` | Fetches orion (`git clone --depth 1` from the configured source and ref, or this checkout when run from it) and re-copies only what orion owns, the status line baseline, `GLOBAL_CLAUDE.md`, the commit time (`VERSION` line 4) and the version number (line 5) included; says when the per-computer status line has a newer baseline waiting, and never changes it; says to run `/orion-verify` when it changed the rules. Never touches the project's `CLAUDE.md`, `config.json`, unmarked skills or other settings. |
+| `check` | The session-start hook. Silent on success and exit 0 on every failure. It prints at most one `hookSpecificOutput` JSON line: once after `init`, the request to run `/orion-verify` instead of the update check; otherwise, every session with no network, the offer of `/orion-verify` once each time orion's rules (`BASE_CLAUDE.md` and every `.md` file of an orion skill) differ from the last ones checked on this computer, seen after an `auto` update or the session-start pull in the same session; and at most once a day each, an update offer (`ask`) or a note that it updated itself (`auto`, nothing under `off`) — only when a release tag `v<N>` is higher than the project's version number (with no number on either side, or a `ref` other than `main`, any new commit counts) — and the branch- or worktree-limit offer of `/clear-git-resources` when that skill is installed. Every session it first runs `git pull --ff-only` on the branch the session opens in (only the fetch is time-limited; silent unless refused, then one line), and, with no network, it offers the project's newer status line baseline (never an older one): taking it for an unedited copy, merging it into an edited one, never without the person's word, even under `auto`; and, at most once a day per computer and never under `off`, the offer to go through orion's personal rules while a clause is newer than the person's ORION GLOBAL section (never a write to their file). Messages are joined into one line. |
+| `verify` | The mechanical post-install check: one line per finding (`ok` / `WARN` / `FAIL`), exit 1 on a `FAIL`, never a fix; warns about every installed file git ignores (and about a whole ignored folder, which needs `<folder>/*` plus re-includes) and about a folder the baseline names that the project keeps under another path; consumes the post-install marker and records the rules it checked on this computer. |
+| `status` | What is installed, at which version number and commit, the update mode, the branch and worktree limits and the current counts. |
 | `statusline` | `merge`: takes the project's newer baseline; an unedited per-computer status line becomes it, an edited one gets a three-way merge that keeps the edits (conflict markers and exit 1 where both changed the same lines; a copy from before the merge base existed is saved to `~/.claude/statusline.bak` and replaced). `skip`: declines that version. |
 | `uninstall` | Removes everything orion owns, the hook, the marker and the rules fingerprint; keeps everything the project owns, including the starter `CLAUDE.md` minus the import line; never touches the person's `~/.claude/CLAUDE.md`. |
 
@@ -144,7 +148,9 @@ Around the loop:
 
 - `orion` — status, check, update and uninstall from inside a session.
 - `orion-verify` — runs `verify`, fixes the `FAIL`s in orion's own files, reviews the project's `CLAUDE.md`, skills,
-  settings and the person's own rules file against the baseline, runs every `VERIFY.md`, and asks before touching anything the project owns.
+  settings and the person's own rules file against the baseline, runs every `VERIFY.md`, and asks before touching anything the project owns:
+  filling each `TBD` command from the project's own files (CI first; never run to test it), moving a folder the
+  baseline names to where it expects it (no path override), and the `.gitignore` lines that let orion reach the team.
 - `handoff` — packs a conversation into a handoff document saved outside the workspace, secrets redacted.
 - `project-handover` — a read-only, self-contained HTML handover of the project for newcomers and stakeholders.
 - `generate-project-writeup` — a read-only Word write-up of the delivered work for leadership, numbers measured or
@@ -159,7 +165,10 @@ Around the loop:
   never taken automatically.
 - The assignee owns the issue; claims are re-read, and the earlier claim wins.
 - Every new issue follows `dev-next`'s `references/new-issue.md`; every skill that files or reads issues uses it.
-- A big change gets a PRD first, drafted only on request and counted only once approved.
+- Three sizes of change: a fix or a tweak needs no document; a hard-to-reverse decision gets an ADR the person
+  confirms is needed and approves before any ticket or code; a big change only gets the question whether the person
+  wants a PRD, which they write or provide on their terms (after `/wayfinder`). An agent never drafts a PRD on its own.
+  An approved ADR does not update the PRD by itself.
 
 ### The audit, harvest, QA and reconcile loop
 
@@ -204,6 +213,8 @@ A change to orion is done when all of these hold:
   section or with a newer clause, never under `off`, at most once a day, and never writes `~/.claude/CLAUDE.md`
   (not under `auto`, not on `uninstall`); `verify` reports a missing project copy as a `FAIL`.
 - **`verify` on a fresh install** exits 0 with only the unfilled-slot warning.
+- **The version number holds:** it is a whole number, `init` records it, a newer commit with no higher release tag is
+  not offered, a higher tag is, and a change to the files a project receives raises it above `origin/main`'s.
 - **Distribution safety holds:** the diff, the commit message and the pull request text carry no sensitive data
   (the categories under "Do not build"); a leak in pushed history is reported to the owner, never force-pushed away.
 - **Every pull request adds a line to `docs/CHANGELOG.md`**, and every edited Markdown file still renders.
@@ -226,6 +237,7 @@ A change to orion is done when all of these hold:
 - **One rules file.** The baseline holds every mandatory rule; the project's `CLAUDE.md` holds only its facts.
 - **Ownership by marker and manifest.** `update` and `uninstall` act only on what carries `.orion-managed` or sits in
   `.orion-manifest`.
-- **Merge to `main` is the release.** Squash-merge only; projects pull it with `orion update`.
+- **A raised version number is the release.** Squash-merge only; the `release` workflow tags `v<N>` on `main`, the
+  session-start check reads the tags in its one `ls-remote` call, and projects pull the release with `orion update`.
 - **Skills are edited in place**, never copied to a new version.
 - **English** for code, comments, commits, issues and docs.

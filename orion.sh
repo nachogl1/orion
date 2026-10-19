@@ -32,7 +32,7 @@
 #   .claude/orion/BASE_CLAUDE.md      the mandatory rules, imported by CLAUDE.md
 #   .claude/orion/statusline/         the status line baseline each computer's copy follows
 #   .claude/orion/global/             GLOBAL_CLAUDE.md, the personal rules offered for ~/.claude/CLAUDE.md
-#   .claude/orion/VERSION             commit the files came from (and its commit time)
+#   .claude/orion/VERSION             commit the files came from (its commit time, and orion's version number)
 #   .claude/orion/.orion-manifest     the list above
 # What orion creates ONCE and never touches again (yours):
 #   CLAUDE.md                         created with the project-specific slots if missing; otherwise
@@ -135,6 +135,15 @@ worktree_count() {  # project-dir
 
 version_sha() { sed -n '1p' "$1" 2>/dev/null || true; }
 
+# orion's version number: ORION_VERSION in the source, line 5 of the project's VERSION. Empty when the source or the
+# install predates it, or when the value is not a whole number.
+whole_number() { case "$1" in ""|*[!0-9]*) ;; *) printf '%s' "$1" ;; esac; }
+version_number() { whole_number "$(sed -n '5p' "$1" 2>/dev/null | tr -d '\r')"; }
+source_number() { whole_number "$(tr -d ' \t\r\n' < "$1/ORION_VERSION" 2>/dev/null || true)"; }
+version_label() {  # sha number -> "orion <number>", or the short sha when there is no number
+    if [ -n "$2" ]; then printf 'orion %s' "$2"; else short "$1"; fi
+}
+
 short() { printf '%s' "${1:0:7}"; }
 
 # Per-computer, per-project state that must never be committed (the daily
@@ -218,10 +227,13 @@ limited() {  # seconds command...
     else GIT_TERMINAL_PROMPT=0 GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
 }
 
-latest_sha() {  # source ref -> prints sha or nothing
+# One call for both: LATEST_SHA, the ref's commit, and LATEST_NUM, the highest release tag (v<N>, pushed by the
+# release workflow each time ORION_VERSION rises). Either is empty when the source has none.
+latest_remote() {  # source ref
     local out=""
-    out=$(limited 8 git ls-remote "$1" "refs/heads/$2" 2>/dev/null || true)
-    printf '%s' "$out" | cut -f1 | head -n1
+    out=$(limited 8 git ls-remote "$1" "refs/heads/$2" 'refs/tags/v*' 2>/dev/null || true)
+    LATEST_SHA="$(printf '%s\n' "$out" | awk -v r="refs/heads/$2" '$2 == r { print $1; exit }')"
+    LATEST_NUM="$(printf '%s\n' "$out" | awk '$2 ~ /^refs\/tags\/v[0-9]+$/ { n = substr($2, 12) + 0; if (!f || n > m) m = n; f = 1 } END { if (f) print m }')"
 }
 
 # --------------------------------------------------------------------------
@@ -511,8 +523,9 @@ apply_core() {  # source ref update-mode
     rm -rf "$dir/statusline"; cp -R "$SRC_DIR/baselines/statusline" "$dir/statusline"
     # only the offer of orion's personal rules: nothing imports it, the person takes clauses on their word
     rm -rf "$dir/global"; cp -R "$SRC_DIR/baselines/global" "$dir/global"
-    # line 4, the source's commit time, tells a newer status line from an older one
-    printf '%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" > "$dir/VERSION"
+    # line 4, the source's commit time, tells a newer status line from an older one;
+    # line 5, orion's version number, tells the update check whether a release is newer
+    printf '%s\n%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" "$(source_number "$SRC_DIR")" > "$dir/VERSION"
     { printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest"
       ( cd "$SRC_DIR/baselines" && find statusline global -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
@@ -520,7 +533,7 @@ apply_core() {  # source ref update-mode
             "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" "$WORKTREE_LIMIT_DEFAULT" > "$dir/config.json"
         say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT and worktreeLimit $WORKTREE_LIMIT_DEFAULT, a number or off)"
     fi
-    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/, global/} @ $(short "$SRC_SHA")"
+    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/, global/} @ $(version_label "$SRC_SHA" "$(source_number "$SRC_DIR")") ($(short "$SRC_SHA"))"
 }
 
 # The project's own CLAUDE.md: created once with the project-specific slots the
@@ -748,7 +761,7 @@ install_statusline() {  # force
 # --------------------------------------------------------------------------
 cmd_init() {
     local source="$ORION_DEFAULT_SOURCE" ref="$ORION_DEFAULT_REF" force=0 statusline="prompt" project="" resp mode=""
-    local source_given=0 ref_given=0 key val old
+    local source_given=0 ref_given=0 key val old n
     while [ $# -gt 0 ]; do
         case "$1" in
             --source) source="$2"; source_given=1; shift 2 ;;
@@ -807,11 +820,38 @@ cmd_init() {
     # One-shot: the next session start asks Claude Code to run the post-install check.
     pending="$(cache_file verify-pending)"
     mkdir -p "$(dirname "$pending")" 2>/dev/null && printf '%s' "$(date +%s)" > "$pending" || true
+    n="$(ignored_orion_paths | grep -c . || true)"
+    [ "$n" -gt 0 ] 2>/dev/null && say "  !    $n file(s) orion installed are ignored by .gitignore, so teammates will not get them: /orion-verify proposes the fix"
     say ""
-    say "done. Review with 'git status', then commit the new files on a branch so your team gets them."
-    say "Next: in Claude Code, run /orion-verify. It checks that CLAUDE.md, the imported rules, the skills and the"
-    say "settings fit together after the install, fixes what is mechanical and reports the rest. If you skip it,"
-    say "the next session start asks for it once."
+    say "done. Next: in Claude Code, run /orion-verify BEFORE your first commit. It checks that CLAUDE.md, the imported"
+    say "rules, the skills and the settings fit together, fixes what is mechanical, and offers to fill the blank commands,"
+    say "move folders the rules expect elsewhere and un-ignore orion's files. If you skip it, the next session start asks"
+    say "for it once. Then review 'git status' and commit the new files on a branch so your team gets them."
+}
+
+# Every file orion installed that git ignores, one per line: a teammate's clone would miss it. Tracked files never count.
+ignored_orion_paths() {
+    git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    local f entry paths=()
+    for f in CLAUDE.md .claude/settings.json .claude/orion/config.json; do [ -e "$PROJECT/$f" ] && paths+=("$f"); done
+    while IFS= read -r f; do
+        f="${f%$'\r'}"; [ -n "$f" ] && [ -e "$PROJECT/.claude/orion/$f" ] && paths+=(".claude/orion/$f")
+    done < <(cat "$PROJECT/.claude/orion/.orion-manifest" 2>/dev/null || true)
+    for entry in "$PROJECT"/.claude/skills/*/; do
+        [ -f "${entry%/}/$MARKER" ] || continue
+        while IFS= read -r f; do paths+=("${f#"$PROJECT"/}"); done < <(find "${entry%/}" -type f)
+    done
+    [ ${#paths[@]} -gt 0 ] || return 0
+    git -C "$PROJECT" check-ignore -- "${paths[@]}" 2>/dev/null || true
+}
+
+# A folder the mandatory rules name (docs/PRDs/, …) that the project keeps under another path: the first folder of
+# the same name, any case, among the files git tracks or would track. Prints its path, or nothing.
+misplaced_folder() {  # expected-folder
+    local name; name="$(basename "${1%/}")"
+    git -C "$PROJECT" ls-files --cached --others --exclude-standard 2>/dev/null | awk -F/ -v n="$name" '
+        /^\.claude\// { next }
+        { for (i = 1; i < NF; i++) if (tolower($i) == tolower(n)) { p = $1; for (j = 2; j <= i; j++) p = p "/" $j; print p; exit } }'
 }
 
 cmd_update() {
@@ -895,6 +935,7 @@ cmd_check() {
 # The daily update check. Prints the context for Claude Code, or nothing when there is nothing to say.
 check_update_ctx() {  # force now
     local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest stamp last hook
+    local installed newer=0
     mode="$(config_get "$cfg" updateMode ask)"
     [ "$mode" = "off" ] && return 0
     stamp="$(cache_file last-check)"
@@ -909,11 +950,21 @@ check_update_ctx() {  # force now
     # every orion hook already had HOOK_TIMEOUT; anything else (a lower limit, no hook, no JSON tool) does not.
     hook=$(raise_hook_timeout "$PROJECT/.claude/settings.json" 2>/dev/null | tr -d '\r' || true)
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
-    current="$(version_sha "$dir/VERSION")"
-    latest="$(latest_sha "$source" "$ref")"
-    [ -n "$latest" ] || return 0
-    # same commit, but an update run by an older orion.sh left out the status line or personal rules copy: offer it once more
-    [ "$latest" = "$current" ] && [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && return 0
+    current="$(version_sha "$dir/VERSION")"; installed="$(version_number "$dir/VERSION")"
+    latest_remote "$source" "$ref"
+    [ -n "$LATEST_SHA" ] || return 0
+    # A release raises the version number, so a merge that changes nothing a project receives is not offered. Release
+    # tags mark the default branch only; without a number on both sides any new commit counts, as before numbers.
+    if [ -n "$LATEST_NUM" ] && [ -n "$installed" ] && [ "$ref" = "$ORION_DEFAULT_REF" ]; then
+        [ "$LATEST_NUM" -gt "$installed" ] && newer=1
+        latest="$(version_label "$LATEST_SHA" "$LATEST_NUM")"
+    else
+        [ "$LATEST_SHA" != "$current" ] && newer=1
+        latest="$(short "$LATEST_SHA")"
+    fi
+    current="$(version_label "$current" "$installed")"
+    # nothing newer, but an update run by an older orion.sh left out the status line or personal rules copy: offer it once more
+    [ "$newer" = 0 ] && [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && return 0
     case "$mode" in
         auto)
             # A process of its own: a failed fetch ends only that process (this hook still answers and
@@ -923,12 +974,12 @@ check_update_ctx() {  # force now
             # has a lower limit (an install from before the raise), the whole update stays capped at 10 s as
             # before, so the session's own kill cannot land in the middle of the copy instead.
             if run_auto_update "$hook" >/dev/null 2>&1 </dev/null; then
-                printf '%s' "orion (the repo-level utility framework in .claude/orion) was updated automatically from $(short "$current") to $(short "$latest"), as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
+                printf '%s' "orion (the repo-level utility framework in .claude/orion) was updated automatically from $current to $latest, as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
             else
-                printf '%s' "orion tried to update itself automatically ($(short "$current") -> $(short "$latest")) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
+                printf '%s' "orion tried to update itself automatically ($current -> $latest) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
             fi ;;
         *)
-            printf '%s' "A newer orion is available for this project ($(short "$current") -> $(short "$latest")). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
+            printf '%s' "A newer orion is available for this project ($current -> $latest). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
     esac
 }
 
@@ -1058,7 +1109,7 @@ cmd_status() {
     local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" n=0 entry
     if [ ! -f "$dir/VERSION" ]; then say "orion is not installed in $PROJECT"; return; fi
     say "project:    $PROJECT"
-    say "version:    $(short "$(version_sha "$dir/VERSION")") ($(sed -n '2p' "$dir/VERSION") @ $(sed -n '3p' "$dir/VERSION"))"
+    say "version:    $(version_label "$(version_sha "$dir/VERSION")" "$(version_number "$dir/VERSION")"), $(short "$(version_sha "$dir/VERSION")") ($(sed -n '2p' "$dir/VERSION") @ $(sed -n '3p' "$dir/VERSION"))"
     say "source:     $(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"
     say "updateMode: $(config_get "$cfg" updateMode ask)   (edit .claude/orion/config.json: ask | auto | off)"
     say "branchLimit: $(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")   (branches now: $(branch_count "$PROJECT"); the hook offers /clear-git-resources at the limit; a number or off)"
@@ -1151,7 +1202,7 @@ cmd_verify() {
     PROJECT="$(resolve_project "$project")"
     local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" skills="$PROJECT/.claude/skills"
     local claude="$PROJECT/CLAUDE.md" settings="$PROJECT/.claude/settings.json" base="$PROJECT/.claude/orion/BASE_CLAUDE.md"
-    local f n mode entry name sname ours names="" dups="" checks="" ref p slots
+    local f n mode entry name sname ours names="" dups="" checks="" ref p slots ignored
     rm -f "$(cache_file verify-pending)" 2>/dev/null || true
     rules_mark
     say "orion verify -> $PROJECT"
@@ -1265,12 +1316,29 @@ cmd_verify() {
 
     # 5. git: what orion installed must reach the team
     if git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        n=""
-        for p in CLAUDE.md .claude/orion/orion.sh .claude/skills .claude/settings.json; do
-            [ -e "$PROJECT/$p" ] && git -C "$PROJECT" check-ignore -q -- "$p" 2>/dev/null && n="$n $p"
-        done
-        if [ -n "$n" ]; then v_warn git-ignored "ignored by .gitignore:$n - teammates will not get orion with a clone (fix: un-ignore them)"
+        ignored="$(ignored_orion_paths)"
+        if [ -n "$ignored" ]; then
+            # git cannot re-include a file inside an ignored folder, so the fix differs when a whole folder is ignored
+            p=""
+            for f in .claude .claude/orion .claude/skills; do
+                git -C "$PROJECT" check-ignore -q -- "$f/" 2>/dev/null && { p="$f/"; break; }
+            done
+            [ -n "$p" ] && p="; the folder $p is ignored as a whole, so its line must become ${p%/}/* followed by re-includes (!...) for orion's files"
+            v_warn git-ignored "$(printf '%s\n' "$ignored" | grep -c .) file(s) orion installed are ignored by .gitignore, e.g. $(printf '%s\n' "$ignored" | head -n 3 | tr '\n' ' ')- teammates will not get them with a clone$p (fix: un-ignore them, keeping personal files such as .claude/settings.local.json ignored)"
         else v_ok git-tracked "nothing orion installed is ignored by git"; fi
+    fi
+
+    # 6. the folders the mandatory rules name: a project keeping one elsewhere leaves the skills looking in the wrong place
+    if [ -f "$base" ] && git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        n=0
+        while IFS= read -r p; do
+            [ -n "$p" ] && [ ! -d "$PROJECT/$p" ] || continue   # a folder not made yet is fine: the skills create it
+            f="$(misplaced_folder "$p")"
+            [ -n "$f" ] || continue
+            v_warn folder-misplaced "the rules expect ${p%/}/, but the project keeps it at $f/ (fix, on the person's yes: mkdir -p \"$(dirname "${p%/}")\" && git mv \"$f\" \"${p%/}\")"
+            n=$((n+1))
+        done <<< "$(grep -oE '`docs/[A-Za-z0-9_./-]+/`' "$base" | tr -d '`' | sort -u || true)"
+        [ "$n" -gt 0 ] || v_ok folders "every folder the rules name is where they expect it, or not made yet"
     fi
 
     say "verify: $VERIFY_FAIL fail, $VERIFY_WARN warn"

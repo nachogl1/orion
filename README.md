@@ -22,7 +22,7 @@ Once installed, it lives inside the project itself, so there is nothing for team
 orion's skills are built around one way of working, from a first idea to finished, checked software. You do not have to use all of them, but they are designed to hand over to each other:
 
 1. **Find out what to build.** `/wayfinder` takes a loose idea, names the destination it is heading for and turns every open question into a small decision ticket. It settles them one at a time until the way is clear.
-2. **Write it down.** The decisions become a PRD (a product requirements document: a plain description of what the software should do), kept in the project under `docs/PRDs/`.
+2. **Write it down.** You turn the decisions into a PRD (a product requirements document: a plain description of what the software should do), kept in the project under `docs/PRDs/`; the agent never writes one on its own. A decision that would be hard to undo later is recorded as a short ADR (a decision record) under `docs/ADRs/`, which you approve before any work on it starts.
 3. **Cut it into work.** `/prd-to-tickets` splits the PRD into epics and stories on GitHub Issues, arranged so several people or agents can build in parallel without getting in each other's way. `/dev-quick` is the side door for a change that has no ticket yet: ask an agent for the change, say yes when it offers `/dev-quick`, and it files the issue and ships it. It only asks questions when something is unclear.
 4. **Build, review, merge.** `/dev-next` picks the next free story and takes it all the way: it claims it, builds the change on its own branch, has a fresh agent review it, merges once the automatic checks pass, closes the story and writes an audit of how the run went. After every claim and merge it refreshes `/issue-map`, the live picture of what is blocked by what.
 5. **Check the work and learn from it.** `/harvest-qa` re-tests every finished story against the main branch, shows you what failed and how much it matters, and files a bug for each one you choose. `/harvest` goes through the notes each run left behind (problems spotted, things that slowed it down, tips) with you and turns what matters into tasks. Both feed new issues back into the list, so the loop continues. `/reconcile-issue-map` is the periodic sanity check that the issues, the PRDs and the code still describe the same product.
@@ -31,7 +31,7 @@ orion's skills are built around one way of working, from a first idea to finishe
   <a href="https://nachogl1.github.io/orion/"><img src="docs/guide/orion-workflow.svg" alt="The orion workflow: define (stakeholders and brief, /wayfinder, the PRD, /prd-to-tickets), build (/dev-next: claim, Q&amp;A, develop, review, merge, audit), learn (/harvest-qa, /harvest, /reconcile-issue-map), and the skills that are always available" width="100%"/></a>
 </p>
 
-**[Open the interactive guide](https://nachogl1.github.io/orion/)**: click any box to see what happens at that step, what you do and what it leaves behind. Amber boxes are steps you lead, violet ones you take with an agent, blue ones an agent leads, and teal ones are where the work is kept; a person badge marks where you decide.
+**[Open the interactive guide](https://nachogl1.github.io/orion/)**: click any box to see what happens at that step, what you do and what it leaves behind. The guide also explains each part orion installs (the base rules, the skills, your personal rules and the status bar), where it lives and how it is updated. Amber boxes are steps you lead, violet ones you take with an agent, blue ones an agent leads, and teal ones are where the work is kept; a person badge marks where you decide.
 
 A few skills sit outside this loop and help with the project around it: `/orion` and `/orion-verify` keep the installation itself healthy, `/clear-git-resources` tidies up the branches, worktrees and leftover files the loop leaves behind (it deletes your own stale leftovers whose work is already safe, asks before deleting anyone else's, and never touches unfinished work; the session-start hook offers it once the project has 20 or more branches or 20 or more worktrees), `/handoff` packs up a conversation for the next session, and `/project-handover` and `/generate-project-writeup` produce shareable documents that explain the project to newcomers and stakeholders.
 
@@ -56,9 +56,9 @@ curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash
 irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
 ```
 
-That is all. The command fetches the latest orion, puts it into your project and tells you what it added. Save (commit) those files to your project so your teammates get them too.
+That is all. The command fetches the latest orion, puts it into your project and tells you what it added.
 
-The next time you open Claude Code in the project, the assistant runs a one-time check that everything fits together: your project's instructions file, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical by itself, asks before changing anything that is yours, and tells you what is left. It offers the check again whenever orion's rules change, after an update or after you pull one a teammate made, and it also looks for clashes with your own personal rules file. You can repeat the check any time by typing `/orion-verify`.
+Before you save (commit) those files, open Claude Code in the project and type `/orion-verify` (the first session asks for it anyway). It checks that everything fits together: your project's instructions file, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical by itself, asks before changing anything that is yours (filling in the build and test commands it finds in your project, moving a folder the rules expect somewhere else, letting orion's files past your `.gitignore`), and tells you what is left. Then commit the files so your teammates get them too. It offers the check again whenever orion's rules change, after an update or after you pull one a teammate made, and it also looks for clashes with your own personal rules file. You can repeat the check any time by typing `/orion-verify`.
 
 Prefer to let the assistant do it? Open Claude Code in your project and say *"set up orion in this project"*.
 
@@ -66,7 +66,7 @@ The status bar is not installed by default, because it is a personal setting rat
 
 ## Keeping it up to date
 
-orion checks for a newer version when you start a session and asks whether you want to update. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
+orion has one version number, raised each time something a project receives changes. Once a day, when you start a session, it checks whether a higher number exists and, only then, asks whether you want to update. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
 
 The status bar is offered too: once a newer one reaches the project, everyone is asked at their next session start whether to take it, even with automatic updates on. If you changed your own status bar, saying yes merges the new changes into yours and keeps your edits.
 

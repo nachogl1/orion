@@ -1,0 +1,31 @@
+name: release
+
+# Tags main v<N> each time ORION_VERSION reaches a new number. The session-start check of every project reads
+# these tags and offers an update only when one is higher than the number the project installed, so a merge that
+# changes nothing a project receives (and so raises no number) is never offered.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag the new version number
+        run: |
+          n="$(tr -d ' \t\r\n' < ORION_VERSION)"
+          case "$n" in ""|*[!0-9]*) echo "ORION_VERSION is not a whole number: '$n'"; exit 1 ;; esac
+          if git ls-remote --exit-code --tags origin "refs/tags/v$n" >/dev/null; then
+            echo "v$n is already tagged: nothing to release"
+            exit 0
+          fi
+          git tag "v$n"
+          git push origin "refs/tags/v$n"

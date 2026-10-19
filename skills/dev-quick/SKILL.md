@@ -52,9 +52,10 @@ The interview decides this, not the length of the description. The moment it sho
 **shared contract** several stories would extend, a **screen the prototype in `docs/ux/` lacks**, or a product
 decision nobody has made, it is not quick:
 
-- Say so in one line, and name what it needs instead — a PRD under `docs/PRDs/` for a big change (the project's
-  standing rule), `/wayfinder` when the way to the result is not clear yet, a planning session when it is several
-  stories.
+- Say so in one line, and name what it needs instead — an ADR under `docs/ADRs/` for a hard-to-reverse decision,
+  approved by the person before any ticket, or, for a big change, the question whether the person wants a PRD,
+  which they write or provide (both the project's standing rule), `/wayfinder` when the way to the result is not
+  clear yet, a planning session when it is several stories.
 - Offer the one honest alternative: file **only the first story** now, if it stands on its own and is useful alone,
   and leave the rest to planning. Never file the whole thing as one over-sized `agent-ready` issue.
 
