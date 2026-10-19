@@ -346,8 +346,12 @@ check "verify fails when the project copy of GLOBAL_CLAUDE.md is missing" eval '
 newproj; "$REAL_GIT" -C "$P" init -q; printf '.claude/\n' > "$P/.gitignore"
 check "init warns when git ignores the files it installed" eval 'init ask && grep -q "ignored by .gitignore" "$SB/out"'
 check "verify names them and says an ignored .claude/ must become .claude/*" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  git-ignored: .*\.claude/\*" "$SB/out"'
+printf '.claude/*\n!.claude/settings.json\n' > "$P/.gitignore"
+check "contents ignored but not the folder: the fix is the missing re-includes, not a rewrite" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  git-ignored" "$SB/out" && ! grep -q "ignored as a whole" "$SB/out"'
 printf '.claude/*\n!.claude/orion/\n!.claude/skills/\n!.claude/settings.json\n' > "$P/.gitignore"
 check "with .claude/* and the re-includes nothing orion installed is ignored" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    git-tracked" "$SB/out"'
+mkdir -p "$P/src/prototypes" && : > "$P/src/prototypes/app.js"
+check "a folder sharing only the last name (src/prototypes for docs/ux/prototypes/) is not offered" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; ! grep -q "folder-misplaced: the rules expect docs/ux/prototypes/" "$SB/out"'
 mkdir -p "$P/docs/product/PRDs" && : > "$P/docs/product/PRDs/PRD.md"
 check "a folder the rules name, kept elsewhere: verify offers the move" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  folder-misplaced: the rules expect docs/PRDs/, but the project keeps it at docs/product/PRDs/" "$SB/out"'
 mkdir -p "$P/docs/PRDs"

@@ -845,13 +845,32 @@ ignored_orion_paths() {
     git -C "$PROJECT" check-ignore -- "${paths[@]}" 2>/dev/null || true
 }
 
-# A folder the mandatory rules name (docs/PRDs/, …) that the project keeps under another path: the first folder of
-# the same name, any case, among the files git tracks or would track. Prints its path, or nothing.
+# A folder the mandatory rules name (docs/PRDs/, docs/ux/prototypes/, …) that the project keeps under another path:
+# the first folder, among the files git tracks or would track, whose path ends with every part after `docs/`
+# (`…/PRDs`, `…/ux/prototypes`), any case. Prints its path, or nothing. awk reads to the end: stopping early would
+# kill git with SIGPIPE, and pipefail would end verify.
 misplaced_folder() {  # expected-folder
-    local name; name="$(basename "${1%/}")"
-    git -C "$PROJECT" ls-files --cached --others --exclude-standard 2>/dev/null | awk -F/ -v n="$name" '
-        /^\.claude\// { next }
-        { for (i = 1; i < NF; i++) if (tolower($i) == tolower(n)) { p = $1; for (j = 2; j <= i; j++) p = p "/" $j; print p; exit } }'
+    local tail; tail="${1%/}"; tail="${tail#docs/}"
+    git -C "$PROJECT" ls-files --cached --others --exclude-standard 2>/dev/null | awk -F/ -v t="$tail" '
+        BEGIN { k = split(tolower(t), want, "/") }
+        found || /^\.claude\// { next }
+        { for (i = k; i < NF && !found; i++) {
+              ok = 1; for (j = 1; j <= k; j++) if (tolower($(i - k + j)) != want[j]) { ok = 0; break }
+              if (ok) { p = $1; for (j = 2; j <= i; j++) p = p "/" $j; found = 1 }
+          } }
+        END { if (found) print p }'
+}
+
+# The folder among .claude, .claude/orion and .claude/skills that a .gitignore line ignores as a whole (`.claude/`,
+# `/.claude`, `orion/`, …), not just its contents (`.claude/*`). git cannot re-include a file inside such a folder.
+# Prints it with a trailing slash, or nothing.
+ignored_whole_folder() {
+    local f pat
+    for f in .claude .claude/orion .claude/skills; do
+        pat="$(git -C "$PROJECT" check-ignore -v -- "$f/" 2>/dev/null | cut -f1 | cut -d: -f3-)" || true
+        pat="${pat#/}"; pat="${pat#\*\*/}"; pat="${pat%/}"
+        if [ -n "$pat" ] && { [ "$pat" = "$f" ] || [ "$pat" = "$(basename "$f")" ]; }; then printf '%s/' "$f"; return; fi
+    done
 }
 
 cmd_update() {
@@ -1319,10 +1338,7 @@ cmd_verify() {
         ignored="$(ignored_orion_paths)"
         if [ -n "$ignored" ]; then
             # git cannot re-include a file inside an ignored folder, so the fix differs when a whole folder is ignored
-            p=""
-            for f in .claude .claude/orion .claude/skills; do
-                git -C "$PROJECT" check-ignore -q -- "$f/" 2>/dev/null && { p="$f/"; break; }
-            done
+            p="$(ignored_whole_folder)"
             [ -n "$p" ] && p="; the folder $p is ignored as a whole, so its line must become ${p%/}/* followed by re-includes (!...) for orion's files"
             v_warn git-ignored "$(printf '%s\n' "$ignored" | grep -c .) file(s) orion installed are ignored by .gitignore, e.g. $(printf '%s\n' "$ignored" | head -n 3 | tr '\n' ' ')- teammates will not get them with a clone$p (fix: un-ignore them, keeping personal files such as .claude/settings.local.json ignored)"
         else v_ok git-tracked "nothing orion installed is ignored by git"; fi

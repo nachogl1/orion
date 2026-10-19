@@ -24,7 +24,14 @@ jobs:
           n="$(tr -d ' \t\r\n' < ORION_VERSION)"
           case "$n" in ""|*[!0-9]*) echo "ORION_VERSION is not a whole number: '$n'"; exit 1 ;; esac
           if git ls-remote --exit-code --tags origin "refs/tags/v$n" >/dev/null; then
-            echo "v$n is already tagged: nothing to release"
+            # Two pull requests that raised the number to the same value both pass CI; the second must not ship
+            # unannounced. Fail when what projects receive differs from the tagged release.
+            git fetch --quiet --depth=1 origin "refs/tags/v$n:refs/tags/v$n"
+            if ! git diff --quiet "v$n" HEAD -- skills baselines orion.sh; then
+              echo "::error::files projects receive changed since v$n, but ORION_VERSION is still $n: raise it in a new pull request"
+              exit 1
+            fi
+            echo "v$n is already tagged and nothing projects receive changed: nothing to release"
             exit 0
           fi
           git tag "v$n"
