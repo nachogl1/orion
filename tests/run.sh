@@ -526,6 +526,10 @@ cp "$SLH/.claude/statusline/.orion-base/README.md" "$SLH/.claude/statusline/READ
 mkdir -p "$SLSRC/baselines/statusline/sub"; printf 'x\n' > "$SLSRC/baselines/statusline/sub/f.txt"; sl_commit 13
 sl_release 14 2 '# orion v6'
 check "update says a newer status line waits and leaves an unedited copy alone" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "statusline merge" "$SB/out" && ! grep -q "^# orion v6" "$SLFILE"'
+# A copy an orion before version numbers stamped: line 1 holds a commit time, not a version number.
+{ printf '1792417094\n'; sed -n 2p "$SLH/.claude/statusline/.orion-baseline"; } > "$SB/stamp" && mv "$SB/stamp" "$SLH/.claude/statusline/.orion-baseline"
+printf '# mine\n' >> "$SLFILE"
+check "a copy stamped with a commit time before version numbers is offered the newer one, and merge takes it and keeps the edits" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && sl_cmd merge && grep -q "^# orion v6" "$SLFILE" && grep -q "^# mine" "$SLFILE" && [ "$(sed -n 1p "$SLH/.claude/statusline/.orion-baseline")" = "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
 check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
 check "uninstall removes the project's copy and leaves the computer's" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ]'
 

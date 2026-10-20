@@ -2,6 +2,8 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- A computer whose status line was installed before orion had version numbers is offered newer status lines again: the commit time its stamp still holds now counts as no version, where before it blocked every update.
+
 - The status line's second line now ends in `wkt:<name>` when the session runs inside a git worktree, so you can tell at a glance it is not the main checkout.
 
 - The personal rules and the status line now follow orion's version number instead of timestamps: each rule carries the version that last changed it (`<!-- orion:v<N> -->`), the ORION GLOBAL heading reads `# ORION GLOBAL — v<N>`, and the status line records the version it last took or skipped, so all three parts are updated the same way; an old timestamp heading counts as no section, with no migration.

@@ -626,6 +626,8 @@ retire_user_level_copies() {
 # --------------------------------------------------------------------------
 SL_STAMP=".orion-baseline"
 SL_BASE=".orion-base"
+# An orion before version numbers stamped a Unix commit time (ten digits) instead: no version number comes near it.
+SL_OLD_STAMP_MIN=1000000000
 sl_home() { printf '%s' "$HOME/.claude/statusline"; }
 
 # One line per file (orion's own bookkeeping left out): its path and the checksum of its text without carriage
@@ -664,7 +666,13 @@ sl_mark() {  # stamp src [statusline-dir]
 }
 
 sl_number() { case "$1" in ""|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac; }
-sl_stamp() { sl_number "$(sed -n '1p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r')"; }
+# A commit time on line 1 counts as version 0, so newer status lines are offered again. The bound is not this
+# project's own version number: a real, newer one stamped by another project on this computer must still win.
+sl_stamp() {
+    local n; n="$(sl_number "$(sed -n '1p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r')")"
+    [ "$n" -lt "$SL_OLD_STAMP_MIN" ] || n=0
+    printf '%s' "$n"
+}
 sl_seen() { sed -n '2p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r'; }
 project_stamp() { sl_number "$(version_number "$PROJECT/.claude/orion/VERSION")"; }
 
