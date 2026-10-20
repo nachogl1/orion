@@ -360,6 +360,8 @@ mkdir -p "$P/docs/product/PRDs" && : > "$P/docs/product/PRDs/PRD.md"
 check "a folder the rules name, kept elsewhere: verify offers the move" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  folder-misplaced: the rules expect docs/PRDs/, but the project keeps it at docs/product/PRDs/" "$SB/out"'
 mkdir -p "$P/docs/PRDs"
 check "once it is where the rules expect it: no warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    folders" "$SB/out"'
+mkdir -p "$P/packages/lib" && : > "$P/packages/lib/CHANGELOG.md"
+check "a package's own changelog is never offered for the move" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-missing" "$SB/out" && ! grep -q "changelog-misplaced" "$SB/out"'
 : > "$P/CHANGELOG.md"
 check "a changelog kept elsewhere: verify offers the move to docs/CHANGELOG.md" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-misplaced: .* at CHANGELOG.md .*git mv \"CHANGELOG.md\" docs/CHANGELOG.md" "$SB/out"'
 : > "$P/docs/CHANGELOG.md"

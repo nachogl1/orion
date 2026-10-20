@@ -73,7 +73,7 @@ these three, which **need a yes**:
   finding prints (`git mv`; plain `mv` for a folder git does not track yet). Before asking, search the project for
   links to the old path and list them, since the move breaks them; on a yes, update those links too. Never offer to
   change where the rules look instead.
-- `changelog-misplaced` — the project keeps its changelog somewhere other than `docs/CHANGELOG.md`, so every pull
+- `changelog-misplaced` — the project keeps its changelog at its root instead of `docs/CHANGELOG.md`, so every pull
   request would start a second one there. Offer to **move** it with the command the finding prints, listing the links
   to the old path first, as for `folder-misplaced`; on a yes, update those links too.
 

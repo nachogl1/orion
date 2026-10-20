@@ -876,15 +876,15 @@ misplaced_folder() {  # expected-folder
         END { if (found) print p }'
 }
 
-# A changelog the project keeps somewhere other than docs/CHANGELOG.md, where the rules expect it: the shallowest
-# CHANGELOG or CHANGELOG.md (any case) among the files git tracks or would track, outside .claude/. Prints its path,
-# or nothing, also outside a git repository.
+# A changelog the project keeps at its root instead of docs/CHANGELOG.md, where the rules expect it: CHANGELOG or
+# CHANGELOG.md, any case. Deeper ones belong to a package or a vendored library and are left alone. Prints its name,
+# or nothing.
 misplaced_changelog() {
-    git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
-    git -C "$PROJECT" ls-files --cached --others --exclude-standard 2>/dev/null | awk -F/ '
-        /^\.claude\// { next }
-        tolower($NF) == "changelog" || tolower($NF) == "changelog.md" { if (!found || NF < depth) { p = $0; depth = NF; found = 1 } }
-        END { if (found) print p }'
+    local f
+    for f in "$PROJECT"/*; do
+        [ -f "$f" ] || continue
+        case "$(basename "$f" | tr '[:upper:]' '[:lower:]')" in changelog|changelog.md) basename "$f"; return ;; esac
+    done
 }
 
 # The folder among .claude, .claude/orion and .claude/skills that a .gitignore line ignores as a whole (`.claude/`,
