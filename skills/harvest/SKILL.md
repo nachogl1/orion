@@ -234,7 +234,7 @@ the pull request — this skill has no merge autonomy.
    the pull request opens. A fix that turns it red is undone, and the human is asked what it becomes instead (a task,
    or not this time); a new ticket asks the PRD question of step 2 again. The gate then runs again, and the pull
    request opens only on green.
-7. Add the harvest's one line to `docs/CHANGELOG.md`, newest first (every pull request carries one), then commit with
+7. Add the harvest's own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; every pull request carries one), then commit with
    Conventional Commits (`chore(harvest): …`), **never `git add -A`**, push, open the pull request with the table below,
    and tell the human it waits for their merge.
 

@@ -67,8 +67,9 @@ Taste gets none of them.
 | `Defer:` | Real, but too big or out of scope for this issue; severity **medium or high** (would mislead a user, lose data, block another story, cost the next run real time). A low gets no tag: it is recorded nowhere | The orchestrator records it in the run's audit report (`audit.md`, `deferred`); nobody writes a file |
 | `Critical:` | Would hurt in production, or blocks other stories, but is outside this issue | One GitHub issue, linked from the pull request |
 
-**Always a `Fix now:`:** the pull request has no line of its own in `docs/CHANGELOG.md` (every pull request adds one,
-newest first — one line saying what changed and why it matters), or its line restates the diff instead. The same for a
+**Always a `Fix now:`:** the pull request adds no file of its own to `docs/changelog/` (every pull request adds one,
+`docs/changelog/<YYYY-MM-DD>-<branch>.md`, holding one line saying what changed and why it matters), its line restates the diff instead,
+or it edits another pull request's file or an old single-file changelog. The same for a
 change to user-visible behaviour (a screen, a command, an output a person reads) that leaves `docs/runbook.md`
 untouched.
 

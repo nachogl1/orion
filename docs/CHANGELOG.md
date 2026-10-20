@@ -2,6 +2,9 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+**Closed for new entries.** Every pull request now adds its own file to `docs/changelog/` (see its `README.md`), so
+parallel pull requests never conflict; this file keeps the entries from before.
+
 - The update check now runs at every session start instead of once a day, so a new release is offered in the next session, and "Not now" keeps it quiet until a newer one; the mandatory rules forbid changing another project without the person's yes and let the person's explicit word merge one pull request; `/orion-verify` creates `docs/CHANGELOG.md` when it is missing and offers to move one kept at the project's root.
 
 - A computer whose status line was installed before orion had version numbers is offered newer status lines again: the commit time its stamp still holds now counts as no version, where before it blocked every update.

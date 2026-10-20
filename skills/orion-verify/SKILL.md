@@ -57,9 +57,11 @@ project wrote:
 | `settings-json`, `config-json`, `config-update-mode` | Read the file, repair the syntax or the value (`ask`, `auto` or `off`); if the intent is unclear, ask |
 
 `WARN` lines are **reported** (slots, a locally edited rules copy, a user-level skill shadowing a project one) except
-`changelog-missing`, fixed **without asking** since it only adds a file (create `docs/CHANGELOG.md` holding a
-`# Changelog` heading, a blank line and `Newest first. One line per change: what changed and why it matters.`), and
-these three, which **need a yes**:
+`changelog-missing`, fixed **without asking** since it only adds a file (create `docs/changelog/README.md` holding a
+`# Changelog` heading, a blank line and `One file per pull request, named <YYYY-MM-DD>-<branch>.md (the branch name
+with / turned into -), holding one line: what changed and why it matters. Newest first: sort the names in reverse.`;
+an old single-file changelog stays where it is, as the history before the folder), and these two, which **need a
+yes**:
 
 - `git-ignored` — teammates would not get orion with a clone. Read `.gitignore` (and any nested one the files sit
   under), then propose the exact lines that make every listed file tracked, and show them as a before/after. Git
@@ -73,9 +75,6 @@ these three, which **need a yes**:
   finding prints (`git mv`; plain `mv` for a folder git does not track yet). Before asking, search the project for
   links to the old path and list them, since the move breaks them; on a yes, update those links too. Never offer to
   change where the rules look instead.
-- `changelog-misplaced` — the project keeps its changelog at its root instead of `docs/CHANGELOG.md`, so every pull
-  request would start a second one there. Offer to **move** it with the command the finding prints, listing the links
-  to the old path first, as for `folder-misplaced`; on a yes, update those links too.
 
 Re-run `verify` after fixing until it exits 0 — no `FAIL` left; `WARN` lines may remain, they are handled above. If a
 fix fails twice, stop and report the error instead of retrying.

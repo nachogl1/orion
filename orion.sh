@@ -876,17 +876,6 @@ misplaced_folder() {  # expected-folder
         END { if (found) print p }'
 }
 
-# A changelog the project keeps at its root instead of docs/CHANGELOG.md, where the rules expect it: CHANGELOG or
-# CHANGELOG.md, any case. Deeper ones belong to a package or a vendored library and are left alone. Prints its name,
-# or nothing.
-misplaced_changelog() {
-    local f
-    for f in "$PROJECT"/*; do
-        [ -f "$f" ] || continue
-        case "$(basename "$f" | tr '[:upper:]' '[:lower:]')" in changelog|changelog.md) basename "$f"; return ;; esac
-    done
-}
-
 # The folder among .claude, .claude/orion and .claude/skills that a .gitignore line ignores as a whole (`.claude/`,
 # `/.claude`, `orion/`, …), not just its contents (`.claude/*`). git cannot re-include a file inside such a folder.
 # Prints it with a trailing slash, or nothing.
@@ -1387,16 +1376,11 @@ cmd_verify() {
         [ "$n" -gt 0 ] || v_ok folders "every folder the rules name is where they expect it, or not made yet"
     fi
 
-    # 7. the changelog every pull request adds its line to
-    if [ -f "$PROJECT/docs/CHANGELOG.md" ]; then
-        v_ok changelog "docs/CHANGELOG.md is where the rules expect it"
+    # 7. the changelog folder every pull request adds its own file to
+    if [ -d "$PROJECT/docs/changelog" ]; then
+        v_ok changelog "docs/changelog/ is where every pull request adds its own file"
     else
-        f="$(misplaced_changelog)"
-        if [ -n "$f" ]; then
-            v_warn changelog-misplaced "the rules expect docs/CHANGELOG.md, but the project keeps its changelog at $f (fix, on the person's yes: mkdir -p docs && git mv \"$f\" docs/CHANGELOG.md)"
-        else
-            v_warn changelog-missing "docs/CHANGELOG.md is missing, and every pull request adds its line to it (fix: create it with a '# Changelog' heading)"
-        fi
+        v_warn changelog-missing "docs/changelog/ is missing, and every pull request adds its own one-line file there (fix: create docs/changelog/README.md explaining the format; an old single-file changelog stays as the history)"
     fi
 
     say "verify: $VERIFY_FAIL fail, $VERIFY_WARN warn"

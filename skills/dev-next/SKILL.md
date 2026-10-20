@@ -153,8 +153,8 @@ project's `CLAUDE.md`.
    before the first story, and it still has items that are **not** marked parked or waiting for a named person, put
    them to the human as one batch — each with a recommended answer — then **this session** applies the answers to the
    files the list names in a worktree of its own (`git -C <main checkout> worktree add --no-track
-   <wt root>/questions-<slug> -b feat/<slug> origin/main`, pushed the first time with `git push -u origin feat/<slug>`), adds the pull request's one line to `docs/CHANGELOG.md`
-   (newest first), runs the gate the project's `CLAUDE.md` lists (build → lint → typecheck → full suite) in that
+   <wt root>/questions-<slug> -b feat/<slug> origin/main`, pushed the first time with `git push -u origin feat/<slug>`), adds the pull request's own changelog file,
+   `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line), runs the gate the project's `CLAUDE.md` lists (build → lint → typecheck → full suite) in that
    worktree, opens the pull request with the results in its evidence table, and **stops**; a human merges it. A gate
    command still reading `TBD` (one of the questions may be what settles it) is not run: the evidence table says which
    ones were `TBD` and so not run. A command that runs and fails is fixed before the pull request opens, or the run

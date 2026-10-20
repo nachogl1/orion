@@ -29,8 +29,8 @@ not describe (a gap in the PRD is reported back, not filled in), or anything a s
    `feat/ux-prototype-<slug>` (or the project's own branch pattern) from `origin/main`. Never work in the main checkout; never stash; never switch branches.
 3. Write the two files. Open `index.html` once (a headless browser if one is available, else read it back) and
    check every navigation link lands on a section and every section has the fields the README promises.
-4. Add one line to `docs/CHANGELOG.md`, newest first (every pull request carries one; create the file with a
-   `# Changelog` heading if it does not exist). **Run the gate** (the gate commands the project's `CLAUDE.md` lists:
+4. Add the pull request's own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; every pull request carries one;
+   create the folder with a `README.md` explaining the format if it does not exist). **Run the gate** (the gate commands the project's `CLAUDE.md` lists:
    build → lint → typecheck → full suite) in the worktree; red → report the failing command and stop, no pull request.
    On green, commit only those three files: `docs(ux): add the UX prototype for <PRD name>`, with the attribution
    trailer the session requires. Push the branch.

@@ -130,10 +130,11 @@ finish.
    `superseded` + `by`, `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
    `last_qa` = today. A check in `carried` is **not** in `log`. Audit branches are never written to.
 4. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout);
-   write the state file there and add the run's one line to
-   `docs/CHANGELOG.md`, newest first (create the file with a `# Changelog` heading if it does not exist). **Run the
+   write the state file there and add the run's own changelog file,
+   `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; create the folder with a `README.md` explaining the format if it does not
+   exist). **Run the
    gate** (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite) in that worktree
-   before the pull request opens. Red → do not open it: this pull request only adds a state file and a changelog line,
+   before the pull request opens. Red → do not open it: this pull request only adds a state file and a changelog file,
    so red means `main` itself is red; the close-out names the failing command first, for a person to fix, and the
    worktree is kept so the log is not lost. Green → commit those two files (never `git add -A`), push, open the pull
    request; its body is the table below. **A human merges it** (or the agent, on the person's explicit word for this pull request) — this skill never merges on its own.

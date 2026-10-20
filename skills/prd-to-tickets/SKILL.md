@@ -250,9 +250,9 @@ File in dependency order, so every blocker exists before the issue it blocks:
 6. **Ask once, after the batch:** "Should we update the PRD with this too?" — one line per change the interview made
    to the product (naming the PRD section), only when there is one. "No" ends it; "yes" → spawn `prd-update-<slug>`
    with the exact lines and sections: it works in its own worktree on `feat/prd-update-<slug>` (or the project's
-   own branch pattern), adds one line to `docs/CHANGELOG.md` (newest first; created with a `# Changelog` heading if
-   missing), runs the gate (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite)
-   and on green commits only the PRD and the changelog line, opens a `docs(prd)` pull request a human merges, and
+   own branch pattern), adds its own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; the folder
+   created with a `README.md` explaining the format if missing), runs the gate (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite)
+   and on green commits only the PRD and the changelog file, opens a `docs(prd)` pull request a human merges, and
    returns its link; red → it reports the failing command and stops. Never pushed to `main`.
 7. **Close-out, ten lines or fewer:** epics and stories filed (counts per level against the developer count), which
    story `/dev-next` takes first (the scaffold, or the contract stories when there is no scaffold), every

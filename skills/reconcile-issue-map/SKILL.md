@@ -49,7 +49,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 | `map-health-<slug>` | sonnet | low | the mechanical lens: labels, parents, both blocker forms, seams, order. Returns one line per finding, no essay |
 | `prd-trace-<slug>` | opus | high | the two PRD lenses: PRD → issues and issues → PRD. Returns a bounded table |
 | `code-check-<slug>` | sonnet | low | the product lens: what `main` actually holds against what the PRD and the closed stories claim. Returns one line per finding |
-| `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits, the bookmark and the changelog line in its own worktree, runs the gate and opens the pull request |
+| `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits, the bookmark and the changelog file in its own worktree, runs the gate and opens the pull request |
 
 `<slug>` is the repository name, lower-case, hyphenated (one PRD given → the PRD's file name without `PRD` and `.md`).
 Name every sub-agent after what it does, keep the agent id each spawn returns, and ask each for a bounded result. A
@@ -239,11 +239,11 @@ project's worktree root, opened by `reconcile-pr-<slug>`. A human merges it; thi
    `origin/main` commit read in phase 0; `last_reconcile` = today; `accepted` = every finding the person said is fine
    as it is, this run and earlier, minus those whose facts changed and were decided again. Only this skill writes the
    file.
-6. Add the run's one line to `docs/CHANGELOG.md`, newest first (every pull request carries one; create the file with
-   a `# Changelog` heading if it does not exist). **Run the gate** (the gate commands the project's `CLAUDE.md` lists:
+6. Add the run's own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; every pull request carries one; create
+   the folder with a `README.md` explaining the format if it does not exist). **Run the gate** (the gate commands the project's `CLAUDE.md` lists:
    build → lint → typecheck → full suite) in the worktree before the pull request opens; it opens only on green. Red →
    `reconcile-pr-<slug>` reports the failing command and stops, and this session names it first in the close-out for
-   a person to fix (the pull request holds only PRD text, the bookmark and a changelog line, so red almost always
+   a person to fix (the pull request holds only PRD text, the bookmark and a changelog file, so red almost always
    means `main` itself is red). Then commit with Conventional Commits (`docs(prd): reconcile …` when the PRD changed,
    else `chore(reconcile): …`), **never `git add -A`**, push, open the pull request with the table below, and tell the
    person it waits for their merge. No file change at all (only issue edits) → still write the bookmark and open the

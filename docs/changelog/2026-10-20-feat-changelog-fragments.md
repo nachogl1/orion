@@ -1,0 +1,1 @@
+- The changelog is now one small file per pull request in `docs/changelog/` instead of one shared file, so pull requests merged at the same time stop conflicting on it; `/orion-verify` creates the folder, and an old `docs/CHANGELOG.md` stays as the history.

@@ -44,8 +44,10 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
 6. Green the gate the project's `CLAUDE.md` lists (build → lint → typecheck → full suite). Every command in the chain.
    No exceptions.
 7. `git merge origin/main` if you are behind — **never rebase, never stash**. Resolve conflicts in your own files only.
-8. Add this pull request's **one line to `docs/CHANGELOG.md`**, newest first: what changed and why it matters, a few
-   words, never a restatement of the diff (create the file with a `# Changelog` heading if it does not exist). **A
+8. Add this pull request's **own changelog file**, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (today's date, the branch name with `/`
+   turned into `-`), holding one line: what changed and why it matters, a few words, never a restatement of the diff.
+   Never edit another pull request's file or an old single-file changelog, so parallel pull requests never conflict
+   (create the folder with a `README.md` explaining this format if it does not exist). **A
    change to user-visible behaviour** (a screen, a command, an output a person reads) **also updates
    `docs/runbook.md`** in this pull request (create it with a `# Runbook` heading if it does not exist). Then
    commit with Conventional Commits (`type(scope): summary`). **Never `git add -A`** — add the files you actually touched.
