@@ -14,7 +14,8 @@ puts every other open pull request into a merge conflict. Fixing it by hand is p
 1. **Every pull request adds its own file** to `docs/changelog/`, named `<YYYY-MM-DD>-<branch>.md` (the day it is
    written, the branch name with `/` turned into `-`), holding one line: what changed and why it matters. No two
    pull requests touch the same file, so the changelog can no longer conflict, on a computer or on GitHub's buttons.
-2. **Newest first is the file names sorted in reverse.** No build step joins them.
+2. **Newest first is the file names sorted in reverse.** No build step joins them. The order is by the day an entry
+   was written, not merged, and entries from one day sort by branch name; the folder's `README.md` is not an entry.
 3. **An existing single-file changelog is frozen**, kept as the history before the folder; nobody adds to it or
    edits another pull request's file.
 4. **`verify` checks for the folder** (`changelog-missing` when absent) and `/orion-verify` creates it with a

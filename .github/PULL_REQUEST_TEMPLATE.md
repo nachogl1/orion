@@ -22,7 +22,7 @@ Closes #<!-- issue number — open one first if none exists -->
 **What I ran and what I saw:**
 
 ## Docs updated
-- [ ] CHANGELOG updated for the affected skill (if behaviour changed)
+- [ ] Changelog file added in `docs/changelog/` (plus the skill's own `CHANGELOG.md` if it has one and behaviour changed)
 - [ ] Root README updated (skill added / renamed / removed)
 
 ## Enforcement checklist

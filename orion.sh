@@ -1380,7 +1380,9 @@ cmd_verify() {
     if [ -d "$PROJECT/docs/changelog" ]; then
         v_ok changelog "docs/changelog/ is where every pull request adds its own file"
     else
-        v_warn changelog-missing "docs/changelog/ is missing, and every pull request adds its own one-line file there (fix: create docs/changelog/README.md explaining the format; an old single-file changelog stays as the history)"
+        f="create docs/changelog/README.md explaining the format"
+        [ -f "$PROJECT/docs/CHANGELOG.md" ] && f="$f; docs/CHANGELOG.md stays as the history, closed for new entries"
+        v_warn changelog-missing "docs/changelog/ is missing, and every pull request adds its own one-line file there (fix: $f)"
     fi
 
     say "verify: $VERIFY_FAIL fail, $VERIFY_WARN warn"

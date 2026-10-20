@@ -361,7 +361,7 @@ check "a folder the rules name, kept elsewhere: verify offers the move" eval 'ba
 mkdir -p "$P/docs/PRDs"
 check "once it is where the rules expect it: no warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    folders" "$SB/out"'
 : > "$P/docs/CHANGELOG.md"
-check "an old single-file changelog: verify still asks for docs/changelog/ and keeps the file as history" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-missing: docs/changelog/.*stays as the history" "$SB/out" && [ -f "$P/docs/CHANGELOG.md" ]'
+check "an old single-file changelog: verify asks for docs/changelog/ and names the old file as the history" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-missing: docs/changelog/.*docs/CHANGELOG.md stays as the history" "$SB/out"'
 mkdir -p "$P/docs/changelog"
 check "a changelog folder in docs/: no warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    changelog:" "$SB/out"'
 

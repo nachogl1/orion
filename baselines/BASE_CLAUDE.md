@@ -212,12 +212,12 @@ PRD wins on product, the rules files win on process.
   request for the reviewer, on the merged branch for the merge. If not, the reviewer runs it in the worktree and the
   merge runs it on the merged branch. Never both.
 - **A story that changes user-visible behaviour updates the run-book** (`docs/runbook.md`) in the same pull request.
-- **Every pull request adds its own changelog file**, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (the day it is written, the branch
-  name with `/` turned into `-`), so pull requests merged at the same time never touch the same file and never
-  conflict; never edit another pull request's file or an old single-file changelog, which stays as the history before
-  the folder. Newest first is the names sorted in reverse. The file holds one line saying what changed and why it
-  matters, nothing more. No prose, no restating the diff, no entry that only
-  repeats another one. A pull request that changes nothing a reader of the changelog would care about (typo, CI
+- **Every pull request adds its own changelog file**, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (the day it is
+  written, the branch name with `/` turned into `-`), so pull requests merged at the same time never touch the same
+  file and never conflict; never edit another pull request's file or an old single-file changelog, which stays as the
+  history before the folder. Newest first is the names sorted in reverse (by the day written; the folder's
+  `README.md` is not an entry). The file holds one line saying what changed and why it matters, nothing more. No
+  prose, no restating the diff, no entry that only repeats another one. A pull request that changes nothing a reader of the changelog would care about (typo, CI
   plumbing) still gets its line, kept to a few words.
 
 ## Working
