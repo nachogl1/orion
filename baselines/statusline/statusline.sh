@@ -6,7 +6,8 @@
 #   - session or agent name (bold white; the agent's name when run with
 #     --agent, else the session's name from --name, /rename or its AI title)
 #   - context usage % (green/yellow/red)
-#   - git branch + state words (stashed / untracked / modified / unpushed)
+#   - git branch (or "detached:<short commit id>" on a detached HEAD) + state
+#     words (stashed / untracked / modified / unpushed)
 #   - cost: API-equivalent USD for the open session (green) + current
 #     calendar month to date across all projects (blue), aggregated from
 #     local transcripts by ccusage (cached, background-refreshed via `npx`)
@@ -194,10 +195,10 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Git segment — branch + state words (never icons: a word needs no legend). The five git commands are cached
+# Git segment — branch + state words (never icons: a word needs no legend). The git commands are cached
 # per cwd (10s TTL) so redraw storms don't relaunch git every time; on a stale
 # cache they are recomputed inline (git is local and fast enough once) and the
-# cache is rewritten. Cache layout: line 1 = branch, line 2 = indicators.
+# cache is rewritten. Cache layout: line 1 = branch (or detached label), line 2 = indicators.
 # ---------------------------------------------------------------------------
 git_branch=""
 git_indicators=""
@@ -223,7 +224,13 @@ else
   # Get current git branch (skip optional locks to avoid contention)
   git_branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)
 
-  # Build git state indicators (only when inside a git repo, i.e. branch is known)
+  # A detached HEAD has no branch name: name the commit instead (prints nothing outside a repository)
+  if [ -z "$git_branch" ]; then
+    _git_commit=$(git -C "$cwd" --no-optional-locks rev-parse --short HEAD 2>/dev/null)
+    [ -n "$_git_commit" ] && git_branch="detached:${_git_commit}"
+  fi
+
+  # Build git state indicators (only when inside a git repo, i.e. the label is known)
   if [ -n "$git_branch" ]; then
     # ANSI color codes
     _mag="\033[0;35m"   # magenta — stashes

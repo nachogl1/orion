@@ -16,6 +16,8 @@ A starting-point [Claude Code status line](https://docs.anthropic.com/en/docs/cl
 | **Weekly usage** (`7d:41% ↻3d5h`) | bright blue | `rate_limits.seven_day` from Claude Code stdin JSON |
 | **Worktree** (`wkt:feat-login`), second line, after the working directory | plain | `workspace.git_worktree`, else `worktree.name` (a `--worktree` session), from Claude Code stdin JSON; omitted when neither is sent |
 
+On a **detached HEAD** (no branch checked out, as in a worktree made from a commit or a tag) the git segment names the commit instead of a branch, `[detached:<short commit id>]`, with the same four state words; outside a git repository there is no git segment.
+
 Second line: the session's working directory, then `  |  wkt:<name>` when the session is in a linked git worktree.
 
 The **worktree tag** shows only when the Claude Code session itself runs inside a linked git worktree (it opened there, or was started with `--worktree`); in the main checkout, or on a Claude Code too old to send the field, nothing is drawn. An agent that only points its commands at a worktree, or a background agent working in a worktree of its own, does not change it.

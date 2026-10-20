@@ -449,6 +449,29 @@ check "the second line shows wkt:<name> from either worktree field, nothing with
     '{"cwd":"/work/proj","workspace":{"git_worktree":"first"},"worktree":{"name":"second"}}' '/work/proj  |  wkt:first' \
     '{"cwd":"/work/proj"}'                                                           '/work/proj' \
     '{"cwd":"/work/proj","workspace":{"git_worktree":"50%_a\\b100%s\\n"}}'           '/work/proj  |  wkt:50%_a\b100%s\n'
+# Throw-away folders, one per case (the git cache is keyed on the folder); the ceiling keeps git from finding a repository above the sandbox.
+sl_first_line() {  # dir: the status line's first line for a session in that folder, the cost segments cut off
+    printf '{"cwd":"%s"}' "$1" | HOME="$SB/home-draw" PATH="$FAKEPATH" GIT_CEILING_DIRECTORIES="$SB" \
+        bash "$REPO/baselines/statusline/statusline.sh" 2>/dev/null | sed "s/$ESC\[[0-9;]*m//g" | head -n 1 | sed 's/  |  \$.*$//'
+}
+first_lines_are() {  # dir want [dir want ...]
+    local got
+    while [ $# -ge 2 ]; do
+        got="$(sl_first_line "$1")"
+        [ "$got" = "$2" ] || { printf '        for %s: got [%s], want [%s]\n' "$1" "$got" "$2"; return 1; }
+        shift 2
+    done
+}
+mkdir -p "$SB/draw-outside"
+for d in draw-branch draw-detached; do
+    "$REAL_GIT" -C "$SB" init -q -b main "$d" && "$REAL_GIT" -C "$SB/$d" commit -q --allow-empty -m first
+done
+"$REAL_GIT" -C "$SB/draw-detached" checkout -q --detach; : > "$SB/draw-detached/new.txt"
+DETACHED_ID="$("$REAL_GIT" -C "$SB/draw-detached" rev-parse --short HEAD)"
+check "the git segment names the commit on a detached HEAD, the branch on a branch, and is absent outside git" first_lines_are \
+    "$SB/draw-detached" "ctx: --  |  [detached:$DETACHED_ID]  | stashed:0 untracked:1 modified:0 unpushed:0" \
+    "$SB/draw-branch"   'ctx: --  |  [main]  | stashed:0 untracked:0 modified:0 unpushed:0' \
+    "$SB/draw-outside"  'ctx: --'
 
 echo "status line (the project carries orion's copy; the computer's copy takes the newest only on the person's word)"
 # A computer of its own (HOME) and a source repository of its own, whose ORION_VERSION each commit sets by hand.
