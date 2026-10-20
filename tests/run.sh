@@ -158,6 +158,9 @@ check "first check asks for /orion-verify" eval 'run_check && grep -q orion-veri
 check "the post-install question is asked once" eval 'FAKE_LS_SHA="$V" run_check && ! grep -q orion-verify "$SB/hook"'
 check "up to date: silent, exit 0" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
 check "newer orion, ask mode: one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "the update is offered at every session start, not once a day" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && grep -q "newer orion.*update --skip" "$SB/hook" && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && grep -q "newer orion" "$SB/hook"'
+skip_update() { env PATH="$FAKEPATH" FAKE_LS_SHA="$1" bash "$P/.claude/orion/orion.sh" update --skip --project "$P" >"$SB/out" 2>&1; }
+check "declined with update --skip: quiet until a newer orion, which is offered again" eval 'skip_update 1111111111111111111111111111111111111111 && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && [ ! -s "$SB/hook" ] && FAKE_LS_SHA=2222222222222222222222222222222222222222 run_check && grep -q "newer orion" "$SB/hook"'
 set_cfg updateMode '"off"'
 check "off mode: silent, exit 0" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && [ ! -s "$SB/hook" ]'
 set_cfg updateMode '"auto"'
@@ -339,6 +342,7 @@ check "a branch with no remote copy: silent" eval 'run_check && [ ! -s "$SB/hook
 echo "verify"
 newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
+check "no changelog: verify says to create docs/CHANGELOG.md" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-missing" "$SB/out"'
 rm -f "$P/.claude/orion/BASE_CLAUDE.md"
 check "verify fails when a core file is missing" eval '! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  core-files" "$SB/out"'
 newproj; init ask; rm -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
@@ -356,6 +360,10 @@ mkdir -p "$P/docs/product/PRDs" && : > "$P/docs/product/PRDs/PRD.md"
 check "a folder the rules name, kept elsewhere: verify offers the move" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  folder-misplaced: the rules expect docs/PRDs/, but the project keeps it at docs/product/PRDs/" "$SB/out"'
 mkdir -p "$P/docs/PRDs"
 check "once it is where the rules expect it: no warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    folders" "$SB/out"'
+: > "$P/CHANGELOG.md"
+check "a changelog kept elsewhere: verify offers the move to docs/CHANGELOG.md" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-misplaced: .* at CHANGELOG.md .*git mv \"CHANGELOG.md\" docs/CHANGELOG.md" "$SB/out"'
+: > "$P/docs/CHANGELOG.md"
+check "a changelog in docs/: no warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "ok    changelog:" "$SB/out"'
 
 echo "personal rules (GLOBAL_CLAUDE.md is offered clause by clause; orion never writes the person's own file)"
 GLOBAL="$REPO/baselines/global/GLOBAL_CLAUDE.md"

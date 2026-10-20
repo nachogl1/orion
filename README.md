@@ -66,7 +66,7 @@ The status bar is not installed by default, because it is a personal setting rat
 
 ## Keeping it up to date
 
-orion has one version number, raised each time something a project receives changes. Once a day, when you start a session, it checks whether a higher number exists and, only then, asks whether you want to update. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
+orion has one version number, raised each time something a project receives changes. Each time you start a session, it checks whether a higher number exists and, only then, asks whether you want to update; say "not now" and it stays quiet until the next number. Say yes and it updates itself, then you save the result to the project as usual. Nothing is ever changed without your say-so.
 
 The status bar is offered too: once a newer one reaches the project, everyone is asked at their next session start whether to take it, even with automatic updates on. If you changed your own status bar, saying yes merges the new changes into yours and keeps your edits.
 

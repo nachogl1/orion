@@ -11,8 +11,9 @@
 #   orion.sh init      [--source <git url|path>] [--ref <branch>] [--update-mode ask|auto|off]
 #                      [--statusline|--no-statusline] [--force]
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
-#   orion.sh check     [--force]        # session-start hook: pull the branch (every session); newer orion?
-#                                       # too many branches or worktrees? (once a day each)
+#   orion.sh update    --skip           # decline the newest orion: the hook stays quiet until a newer one
+#   orion.sh check     [--force]        # session-start hook: pull the branch and look for a newer orion (every
+#                                       # session); too many branches or worktrees? (once a day each)
 #   orion.sh verify                     # mechanical post-install checks, one line per finding, no fixes
 #   orion.sh status                     # what is installed, which version, which update mode
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
@@ -146,8 +147,8 @@ version_label() {  # sha number -> "orion <number>", or the short sha when there
 
 short() { printf '%s' "${1:0:7}"; }
 
-# Per-computer, per-project state that must never be committed (the daily
-# update-check stamp, the one-shot "post-install check pending" marker, the rules fingerprint last checked).
+# Per-computer, per-project state that must never be committed (the orion version the person
+# declined with `update --skip`, the one-shot "post-install check pending" marker, the rules fingerprint last checked).
 cache_file() {  # suffix
     printf '%s/orion/%s.%s' "${XDG_CACHE_HOME:-$HOME/.cache}" "$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)" "$1"
 }
@@ -225,6 +226,12 @@ limited() {  # seconds command...
     if have timeout; then GIT_TERMINAL_PROMPT=0 timeout "$s" "$@"
     elif have gtimeout; then GIT_TERMINAL_PROMPT=0 gtimeout "$s" "$@"
     else GIT_TERMINAL_PROMPT=0 GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=10 "$@"; fi
+}
+
+# The newest orion's name for the declined-update record: its release number when updates go by number (as
+# check_update_ctx decides), otherwise its commit. Needs latest_remote first.
+latest_key() {  # installed-number ref
+    if [ -n "$LATEST_NUM" ] && [ -n "$1" ] && [ "$2" = "$ORION_DEFAULT_REF" ]; then printf 'v%s' "$LATEST_NUM"; else printf '%s' "$LATEST_SHA"; fi
 }
 
 # One call for both: LATEST_SHA, the ref's commit, and LATEST_NUM, the highest release tag (v<N>, pushed by the
@@ -861,6 +868,17 @@ misplaced_folder() {  # expected-folder
         END { if (found) print p }'
 }
 
+# A changelog the project keeps somewhere other than docs/CHANGELOG.md, where the rules expect it: the shallowest
+# CHANGELOG or CHANGELOG.md (any case) among the files git tracks or would track, outside .claude/. Prints its path,
+# or nothing, also outside a git repository.
+misplaced_changelog() {
+    git -C "$PROJECT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    git -C "$PROJECT" ls-files --cached --others --exclude-standard 2>/dev/null | awk -F/ '
+        /^\.claude\// { next }
+        tolower($NF) == "changelog" || tolower($NF) == "changelog.md" { if (!found || NF < depth) { p = $0; depth = NF; found = 1 } }
+        END { if (found) print p }'
+}
+
 # The folder among .claude, .claude/orion and .claude/skills that a .gitignore line ignores as a whole (`.claude/`,
 # `/.claude`, `orion/`, …), not just its contents (`.claude/*`). git cannot re-include a file inside such a folder.
 # Prints it with a trailing slash, or nothing.
@@ -874,12 +892,13 @@ ignored_whole_folder() {
 }
 
 cmd_update() {
-    local force=0 project="" quiet=0
+    local force=0 project="" quiet=0 skip=0
     while [ $# -gt 0 ]; do
         case "$1" in
             --project) project="$2"; shift 2 ;;
             --force) force=1; shift ;;
             --quiet) quiet=1; shift ;;
+            --skip) skip=1; shift ;;
             -h|--help) usage ;;
             *) die "unknown option for update: $1" ;;
         esac
@@ -888,6 +907,14 @@ cmd_update() {
     local dir="$PROJECT/.claude/orion" cfg="$PROJECT/.claude/orion/config.json" source ref current
     [ -f "$dir/VERSION" ] || die "orion is not installed in $PROJECT (run: orion.sh init)"
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
+    if [ "$skip" = "1" ]; then
+        latest_remote "$source" "$ref"
+        [ -n "$LATEST_SHA" ] || die "could not reach $source to see which orion is the newest"
+        mkdir -p "$(dirname "$(cache_file update-skipped)")"
+        latest_key "$(version_number "$dir/VERSION")" "$ref" > "$(cache_file update-skipped)"
+        say "orion update declined on this computer: the session start stays quiet until a newer orion comes out"
+        return
+    fi
     current="$(version_sha "$dir/VERSION")"
     fetch_source "$source" "$ref"
     # the hint is printed only without --quiet, so an auto-update (capped at 10 s on older hooks) skips the cost
@@ -942,7 +969,7 @@ cmd_check() {
         exit 0
     fi
     now=$(date +%s)
-    ctx="$(check_update_ctx "$force" "$now")"
+    ctx="$(check_update_ctx "$force")"
     for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_global_ctx "$force" "$now")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
@@ -951,18 +978,12 @@ cmd_check() {
     printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
 }
 
-# The daily update check. Prints the context for Claude Code, or nothing when there is nothing to say.
-check_update_ctx() {  # force now
-    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest stamp last hook
+# The update check, every session. Prints the context for Claude Code, or nothing when there is nothing to say.
+check_update_ctx() {  # force
+    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest hook
     local installed newer=0
     mode="$(config_get "$cfg" updateMode ask)"
     [ "$mode" = "off" ] && return 0
-    stamp="$(cache_file last-check)"
-    if [ "$1" != "1" ] && [ -f "$stamp" ]; then
-        last=$(cat "$stamp" 2>/dev/null || echo 0)
-        [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
-    fi
-    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
     # An update run by an older orion.sh cannot raise the hook's time limit (bash had already read the old
     # script), so the first check by the new script heals it, silently. Claude Code read the limit when this
     # session started, so this run still goes by the value from BEFORE the heal: "0 <n>" with n > 0 means
@@ -984,6 +1005,8 @@ check_update_ctx() {  # force now
     current="$(version_label "$current" "$installed")"
     # nothing newer, but an update run by an older orion.sh left out the status line or personal rules copy: offer it once more
     [ "$newer" = 0 ] && [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && return 0
+    # declined with `update --skip`: quiet until a newer orion, unless the person asked for the check (--force)
+    [ "$mode" = "auto" ] || [ "$1" = "1" ] || [ "$(cat "$(cache_file update-skipped)" 2>/dev/null)" != "$(latest_key "$installed" "$ref")" ] || return 0
     case "$mode" in
         auto)
             # A process of its own: a failed fetch ends only that process (this hook still answers and
@@ -998,7 +1021,7 @@ check_update_ctx() {  # force now
                 printf '%s' "orion tried to update itself automatically ($current -> $latest) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
             fi ;;
         *)
-            printf '%s' "A newer orion is available for this project ($current -> $latest). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, continue with their request and do not mention it again this session." ;;
+            printf '%s' "A newer orion is available for this project ($current -> $latest). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, run 'bash .claude/orion/orion.sh update --skip' from the project root, so this version is not offered again on this computer, and continue with their request." ;;
     esac
 }
 
@@ -1180,7 +1203,8 @@ cmd_uninstall() {
         say "  ~    CLAUDE.md (import line removed; your rules untouched)"
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"
-    rm -f "$(cache_file verify-pending)" "$(cache_file rules-checked)" 2>/dev/null || true
+    # last-check: the daily update stamp older versions left
+    rm -f "$(cache_file verify-pending)" "$(cache_file rules-checked)" "$(cache_file update-skipped)" "$(cache_file last-check)" 2>/dev/null || true
     say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone,"
     say "and so was your own ~/.claude/CLAUDE.md: the personal rules you accepted are yours."
 }
@@ -1353,6 +1377,18 @@ cmd_verify() {
             n=$((n+1))
         done <<< "$(grep -oE '`docs/[A-Za-z0-9_./-]+/`' "$base" | tr -d '`' | sort -u || true)"
         [ "$n" -gt 0 ] || v_ok folders "every folder the rules name is where they expect it, or not made yet"
+    fi
+
+    # 7. the changelog every pull request adds its line to
+    if [ -f "$PROJECT/docs/CHANGELOG.md" ]; then
+        v_ok changelog "docs/CHANGELOG.md is where the rules expect it"
+    else
+        f="$(misplaced_changelog)"
+        if [ -n "$f" ]; then
+            v_warn changelog-misplaced "the rules expect docs/CHANGELOG.md, but the project keeps its changelog at $f (fix, on the person's yes: mkdir -p docs && git mv \"$f\" docs/CHANGELOG.md)"
+        else
+            v_warn changelog-missing "docs/CHANGELOG.md is missing, and every pull request adds its line to it (fix: create it with a '# Changelog' heading)"
+        fi
     fi
 
     say "verify: $VERIFY_FAIL fail, $VERIFY_WARN warn"

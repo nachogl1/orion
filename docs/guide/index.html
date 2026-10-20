@@ -287,7 +287,7 @@ aside.drawer.on{transform:none}
       <p>Nothing changes without your say-so. The update mode and the tidy-up limits live in <code>.claude/orion/config.json</code>.</p>
     </div>
     <div class="grid3">
-      <div class="tile"><h3>Updates</h3><p>Once a day the session start compares the orion version number your project has with the newest release, and offers an update only when there is a higher one. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
+      <div class="tile"><h3>Updates</h3><p>Every session start compares the orion version number your project has with the newest release, and offers an update only when there is a higher one; "Not now" keeps it quiet until the next release. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
       <div class="tile"><h3>Your personal rules</h3><p>At most once a day, orion offers rules for your own <code>~/.claude/CLAUDE.md</code>. You accept, skip or reword each one; nothing is written without your yes, and the rest of your file is never touched.</p></div>
       <div class="tile"><h3>A tidy repository</h3><p>Once the project reaches <code>branchLimit</code> or <code>worktreeLimit</code> (20 each by default), the session start offers <code>/clear-git-resources</code>. Set them higher, or to <code>off</code>.</p></div>
     </div>

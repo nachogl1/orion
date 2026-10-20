@@ -2,6 +2,8 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- The update check now runs at every session start instead of once a day, so a new release is offered in the next session, and "Not now" keeps it quiet until a newer one; the mandatory rules forbid changing another project without the person's yes and let the person's explicit word merge one pull request; `/orion-verify` creates `docs/CHANGELOG.md` when it is missing and offers to move a changelog kept elsewhere.
+
 - The status line's second line now ends in `wkt:<name>` when the session runs inside a git worktree, so you can tell at a glance it is not the main checkout.
 
 - The personal rules and the status line now follow orion's version number instead of timestamps: each rule carries the version that last changed it (`<!-- orion:v<N> -->`), the ORION GLOBAL heading reads `# ORION GLOBAL — v<N>`, and the status line records the version it last took or skipped, so all three parts are updated the same way; an old timestamp heading counts as no section, with no migration.

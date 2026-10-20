@@ -112,6 +112,10 @@ PRD wins on product, the rules files win on process.
 - **A repository the project's `CLAUDE.md` lists as external is read-only from here.** Never build it, run it, commit
   to it or change its git state. A change that must land there is an `outside-change` issue: it stops at a pull
   request its own reviewer merges.
+- **Never change another project without asking first.** This project, its worktrees and their root are the only
+  places an agent changes on its own: any other repository or folder, even one on the same computer, is edited,
+  committed to or pushed to only after the person says yes to that change. Reading it is fine. In a run nobody is
+  watching, the answer is no.
 - **If the project calls an AI model, the model provider sits behind one swappable interface.** Tests never reach
   the network; a test that needs the model mocks the interface. No API key is ever committed or written into an
   issue.
@@ -143,7 +147,8 @@ PRD wins on product, the rules files win on process.
   this where branch protection is off.
 - **Who merges.** Only `/dev-next` merges its own pull requests (a `/dev-quick` run merges through it, nothing
   else), and only once the project's build and test commands are filled in. Every other pull request — planning, scaffolding, documentation, anything outside the dev skill — is
-  merged by a human. Never auto-merge beyond that.
+  merged by a human. Never auto-merge beyond that. **The person's explicit word to merge one pull request counts as
+  their merge:** the agent merges that pull request, and only that one, once its checks are green.
 - **Squash-merge only, then delete the branch** (`--delete-branch` breaks on a worktree; see
   `.claude/skills/dev-next/references/merge-and-ci.md`). One commit on `main` per pull request.
 - **Work in a worktree on `feat/<slug>` or `fix/<slug>`** (`feat/<issue>-<slug>` when the branch serves one
