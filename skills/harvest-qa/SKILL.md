@@ -136,7 +136,7 @@ finish.
    before the pull request opens. Red → do not open it: this pull request only adds a state file and a changelog line,
    so red means `main` itself is red; the close-out names the failing command first, for a person to fix, and the
    worktree is kept so the log is not lost. Green → commit those two files (never `git add -A`), push, open the pull
-   request; its body is the table below. **A human merges it** — this skill never merges.
+   request; its body is the table below. **A human merges it** (or the agent, on the person's explicit word for this pull request) — this skill never merges on its own.
 
 ```
 | Check (plain words) | From | Result | Where it went |
