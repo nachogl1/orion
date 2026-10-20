@@ -14,8 +14,11 @@ A starting-point [Claude Code status line](https://docs.anthropic.com/en/docs/cl
 | **Reasoning effort** (`effort:high`) | green low/medium, yellow high, red xhigh/max | `effort.level` from Claude Code stdin JSON; omitted when the model exposes no effort level |
 | **5-hour usage** (`5h:23% ↻2h14m`) | bright magenta | `rate_limits.five_hour` from Claude Code stdin JSON |
 | **Weekly usage** (`7d:41% ↻3d5h`) | bright blue | `rate_limits.seven_day` from Claude Code stdin JSON |
+| **Worktree** (`wkt:feat-login`), second line, after the working directory | plain | `workspace.git_worktree`, else `worktree.name` (a `--worktree` session), from Claude Code stdin JSON; omitted when neither is sent |
 
-Second line: the session's working directory.
+Second line: the session's working directory, then `  |  wkt:<name>` when the session is in a linked git worktree.
+
+The **worktree tag** shows only when the Claude Code session itself runs inside a linked git worktree (it opened there, or was started with `--worktree`); in the main checkout, or on a Claude Code too old to send the field, nothing is drawn. An agent that only points its commands at a worktree, or a background agent working in a worktree of its own, does not change it.
 
 The two **usage-limit segments** are the subscription rate-limit windows: how much of the 5-hour rolling window and of the 7-day (weekly) window has been consumed, each followed by `↻` and the time until that window refreshes (`3d5h` / `2h14m` / `12m` / `now`). They come straight from the stdin JSON, so they cost nothing to draw and never block. Each window has its own colour so the two are never confused. They appear **only on a Claude.ai subscription (Pro/Max) session, and only after the first response of the session** — Claude Code omits `rate_limits` for API-key sessions, and either window can be absent on its own, in which case that segment is simply not drawn.
 

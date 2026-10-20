@@ -2,6 +2,8 @@
 
 Newest first. One line per pull request: what changed and why it matters to someone using orion.
 
+- The status line's second line now ends in `wkt:<name>` when the session runs inside a git worktree, so you can tell at a glance it is not the main checkout.
+
 - The personal rules and the status line now follow orion's version number instead of timestamps: each rule carries the version that last changed it (`<!-- orion:v<N> -->`), the ORION GLOBAL heading reads `# ORION GLOBAL — v<N>`, and the status line records the version it last took or skipped, so all three parts are updated the same way; an old timestamp heading counts as no section, with no migration.
 
 - orion now has a version number and offers an update only when a release raised it, so merges that change nothing a project receives stop prompting; `/orion-verify` offers to move folders the rules expect that a project keeps elsewhere, proposes the blank build and test commands from the project's own files, and gives the exact `.gitignore` lines when orion's files would not reach the team, and the installer asks for it before the first commit; a hard-to-reverse decision now gets a short ADR the person approves instead of a PRD per change, and PRDs are the person's to write; the guide page explains what orion installs and how each part is updated.

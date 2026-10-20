@@ -14,7 +14,8 @@
 #   - reasoning effort (color-coded by level; omitted when unsupported)
 #   - subscription usage limits, rightmost: 5-hour window (bright magenta) and
 #     7-day window (bright blue), each "used % + time until it resets"
-#   - second line: current working directory
+#   - second line: current working directory, then "wkt:<name>" when the
+#     session itself runs inside a linked git worktree (omitted otherwise)
 #
 # Requirements: bash (Git Bash on Windows), jq. Optional:
 # node/npx (month-to-date cost segment — shows "$..." until available).
@@ -42,7 +43,8 @@ _fields=$(echo "$input" | jq -r '
   (.rate_limits.five_hour.used_percentage // ""),
   (.rate_limits.five_hour.resets_at // ""),
   (.rate_limits.seven_day.used_percentage // ""),
-  (.rate_limits.seven_day.resets_at // "")
+  (.rate_limits.seven_day.resets_at // ""),
+  (.workspace.git_worktree // .worktree.name // "")
 ' | tr -d '\r')
 {
   read -r used_pct
@@ -57,6 +59,7 @@ _fields=$(echo "$input" | jq -r '
   read -r five_h_reset
   read -r seven_d_pct
   read -r seven_d_reset
+  read -r worktree_name
 } <<< "$_fields"
 
 # Compute elapsed time since session start (transcript file birth/creation time)
@@ -374,7 +377,17 @@ else
   line1="${prefix}${ctx_segment}${cost_suffix}"
 fi
 
-# %b expands the \033 color literals in the segments; the cwd goes through %s
-# verbatim, so a % or \ in a path (or branch name) can never be treated as a
-# printf format directive and corrupt the line.
-printf '%b\n%s' "$line1" "$cwd"
+# Worktree tag — "wkt:<name>" after the path when the session itself runs in
+# a linked git worktree. Claude Code sends the name (workspace.git_worktree,
+# else worktree.name in a --worktree session), so it costs no git call; it is
+# absent in the main checkout or on an older Claude Code: nothing is drawn.
+line2="$cwd"
+if [ -n "$worktree_name" ]; then
+  line2="${line2}  |  wkt:${worktree_name}"
+fi
+
+# %b expands the \033 color literals in the segments; the second line (cwd and
+# worktree name) goes through %s verbatim, so a % or \ in a path (or branch or
+# worktree name) can never be treated as a printf format directive and corrupt
+# the line.
+printf '%b\n%s' "$line1" "$line2"

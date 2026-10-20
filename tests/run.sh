@@ -419,6 +419,27 @@ check "no __pycache__ is copied into the project" eval '[ -z "$(find "$P/.claude
 awk '{printf "%s\r\n", $0}' "$P/.claude/orion/.orion-manifest" > "$SB/m" && mv "$SB/m" "$P/.claude/orion/.orion-manifest"
 check "uninstall with Windows line endings in the manifest removes everything" eval 'bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ]'
 
+echo "status line drawing (the script fed a fake stdin JSON, colours stripped)"
+# A HOME of its own keeps the script's caches in the sandbox; the fake npx keeps its cost refresh off the network.
+ESC="$(printf '\033')"
+sl_second_line() {  # json: the status line's second line for that stdin
+    printf '%s' "$1" | HOME="$SB/home-draw" PATH="$FAKEPATH" bash "$REPO/baselines/statusline/statusline.sh" 2>/dev/null | sed "s/$ESC\[[0-9;]*m//g" | tail -n 1
+}
+second_lines_are() {  # json want [json want ...]
+    local got
+    while [ $# -ge 2 ]; do
+        got="$(sl_second_line "$1")"
+        [ "$got" = "$2" ] || { printf '        for %s: got [%s], want [%s]\n' "$1" "$got" "$2"; return 1; }
+        shift 2
+    done
+}
+check "the second line shows wkt:<name> from either worktree field, nothing without one, the name verbatim" second_lines_are \
+    '{"cwd":"/work/proj","workspace":{"git_worktree":"feat-x"}}'                     '/work/proj  |  wkt:feat-x' \
+    '{"cwd":"/work/proj","worktree":{"name":"wt-only"}}'                             '/work/proj  |  wkt:wt-only' \
+    '{"cwd":"/work/proj","workspace":{"git_worktree":"first"},"worktree":{"name":"second"}}' '/work/proj  |  wkt:first' \
+    '{"cwd":"/work/proj"}'                                                           '/work/proj' \
+    '{"cwd":"/work/proj","workspace":{"git_worktree":"50%_a\\b100%s\\n"}}'           '/work/proj  |  wkt:50%_a\b100%s\n'
+
 echo "status line (the project carries orion's copy; the computer's copy takes the newest only on the person's word)"
 # A computer of its own (HOME) and a source repository of its own, whose ORION_VERSION each commit sets by hand.
 SLH="$SB/home-sl"; SLFILE="$SLH/.claude/statusline/statusline.sh"; mkdir -p "$SLH" "$SB/home-none"; seen_all_personal_rules "$SLH"
