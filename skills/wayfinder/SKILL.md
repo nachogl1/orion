@@ -155,10 +155,10 @@ A comment that names the session breaks the tie. Claim in this order, every time
 1. **Mint a session id** once per session, in UTC: `wayfinder-<yyyymmdd-hhmmss>-<4 hex>`. Never use the local clock.
 2. **Re-read the ticket's assignees** just before claiming (`gh issue view <N> --json assignees`; this narrow read is
    the one exception to reading issues with the full field list). Any assignee means another session has it: write
-   nothing on it and take the next ticket on the frontier. When the user named this ticket, tell them it is already
-   assigned and ask whether to take it over instead (a session that crashed leaves its ticket assigned, and this is
-   how it is freed). On a yes, delete the old `Claimed by wayfinder session` comments on it before step 3, so the
-   takeover cannot lose to them.
+   nothing on it and take the next ticket on the frontier. When the user named this ticket and it is assigned to
+   their own login, tell them and ask whether to take it over (a session that crashed leaves its ticket assigned, and
+   this is how it is freed); on a yes, delete the old `Claimed by wayfinder session` comments on it before step 3, so
+   the takeover cannot lose to them. When it is assigned to someone else, it is theirs: say who holds it and stop.
 3. **Assign yourself** (`gh issue edit <N> --add-assignee @me`), then comment `Claimed by wayfinder session <id>.`
 4. **Wait 5 seconds, then read the comments with their numeric ids** (`gh api repos/{owner}/{repo}/issues/<N>/comments
    --paginate --jq '.[] | {id, user: .user.login, created_at, body}'`). Among the `Claimed by wayfinder session`
@@ -288,7 +288,7 @@ ticket is your job; do not ask them to pick.
 1. **Read the map body** — the summary, not every ticket.
 2. **Pick the ticket.** Use the one the user named; otherwise the first ticket on the frontier, in order. **Claim
    it before doing any work** ([Claiming a ticket](#claiming-a-ticket)); a ticket another session wins is skipped
-   for the next one on the frontier.
+   for the next one on the frontier, unless the user named it.
 3. **Settle it** with the steps for its kind label. Open the full body or answer of a related ticket, open or
    closed, when you need it, and read whatever the map's `## Notes` points at.
 4. **Record the answer:** post it as a comment, **close** the ticket, and **add one line** under *Settled* on the map,
