@@ -327,8 +327,8 @@ stops, with the person present:
    headings, a `### Seam`, the labels and its readiness label, `tier:wayfinder`, the native sub-issue link to the
    epic, both blocker forms, every read-back). Each story's `### References` links the map and the tickets whose
    answers it rests on. A story that adds or changes a screen names its screen in the UX prototype under
-   `### References`; a screen the prototype lacks becomes a UX pull request on `docs/ux/prototypes/` first, and the
-   story is blocked on it. **No `wayfinder:*` label on the epic or any story**: `/dev-next` never takes an issue that
+   `### References`; a screen the prototype lacks first gets a `needs-human` story of its own under the epic, "UX
+   prototype for <screen>", seam `docs/ux/prototypes/<slug>/`, and the front-end story is blocked on it. **No `wayfinder:*` label on the epic or any story**: `/dev-next` never takes an issue that
    carries one.
 4. Add one line under the map's **Settled** linking the epic, then close the map.
 
