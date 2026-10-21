@@ -17,8 +17,7 @@ looks at it, and carries a banner saying who built it and when. The source of tr
 
 - **Nodes**: every issue, open and closed, whatever its label. Epics (label `epic`) sit in their own far-left column,
   joined to their stories by dashed purple lines (GitHub's native sub-issue link). Epics and closed issues start hidden.
-  Each box shows its number and progress icon, its native parent epic, its title, its assignees and up to three
-  label chips.
+  Each box shows its number and progress icon, its epic, its title, its assignees and up to three label chips.
 - **Links**: the union of GitHub's native blocked-by relation and the `### Blocked by` body section. Nothing else.
   A link to an epic, to an issue that does not exist, or that closes a cycle is dropped. Those links, and every open
   issue whose body section and native relation disagree, are data problems: the side pane lists each in plain words

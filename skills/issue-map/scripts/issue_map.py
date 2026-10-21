@@ -167,22 +167,11 @@ def load_links(owner: str, name: str, numbers: list[int]) -> dict[int, dict]:
     return links
 
 
-# A "Blocked by" heading of any level (also at the very end of the body), then every line up to the next heading.
-BLOCKED_BY_SECTION = re.compile(r"^#{1,6}[ \t]*blocked by[ \t]*:?[ \t]*(?:\n|$)((?:(?!#{1,6}[ \t]+\S)[^\n]*\n?)*)",
-                                re.I | re.M)
-
-
-def blocked_by_section(body: str | None) -> list[int] | None:
-    """Every `#N` under a "Blocked by" heading of the body, in order and deduped; None when it has no such section."""
-    text = re.sub(r"\r\n?", "\n", body or "")
-    refs: list[int] = []
-    found = False
-    for m in BLOCKED_BY_SECTION.finditer(text):
-        found = True
-        for ref in (int(x) for x in re.findall(r"#(\d+)", m.group(1))):
-            if ref not in refs:
-                refs.append(ref)
-    return refs if found else None
+def body_blockers(body: str | None) -> set[int]:
+    """Every `#N` on the lines under the body's `### Blocked by` heading up to the next heading, as /dev-next reads
+    them; empty when the body has no such section."""
+    m = re.search(r"### Blocked by\s*\n(.*?)(?=\n#{1,6} |\Z)", re.sub(r"\r\n?", "\n", body or ""), re.S)
+    return {int(x) for x in re.findall(r"#(\d+)", m.group(1))} if m else set()
 
 
 def kind_of(labels: list[str]) -> tuple[str, str | None]:
@@ -240,11 +229,10 @@ def build_map(issues: list[dict], links: dict[int, dict]) -> dict:
     edges: list[tuple[int, int]] = []
     problems: list[dict] = []
     for n in nodes:
-        native = {b for b in links.get(n, no_links)["blocked_by"] if b != n}
-        section_refs = blocked_by_section(by[n].get("body"))
-        section = {b for b in section_refs or [] if b != n}
-        # Only a body that has the section can disagree with GitHub, and only an open issue still matters.
-        if section_refs is not None and is_open(n) and section != native:
+        native = set(links.get(n, no_links)["blocked_by"])
+        section = body_blockers(by[n].get("body"))
+        # Every ticket sets both forms, so on an open issue any difference, a missing section included, is a problem.
+        if is_open(n) and section != native:
             problems.append({"kind": "disagreement", "number": n, "section_only": sorted(section - native),
                              "native_only": sorted(native - section)})
         for b in sorted(native | section):
@@ -310,8 +298,7 @@ def build_map(issues: list[dict], links: dict[int, dict]) -> dict:
             meta[n] = {"title": by[n]["title"], "state": by[n]["state"].upper(), "url": by[n]["url"],
                        "status": status(n), "kind": kind, "kindLabel": kind_label, "column": name,
                        "labels": labels[n], "body": description_text(by[n].get("body") or ""),
-                       "assignees": [a["login"] for a in by[n]["assignees"]],
-                       "epic": links.get(n, no_links)["parent"] if n in up else None, "parent": parent.get(n),
+                       "assignees": [a["login"] for a in by[n]["assignees"]], "parent": parent.get(n),
                        "stories": [brief(k) for k in kids.get(n, [])],
                        "blockers": [brief(b) for b in up.get(n, [])], "waiting": down.get(n, [])}
     colours = {lab["name"]: lab.get("color", "") for i in issues for lab in i["labels"]}
@@ -459,7 +446,7 @@ def render(m: dict, repo_name: str, user: str, stamp: str, truncated: bool) -> s
             tag = "epic"
             sub = f"{sum(k['state'] == 'CLOSED' for k in d['stories'])}/{len(d['stories'])} stories closed"
         else:
-            tag = f"epic #{d['epic']}" if d["epic"] is not None else ""
+            tag = f"epic #{d['parent']}" if d["parent"] is not None else ""
             sub = "\U0001F464 " + truncate(", ".join(d["assignees"]), ASSIGNEE_MAX) if d["assignees"] else ""
         cross = (f'<line class="x" x1="4" y1="4" x2="{NODE_W - 4}" y2="{NODE_H - 4}"/>'
                  f'<line class="x" x1="{NODE_W - 4}" y1="4" x2="4" y2="{NODE_H - 4}"/>' if d["status"] == "closed"
