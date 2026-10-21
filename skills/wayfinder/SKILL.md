@@ -153,16 +153,21 @@ together each read the same frontier, each assign themselves to the same first t
 A comment that names the session breaks the tie. Claim in this order, every time:
 
 1. **Mint a session id** once per session, in UTC: `wayfinder-<yyyymmdd-hhmmss>-<4 hex>`. Never use the local clock.
-2. **Re-read the ticket** just before claiming (`gh issue view <N> --json assignees`). Any assignee means another
-   session has it: write nothing on it and take the next ticket on the frontier. When the user named this ticket, tell
-   them it is already assigned and ask whether to take it over instead.
+2. **Re-read the ticket's assignees** just before claiming (`gh issue view <N> --json assignees`; this narrow read is
+   the one exception to reading issues with the full field list). Any assignee means another session has it: write
+   nothing on it and take the next ticket on the frontier. When the user named this ticket, tell them it is already
+   assigned and ask whether to take it over instead (a session that crashed leaves its ticket assigned, and this is
+   how it is freed). On a yes, delete the old `Claimed by wayfinder session` comments on it before step 3, so the
+   takeover cannot lose to them.
 3. **Assign yourself** (`gh issue edit <N> --add-assignee @me`), then comment `Claimed by wayfinder session <id>.`
 4. **Wait 5 seconds, then read the comments with their numeric ids** (`gh api repos/{owner}/{repo}/issues/<N>/comments
-   --paginate`). If a `Claimed by wayfinder session` comment from another session, posted in the 10 minutes before
-   yours, has a lower id than yours, that session claimed first and keeps the ticket. Back off: delete your own comment
-   by its id (`gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>`, never `--delete-last`, which can delete a
-   sibling session's comment under the same login), unassign yourself only when the winning comment's author is a
-   different login (your own sessions share the assignee, which stays), and go back to step 2 with the next ticket.
+   --paginate --jq '.[] | {id, user: .user.login, created_at, body}'`). Among the `Claimed by wayfinder session`
+   comments posted in the 10 minutes up to yours, **the one with the lowest id wins**. If it is not yours, back off:
+   delete your own comment by its id (`gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>`, never
+   `--delete-last`, which can delete a sibling session's comment under the same login), unassign yourself only when the
+   winning comment's author is a different login (your own sessions share the assignee, which stays), then take the
+   next ticket from step 2. When the user named the ticket you lost, tell them another session holds it and ask which
+   ticket to take instead.
 5. **Letting go of a ticket without closing it** (the session ends early, the user stops it): delete your claim comment
    and unassign yourself, so the ticket is free again.
 
