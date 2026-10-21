@@ -1,0 +1,1 @@
+- `/wayfinder` sessions started together no longer pick the same ticket: each one claims with a comment naming the session, and the earliest claim wins while the others move to the next ticket.

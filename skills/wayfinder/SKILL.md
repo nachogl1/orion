@@ -135,8 +135,8 @@ How tickets behave:
 - **Kind label.** Each ticket has exactly one of `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`,
   `wayfinder:task`. Create the missing ones once, when the map is first written. Read the label to know the kind;
   the body does not say it.
-- **Claim before work.** Assign the ticket to the user who is running the map before doing anything on it. The
-  assignment is the claim: other sessions skip an assigned ticket, and an unassigned open ticket is free.
+- **Claim before work.** Claim the ticket before doing anything on it, following [Claiming a ticket](#claiming-a-ticket):
+  other sessions skip an assigned ticket, and an unassigned open ticket is free.
 - **Blocked or free.** A ticket is free to take once every blocker is closed, checked in both the body section and
   the native relation; a blocker in either one still blocks.
 - **The answer goes in a comment.** The body keeps the question unchanged, so the ticket always reads as the
@@ -145,6 +145,29 @@ How tickets behave:
 - **Split for parallel work.** When one question becomes several tickets, keep the files, modules and areas they
   share as few as possible, so two sessions or two people can work them side by side. Where one ticket truly needs
   another's answer, record that as a blocker.
+
+## Claiming a ticket
+
+All of one person's sessions share one GitHub login, so the assignee alone cannot tell them apart: sessions started
+together each read the same frontier, each assign themselves to the same first ticket, and each sees "assigned to me".
+A comment that names the session breaks the tie. Claim in this order, every time:
+
+1. **Mint a session id** once per session, in UTC: `wayfinder-<yyyymmdd-hhmmss>-<4 hex>`. Never use the local clock.
+2. **Re-read the ticket** just before claiming (`gh issue view <N> --json assignees`). Any assignee means another
+   session has it: write nothing on it and take the next ticket on the frontier. When the user named this ticket, tell
+   them it is already assigned and ask whether to take it over instead.
+3. **Assign yourself** (`gh issue edit <N> --add-assignee @me`), then comment `Claimed by wayfinder session <id>.`
+4. **Wait 5 seconds, then read the comments with their numeric ids** (`gh api repos/{owner}/{repo}/issues/<N>/comments
+   --paginate`). If a `Claimed by wayfinder session` comment from another session, posted in the 10 minutes before
+   yours, has a lower id than yours, that session claimed first and keeps the ticket. Back off: delete your own comment
+   by its id (`gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>`, never `--delete-last`, which can delete a
+   sibling session's comment under the same login), unassign yourself only when the winning comment's author is a
+   different login (your own sessions share the assignee, which stays), and go back to step 2 with the next ticket.
+5. **Letting go of a ticket without closing it** (the session ends early, the user stops it): delete your claim comment
+   and unassign yourself, so the ticket is free again.
+
+Older claim comments are ignored in step 4: they belong to sessions that ended, and the assignee check in step 2 is what
+keeps a live claim safe.
 
 ## The four kinds of ticket, and how to settle each
 
@@ -258,8 +281,9 @@ The user gives a map, as a URL or a number, and may also name a ticket. If they 
 ticket is your job; do not ask them to pick.
 
 1. **Read the map body** — the summary, not every ticket.
-2. **Pick the ticket.** Use the one the user named; otherwise the first ticket on the frontier, in order. **Assign
-   it before doing any work.**
+2. **Pick the ticket.** Use the one the user named; otherwise the first ticket on the frontier, in order. **Claim
+   it before doing any work** ([Claiming a ticket](#claiming-a-ticket)); a ticket another session wins is skipped
+   for the next one on the frontier.
 3. **Settle it** with the steps for its kind label. Open the full body or answer of a related ticket, open or
    closed, when you need it, and read whatever the map's `## Notes` points at.
 4. **Record the answer:** post it as a comment, **close** the ticket, and **add one line** under *Settled* on the map,
@@ -323,6 +347,7 @@ Keep it short, one fact per line:
 | Settling several tickets in one session | Each answer changes the map, so the next pick must be made from the changed map. |
 | Building the destination inside a ticket | That is execution, not planning. Hand over instead. |
 | Working on a ticket someone has claimed | Another session already has it, and the two will clash. |
+| Treating "assigned to me" as a won claim | Your other sessions share your login, so every one of them sees the same. Only the claim comment with the lowest id wins. |
 | Making a map for a job that fits in one session | All overhead and no benefit. Say so and stop. |
 
 ## When it is done
