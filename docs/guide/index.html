@@ -341,15 +341,15 @@ const NODES = {
   wayfinder:{phase:"A", actor:"both", touch:"always", kicker:"2 · Plan", title:"/wayfinder", cmd:"/wayfinder <your idea>\n/wayfinder <map issue number or link>",
     sub:"Turns a big, foggy idea into a map of decision tickets, then settles them one per session.",
     what:[
-      "Fixes the destination first: a finished spec, a fixed decision, or a change carried out.",
+      "Asks the destination first, with two answers only: PRD (the decisions a PRD needs) or TICKETS (the stories filed, ready to build).",
       "Surveys every open question, wide before deep, and checks the open issues for duplicates.",
       "Creates one map issue (Destination, Notes, Settled, Fog, Out of scope) and a decision ticket for every question it can already ask precisely.",
       "Each ticket has one kind: research (the agent reads and cites), prototype (something rough to react to), grilling (a conversation with you) or task (hands-on work needed first).",
       "Next sessions: picks the next free ticket, settles it, records the answer on the map, and turns fog into new tickets as it clears."
     ],
     you:["Answer the grilling questions and react to the prototypes.","Start one session per ticket: research tickets run alongside."],
-    out:["A map issue on GitHub with every decision recorded under Settled.","Decisions ready for you to write into a PRD or an ADR."],
-    rules:["It decides, it does not build (unless the map's Notes say building is in scope).","Every blocker is set twice: GitHub's native link and a Blocked by section in the body.","If the path is already clear and fits one session, it says a map would only add overhead and stops."],
+    out:["A map issue on GitHub with every decision recorded under Settled.","PRD map: decisions ready for you to write into a PRD. TICKETS map: an epic and its stories, ready for /dev-next."],
+    rules:["It decides, it does not build.","Every blocker is set twice: GitHub's native link and a Blocked by section in the body.","If the path is already clear and fits one session, it says a map would only add overhead and stops."],
     tip:"Run the first session as a long conversation. The better the destination, the fewer tickets you need."},
 
   prd:{phase:"A", actor:"both", touch:"always", kicker:"3 · Specify", title:"The PRD", cmd:"docs/PRDs/PRD.md                 (yours: you write or provide it)\ndocs/ADRs/adr-<change-name>.md   (one per hard-to-reverse decision)",

@@ -1,0 +1,1 @@
+- `/wayfinder` now asks first whether a new map ends in a PRD or in tickets, and a tickets map files its epic and stories for `/dev-next` when the last decision is taken.

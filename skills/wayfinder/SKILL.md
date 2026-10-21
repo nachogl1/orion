@@ -1,6 +1,6 @@
 ---
 name: wayfinder
-description: 'ORION - Turn an idea that is too large for a single agent session into a plan kept on GitHub Issues: one map issue that states the DESTINATION (a finished spec, a fixed decision, or a change carried out) and a set of small decision tickets hung under it, then settle those tickets one per session until every open question has an answer. Questions that can already be asked precisely become tickets; questions that cannot be asked precisely yet are written down as fog on the map and become tickets later; anything beyond the destination is recorded as out of scope. Every ticket has one kind — research (the agent reads and cites), prototype (a rough thing for the person to react to), grilling (a conversation with the person), task (hands-on work needed before a decision) — and the steps for each kind are written here, so the skill runs no other skill (it only reads dev-next''s references/new-issue.md for the issue links). It DECIDES, IT DOES NOT BUILD, unless the map''s Notes say execution is in scope. GitHub Issues only, like dev-next: tickets are native sub-issues of the map and every blocker is set as GitHub''s native relation and as a Blocked by section in the body. One ticket per session, research tickets excepted. Started by hand only: use when the user types /wayfinder; when they say "help me plan this big thing", "this is too big for one session", "chart the work", "work the map", or bring a vague idea with no clear path to the end, suggest they type /wayfinder.'
+description: 'ORION - Turn an idea that is too large for a single agent session into a plan kept on GitHub Issues: one map issue that states the DESTINATION (one of two: PRD, every decision a PRD needs, which the person then writes; or TICKETS, the work filed as stories ready to build) and a set of small decision tickets hung under it, then settle those tickets one per session until every open question has an answer. Questions that can already be asked precisely become tickets; questions that cannot be asked precisely yet are written down as fog on the map and become tickets later; anything beyond the destination is recorded as out of scope. Every ticket has one kind — research (the agent reads and cites), prototype (a rough thing for the person to react to), grilling (a conversation with the person), task (hands-on work needed before a decision) — and the steps for each kind are written here, so the skill runs no other skill (it only reads dev-next''s references/new-issue.md for the issue links and the shape of a TICKETS map''s stories). It DECIDES, IT DOES NOT BUILD. GitHub Issues only, like dev-next: tickets are native sub-issues of the map and every blocker is set as GitHub''s native relation and as a Blocked by section in the body. One ticket per session, research tickets excepted. Started by hand only: use when the user types /wayfinder; when they say "help me plan this big thing", "this is too big for one session", "chart the work", "work the map", or bring a vague idea with no clear path to the end, suggest they type /wayfinder.'
 argument-hint: "An idea to plan, or the URL or number of an existing map"
 disable-model-invocation: true
 ---
@@ -17,8 +17,11 @@ until every open question has an answer and the work can be handed to whoever bu
 
 ## Words this skill uses
 
-- **Destination** — the end point of the map: a spec ready for handover, a decision that must be fixed before
-  planning, or one change carried out in place (for example, moving stored records to a new layout).
+- **Destination** — the end point of the map, always one of two:
+  - **PRD** — every decision a PRD (product requirements document) needs has been taken. The person then writes or
+    updates the PRD under `docs/PRDs/`; an agent never drafts one. `/prd-to-tickets` cuts it into stories later.
+  - **TICKETS** — every decision has been taken **and** the work is filed as an epic with its stories, ready for
+    `/dev-next`, with no PRD in between ([Filing the stories](#filing-the-stories-tickets-only)).
 - **Map** — a single issue that holds the whole effort in summary. It is the record every session starts from.
 - **Ticket** — an issue hung under the map. It asks one question that one session can settle.
 - **Fog** — questions you expect to face later but cannot yet write precisely enough to become a ticket.
@@ -36,7 +39,7 @@ teammates can read them, and several sessions can work on them at once as long a
 
 1. **Decide, don't build.** A ticket ends with a decision. The map ends when every decision the builders need has
    been taken. Wanting to start the actual work is a sign that planning is finished and it is time to hand over.
-   Only the map's **Notes** can widen this to include execution.
+   Filing the stories of a TICKETS map is the last planning step, not building.
 2. **Call every issue by its title.** Maps and tickets are issues, so each has a title. Wherever the user reads,
    write the title as a link to the issue; never leave a bare `#<N>` as the only name. The number may sit inside the
    link, never in place of the title.
@@ -75,14 +78,13 @@ listed in the map; ask GitHub for the map's open sub-issues instead.
 ```markdown
 ## Destination
 
-<One or two lines: what is true once this map is finished. Every session reads this
-before it picks a ticket.>
+**<PRD | TICKETS>** — <one or two lines: what is true once this map is finished. Every
+session reads this before it picks a ticket.>
 
 ## Notes
 
 <Background on the domain; the stack and conventions found in this repository; skills
-or documents every session should read; preferences the user wants kept for the whole effort; and
-whether doing the work, not only deciding it, is part of this map.>
+or documents every session should read; and preferences the user wants kept for the whole effort.>
 
 ## Settled
 
@@ -103,7 +105,8 @@ whether doing the work, not only deciding it, is part of this map.>
 ```
 
 A map with `## Decisions so far` / `## Not yet specified` (the earlier names) is read as `## Settled` / `## Fog` and
-renamed on its next edit.
+renamed on its next edit. A map whose Destination names neither PRD nor TICKETS (written before the two kinds) is
+read as PRD; ask the person once whether it should be TICKETS instead, and write the answer on the map.
 
 ## A ticket
 
@@ -261,9 +264,13 @@ nothing was decided on the way.
 
 The user gives an idea. With no argument, ask what they want to plan.
 
-1. **Fix the destination first**, because it decides what is in scope. Grill the user (see grilling) and sort out
-   the vocabulary until the end point is clear: a spec, a decision, or a change. Read the repository before you ask
-   — `CLAUDE.md`, `README.md`, the manifest files, the existing issues — so the questions fit this project.
+1. **Fix the destination first**, because it decides what is in scope. Read the repository before you ask —
+   `CLAUDE.md`, `README.md`, the manifest files, the existing issues, `docs/PRDs/` — so the questions fit this
+   project. Then the **first question** is its kind, asked with `AskUserQuestion` offering exactly two options and
+   nothing else: **PRD** (the map ends with the decisions a PRD needs, and the person writes the PRD) and
+   **TICKETS** (the map ends with the stories filed, ready for `/dev-next`). Recommend PRD when the idea changes what
+   the product does or who it is for, TICKETS when the product stays as the PRD describes it. Then grill the user
+   (see grilling) and sort out the vocabulary until the end point is clear in one or two lines.
 2. **Survey the open questions, wide before deep.** Grill again, touching every area of the effort briefly instead
    of following one thread down, to list the decisions still open and what can be started right away. **If no
    fog appears** — the path is already clear and the whole job fits in one session — say that a map would only add
@@ -298,12 +305,28 @@ ticket is your job; do not ask them to pick.
    exists in one place only; move anything the answer placed beyond the destination to *Out of scope*; update or
    close the tickets the decision made wrong.
 6. **Ask the PRD question** once, when this session created or edited any ticket ([The PRD question](#the-prd-question)).
-7. **Stop after this one ticket** (research excepted). Report the ticket's title, the decision in one line, and what
+7. **Stop after this one ticket** (research excepted); when it was a TICKETS map's last one and no fog is left, first
+   [file the stories](#filing-the-stories-tickets-only). Report the ticket's title, the decision in one line, and what
    is on the frontier now.
 
 **Other sessions may be changing these issues at the same moment**: the user can run free tickets in parallel.
 Re-read a ticket just before you write to it, and do not trust the frontier you read in step 1 to still hold by
 step 5.
+
+## Filing the stories (TICKETS only)
+
+When the last ticket of a TICKETS map closes and no fog is left, the session that closed it files the work before it
+stops, with the person present:
+
+1. Run the dedupe deep-dive below for every story; an open issue that already covers one is linked, not repeated.
+2. File one **epic** for the map's destination and one **story** per piece of work, each in the shape of
+   `.claude/skills/dev-next/references/new-issue.md` (body headings, a `### Seam`, the labels and its readiness
+   label, `tier:wayfinder`, the native sub-issue link to the epic, both blocker forms, every read-back). Each story's
+   `### References` links the map and the tickets whose answers it rests on. **No `wayfinder:*` label on any of
+   them**: `/dev-next` never takes an issue that carries one.
+3. Add one line under the map's **Settled** linking the epic, then close the map.
+
+A PRD map files nothing: it ends with the decisions, and the person writes the PRD.
 
 ## The PRD question
 
@@ -363,4 +386,4 @@ Keep it short, one fact per line:
 - **A working session is done** when exactly one ticket (research excepted) has its answer comment, is closed and has
   its line under *Settled*; *Fog* and *Out of scope* are up to date; and the new frontier has been reported.
 - **The whole map is finished** once no ticket is open and no fog is left — every decision the builders need has been
-  taken. Say so plainly and close the map issue.
+  taken — and, for a TICKETS map, the epic and its stories are filed. Say so plainly and close the map issue.
