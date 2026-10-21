@@ -1,0 +1,1 @@
+- The issue map gains filter menus, a pane that explains each data problem and its fix, label chips and a draggable issue card, and loads its links in a few GraphQL calls, so large trackers build in seconds.

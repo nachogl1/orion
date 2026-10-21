@@ -151,6 +151,52 @@ for tool in $tools; do
 done
 if [ "$WINDOWS_ONLY" = 1 ]; then summary; exit; fi
 
+echo "issue map (the generator against fixture issues: a fake gh, no network)"
+# Epic #1 holds #2 and #3; #2 -> #3 -> #4 is a chain three levels deep; #4's body section names a blocker GitHub's
+# relation does not; #5 is blocked by the epic and by an issue that does not exist; #6 and #7 block each other.
+MAPREPO="$SB/maprepo"; mkdir -p "$MAPREPO" "$SB/ghbin"; "$REAL_GIT" init -q "$MAPREPO"
+cat > "$SB/issues.json" <<'EOF'
+[{"number":1,"title":"Epic one","state":"OPEN","labels":[{"name":"epic","color":"8250df"}],"assignees":[],"body":"","url":"https://example.invalid/1"},
+ {"number":2,"title":"Lay the base","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"},{"name":"story","color":"cccccc"}],"assignees":[{"login":"dev-1"}],"body":"### Blocked by\n(none)\n","url":"https://example.invalid/2"},
+ {"number":3,"title":"Build on it","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[],"body":"### Blocked by\n#2 — Lay the base\n","url":"https://example.invalid/3"},
+ {"number":4,"title":"Decide the next step","state":"OPEN","labels":[{"name":"needs-human","color":"d93f0b"}],"assignees":[],"body":"### Blocked by\n#3 — Build on it\n","url":"https://example.invalid/4"},
+ {"number":5,"title":"Odd links","state":"OPEN","labels":[],"assignees":[],"body":"### Blocked by\n#1\n#99\n","url":"https://example.invalid/5"},
+ {"number":6,"title":"Loop a","state":"OPEN","labels":[],"assignees":[],"body":"","url":"https://example.invalid/6"},
+ {"number":7,"title":"Loop b","state":"CLOSED","labels":[],"assignees":[],"body":"","url":"https://example.invalid/7"}]
+EOF
+cat > "$SB/links.json" <<'EOF'
+{"data":{"repository":{
+ "i0":{"number":1,"parent":null,"blockedBy":{"nodes":[]},"subIssues":{"nodes":[{"number":2},{"number":3}]}},
+ "i1":{"number":2,"parent":{"number":1},"blockedBy":{"nodes":[]},"subIssues":{"nodes":[]}},
+ "i2":{"number":3,"parent":{"number":1},"blockedBy":{"nodes":[{"number":2}]},"subIssues":{"nodes":[]}},
+ "i3":{"number":4,"parent":null,"blockedBy":{"nodes":[]},"subIssues":{"nodes":[]}},
+ "i4":{"number":5,"parent":null,"blockedBy":{"nodes":[]},"subIssues":{"nodes":[]}},
+ "i5":{"number":6,"parent":null,"blockedBy":{"nodes":[{"number":7}]},"subIssues":{"nodes":[]}},
+ "i6":{"number":7,"parent":null,"blockedBy":{"nodes":[{"number":6}]},"subIssues":{"nodes":[]}}}}}
+EOF
+cat > "$SB/ghbin/gh" <<EOF
+#!/usr/bin/env bash
+case "\$1 \$2" in
+    "issue list") cat "$SB/issues.json" ;;
+    "repo view") echo '{"name":"demo","owner":{"login":"owner"}}' ;;
+    "api user") echo tester ;;
+    "api graphql") cat "$SB/links.json" ;;
+    *) exit 1 ;;
+esac
+EOF
+chmod +x "$SB/ghbin/gh"
+MAPHTML="$MAPREPO/docs/issue_map/issue_map.html"
+(cd "$MAPREPO" && PATH="$SB/ghbin:$PATH" "$PY" "$REPO/skills/issue-map/scripts/issue_map.py" >"$SB/out" 2>&1)
+check "the map is built from the issues and says how many it holds" eval '[ -f "$MAPHTML" ] && grep -q "6 issues + 1 epics" "$SB/out"'
+check "an issue's column is one more than its deepest blocker's" eval 'grep -q ">Level 2 <tspan" "$MAPHTML" && ! grep -q ">Level 3 <tspan" "$MAPHTML"'
+check "every dropped link and disagreement is listed in plain words, and in the sentence other skills read" eval 'grep -q "which is an epic: link dropped" "$MAPHTML" && grep -q "which is not on the map: link dropped" "$MAPHTML" && grep -q "which closes a loop: link dropped" "$MAPHTML" && grep -q "sources disagree" "$MAPHTML" && grep -q "they DISAGREE on: #4, #5\." "$SB/out" && grep -q "#5->#1, #5->#99" "$SB/out" && grep -q "close a cycle: #6->#7" "$SB/out"'
+map_offers_filters_and_problems() {
+    local f; for f in "Who takes it" Progress Assignee Labels; do grep -q "name:.$f." "$MAPHTML" || return 1; done
+    grep -q 'id="problems"' "$MAPHTML"
+}
+check "the page offers the four filter menus and the data problems pane" map_offers_filters_and_problems
+check "the map never shows up as a change in git" eval '[ -z "$(cd "$MAPREPO" && "$REAL_GIT" status --porcelain)" ]'
+
 echo "check (the session-start hook: silent unless it has news, always exit 0)"
 newproj; init ask
 V="$(sed -n 1p "$P/.claude/orion/VERSION")"
