@@ -182,8 +182,8 @@ Epic → story is a **native sub-issue**, never a text list.
     `needs-human`**, always carries `### External reference` with that repository's work-item key. `/dev-next` skips
     it; the plan says who drives it.
 - **carries one tier label**, `tier:<name>` (`new-issue.md` step 2): the tier the PRD gives the work it covers
-  (`tier:mvp`, `tier:stretch`, `tier:stretch-2`). A scaffold or contract story takes the first tier, in the PRD's
-  order, of the stories that wait for it. Epics carry none. The tier never changes a blocker or a level.
+  (`tier:mvp`, `tier:stretch`, `tier:stretch-2`). A scaffold, contract or UX prototype story takes the first tier,
+  in the PRD's order, of the stories that wait for it. Epics carry none. The tier never changes a blocker or a level.
 - **front-end** (adds or changes a screen) → blocked by the prototype story (phase 1 step 4) until the prototype is
   on `main`, and references its screen.
 
