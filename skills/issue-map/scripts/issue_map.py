@@ -380,6 +380,10 @@ def explain_problem(p: dict, title_of: dict[int, str]) -> tuple[str, str, str]:
                 f"Without this link {blocked} may sit at a lower level than it should.",
                 f"Open #{p['blocker']} on GitHub. If it is a real issue of this repository, the map hit its load "
                 "limit; otherwise point the link at the right issue or remove it.")
+    if p["blocked"] == p["blocker"]:
+        return (f"{blocked} is blocked by itself: link dropped",
+                "An issue that waits for itself could never open, so the map drops this link.",
+                f"On GitHub, remove {blocked} from its own blocked-by list.")
     return (f"{blocked} is blocked by {blocker}, which closes a loop: link dropped",
             f"Following the blocked-by links from {blocker} leads back to {blocked}, so neither could ever open. "
             "The map drops this one link to break the loop; the other links in the loop stay.",
