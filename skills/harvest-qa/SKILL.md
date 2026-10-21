@@ -119,7 +119,7 @@ finish.
 2. **`File a bug`** → one `bug` issue, shaped per `.claude/skills/dev-next/references/new-issue.md`: the
    story's epic as the native parent; `### Seam` from the record; `### Acceptance criteria` = the check's expected
    behaviour; the body carries the exact steps, what was expected, what was seen, the commit tested and the record it
-   came from (`audit/<login>`, run id, issue). Labels: `story`, `bug` and `needs-human`. That is this skill's choice
+   came from (`audit/<login>`, run id, issue). Labels: `story`, `bug`, `tier:bug` and `needs-human`. That is this skill's choice
    for every QA bug it files: the failure was reproduced by an agent, not yet confirmed by a person, so nobody has
    checked that nothing is left to ask. Post its last comment right after creating it, saying what a person must
    confirm before flipping it to `agent-ready` (the steps reproduce for them, and nothing is left to ask). Read every

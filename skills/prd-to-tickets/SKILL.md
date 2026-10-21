@@ -1,6 +1,6 @@
 ---
 name: prd-to-tickets
-description: 'ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies; every story owns one folder or module; both blocker forms set (GitHub''s native relation and the Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; existing open issues become blockers, never duplicates. Its first message checks docs/ux/prototypes/ for the screens the PRD describes and, when there is none, offers to draft one from the PRD in parallel so front-end stories have a design to follow. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".'
+description: 'ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies; every story owns one folder or module; both blocker forms set (GitHub''s native relation and the Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; every story also labelled with the tier the PRD gives its work (tier:mvp, tier:stretch, …), epics never; existing open issues become blockers, never duplicates. Its first message checks docs/ux/prototypes/ for the screens the PRD describes and, when there is none, offers to draft one from the PRD in parallel so front-end stories have a design to follow. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".'
 argument-hint: "<path to the PRD> --developers N"
 ---
 
@@ -115,9 +115,9 @@ A failure is reported in one line and the story stays `needs-human` with the per
    `CLAUDE.md` without the person confirming it: that number is what phase 3's parallelism check is measured against,
    and a wrong one cuts the backlog for the wrong team.
 2. **From the PRD, extract into a scratch note** (never into the repository): the vocabulary, the scope and the
-   do-not-build list, the acceptance bar, the build decisions already taken, the repositories the work touches that
-   this team does not own, the screens (phase 1), the data types or interfaces several parts share (the **contracts**),
-   and every question the PRD leaves open.
+   do-not-build list, the acceptance bar, the build decisions already taken, the tier the PRD gives each part (MVP,
+   stretch, stretch 2, …), the repositories the work touches that this team does not own, the screens (phase 1),
+   the data types or interfaces several parts share (the **contracts**), and every question the PRD leaves open.
 3. **Inventory the backlog — mandatory, never skipped.**
    `gh issue list --state open --limit 200 --json number,title,labels,assignees,body`, and
    `gh issue list --state open --label epic --json number,title`. For every open issue, decide which PRD section (if
@@ -181,6 +181,9 @@ Epic → story is a **native sub-issue**, never a text list.
     never autonomous, always ends at a pull request that repository's own reviewer merges, **always also
     `needs-human`**, always carries `### External reference` with that repository's work-item key. `/dev-next` skips
     it; the plan says who drives it.
+- **carries one tier label**, `tier:<name>` (`new-issue.md` step 2): the tier the PRD gives the work it covers
+  (`tier:mvp`, `tier:stretch`, `tier:stretch-2`). A scaffold or contract story takes the first tier, in the PRD's
+  order, of the stories that wait for it. Epics carry none. The tier never changes a blocker or a level.
 - **front-end** (adds or changes a screen) → blocked by the prototype story (phase 1 step 4) until the prototype is
   on `main`, and references its screen.
 
@@ -215,6 +218,8 @@ A story filed `agent-ready` with a question left becomes a guess the dev agent b
   its last comment. Nothing is guessed on anyone's behalf. The rest of the plan is unaffected.
 - **A reversible decision the person could take now but did not** → recommend the simplest option that meets the
   acceptance bar, say it is reversible, record the answer under that story's `## Decisions (agent-ready)`.
+- **Work the PRD gives no tier** → one question per epic: which tier its stories take (`mvp` recommended, the PRD's
+  other tiers as the other options). The answer is a PRD fact, so it is one of the lines of phase 6's PRD question.
 
 ## Phase 5 — A fresh check, then one look
 
@@ -234,8 +239,9 @@ File in dependency order, so every blocker exists before the issue it blocks:
 
 1. **Epics first.** `gh issue create --title "<title>" --label epic --body-file <file>`. An existing open epic reused
    from phase 2 is not re-created.
-2. **Stories level by level**, lowest level first. Body to a UTF-8 file, `gh issue create --title "<title>" --label
-   story --label <readiness> [--label outside-change] --body-file <file>` (PowerShell adds a byte-order mark; bash
+2. **Stories level by level**, lowest level first. Every tier label the plan uses is created first when missing
+   (`new-issue.md` step 2). Body to a UTF-8 file, `gh issue create --title "<title>" --label story --label
+   <readiness> --label <tier> [--label outside-change] --body-file <file>` (PowerShell adds a byte-order mark; bash
    heredocs break on apostrophes — `.claude/skills/dev-next/references/shell-traps.md`). Names, not bare numbers,
    in titles and bodies. The `### Blocked by` lines are filled with the numbers minted in this run as they appear.
 3. **Links, per `new-issue.md` steps 3 and 4, each read back:** the native sub-issue link to the epic

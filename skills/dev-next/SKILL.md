@@ -36,7 +36,7 @@ repository's files). This skill expects that file to state the items below; the 
 | Item | Default when `CLAUDE.md` is silent |
 |---|---|
 | **Tracker** | GitHub Issues in the repository `origin` points at — the only tracker this skill supports. A `CLAUDE.md` that names another tracker → stop in preflight (phase 0 step 1) and say so. |
-| **Labels** | `epic`, `story`, `agent-ready`, `needs-human`, `in-progress`, `outside-change`, `bug`, plus the `wayfinder:*` set the planning skill owns (`wayfinder:map`, `wayfinder:research`, …). Missing ones of the seven are created in preflight (phase 0 step 7); `wayfinder:*` labels are never created here. An issue carrying any `wayfinder:*` label is a planning ticket: never eligible, never asked about, never counted as drift. |
+| **Labels** | `epic`, `story`, `agent-ready`, `needs-human`, `in-progress`, `outside-change`, `bug`, plus the `wayfinder:*` set the planning skill owns (`wayfinder:map`, `wayfinder:research`, …). Missing ones of the seven are created in preflight (phase 0 step 7); `wayfinder:*` labels are never created here. An issue carrying any `wayfinder:*` label is a planning ticket: never eligible, never asked about, never counted as drift. Every story also carries one `tier:*` label (`references/new-issue.md` step 2): it is for readers only, and never makes an issue more or less eligible or changes the order issues are taken in. |
 | **The gate chain** — build → lint → typecheck → full suite, with the exact commands | Derived from the CI workflow (`.github/workflows/`) and the project files (`package.json`, `pyproject.toml`, `Makefile`, …), and the run says so in the first touchpoint. Nothing derivable → stop (phase 0 step 3). |
 | **Skip-count baseline** | The skip count the suite reports on `main` before the change; any other number fails the gate. |
 | **Worktree root** `<wt root>` | `C:\wt` on Windows, `~/wt` elsewhere. Worktrees live outside the project. |
@@ -291,7 +291,7 @@ and worktree for a human**, and carry on with whatever else the run has.
 Dev reports `INHERITED RED` (the gate was already failing on `main` before it changed anything) → the story is not the
 problem, `main` is. Open **one** `bug` issue for the red gate on `main` **per `references/new-issue.md`**: every
 heading, each failing test named under `### Acceptance criteria` (green again), `### Seam` the folder the failures sit
-in, labels `story` + `bug` + `needs-human` (its rule for an issue filed mid-run: nobody has checked it is ready; the
+in, labels `story` + `bug` + `tier:bug` + `needs-human` (its rule for an issue filed mid-run: nobody has checked it is ready; the
 reason comment, the issue's last, asks a person to confirm the failures and flip it to `agent-ready`), native sub-issue
 of the story's epic. One per run: a second dev reporting the same failures links the same issue
 (`references/merge-and-ci.md`, *After the merge*). Once flipped, `references/eligibility.md` ranks it first. Then
@@ -343,8 +343,9 @@ request already changes** → fixed in this pull request. Critical → a GitHub 
   comment; the dev agent's are not); phase 6 copies from the pull request comments, never from memory.
 - `Critical:` lines — from the reviewer or from the dev agent's own report — → the orchestrator opens one GitHub issue
   each **per `references/new-issue.md`** — full body, `story` + `needs-human` (nobody has checked it is ready; the
-  reason is posted as a comment, the issue's last), native sub-issue of the claimed issue's epic, blocked by the claimed
-  issue in both forms when the fix depends on its code — and links it from the pull request. Nothing else becomes an
+  reason is posted as a comment, the issue's last) + its tier (`tier:bug` for a defect, else `tier:dev-next`), native
+  sub-issue of the claimed issue's epic, blocked by the claimed issue in both forms when the fix depends on its code —
+  and links it from the pull request. Nothing else becomes an
   issue, and nobody but the orchestrator opens one.
 
 **Every review is a round, approved or not.** Not approved after **three rounds** → `needs-human`, release the issue (the four steps at the top), leave the branch, and move on.

@@ -122,7 +122,7 @@ has run against a shared database is corrected by a new one, never by rewriting 
 
 If a merge breaks `main` for everyone (the gate goes red on `main` itself), that is a `bug` issue opened immediately,
 not a deferred line, **per `new-issue.md`**: every heading, the failing tests under `### Acceptance criteria`, labels
-`story` + `bug` + `needs-human` (filed mid-run; the reason comment, its last, asks a person to confirm the failures and
+`story` + `bug` + `tier:bug` + `needs-human` (filed mid-run; the reason comment, its last, asks a person to confirm the failures and
 flip it to `agent-ready`, after which `eligibility.md` ranks it first), native sub-issue of the merged story's epic,
 and linked from that story's pull request. A second report of the same failures — another dev agent's `INHERITED RED` in the same run, or a
 later run — links the existing issue instead of opening another.

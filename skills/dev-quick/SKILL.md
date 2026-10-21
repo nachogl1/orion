@@ -201,11 +201,13 @@ On *The fast path*, steps 4 and 6 are skipped: draft once and file.
    prepared; `needs-human` otherwise (reason as the last comment, posted right after creation). `bug` added when the
    change fixes a defect. `outside-change` + `needs-human` when it touches a repository the team does not own (then
    phase 5 never runs). An issue found in phase 1 step 2 that already carried a readiness label is re-labelled the same
-   way, never left with both.
+   way, never left with both. One tier label (`new-issue.md` step 2): `tier:bug` when the change fixes a defect, else
+   `tier:dev-quick`; an issue found in phase 1 step 2 that already has a tier keeps it.
 4. **Show the whole draft to the person once** (skipped on the fast path) — title, labels, body, decisions — and ask for one of: file it as-is,
    change something (then show it again), or stop here (nothing is filed, the answers are printed so they are not
    lost). This is the last look before an autonomous run; it is not a new interview round.
-5. **File it:** body to a UTF-8 file, `gh issue create --title "<title>" --label story --label <readiness>
+5. **File it:** body to a UTF-8 file, the tier label created first when missing (`new-issue.md` step 2),
+   `gh issue create --title "<title>" --label story --label <readiness> --label <tier>
    --body-file <file>` (PowerShell adds a byte-order mark; bash heredocs break on apostrophes —
    `.claude/skills/dev-next/references/shell-traps.md`). Then, exactly as `new-issue.md` steps 3 and 4 say: the native
    sub-issue link to the epic and the native `blocked_by` relation for every `### Blocked by` line, **each read back

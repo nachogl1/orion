@@ -376,7 +376,7 @@ const NODES = {
       "Files epics then stories, links them as native sub-issues with both blocker forms, and reads every link back."
     ],
     you:["Answer the interview (accepting the recommended answers is fine).","Give the plan its one look before anything is filed."],
-    out:["Epics and stories on GitHub Issues, each owning one folder (### Seam).","Every story labelled agent-ready, or needs-human with the reason as its last comment."],
+    out:["Epics and stories on GitHub Issues, each owning one folder (### Seam).","Every story labelled agent-ready, or needs-human with the reason as its last comment.","Every story labelled with the tier the PRD gives it (tier:mvp, tier:stretch, ...); epics carry none."],
     rules:["Agents build stories only, never an epic.","Nothing is filed agent-ready with a question left.","\"I don't know, ask someone\" makes that story needs-human: nothing is guessed on anyone's behalf.","Work in a repository the team does not own is outside-change and always stops at a pull request for its own reviewer."]},
 
   quick:{phase:"A", actor:"agent", touch:"sometimes", kicker:"Side door", title:"/dev-quick", cmd:"/dev-quick <what you want changed>",
@@ -396,7 +396,8 @@ const NODES = {
     what:[
       "Epic to story is a native GitHub sub-issue, never a text list.",
       "A story is blocked until every blocker is closed, whether listed under Blocked by or set as GitHub's native relation.",
-      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug (and wayfinder:* for planning tickets)."
+      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug (and wayfinder:* for planning tickets).",
+      "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). Nothing orders work by it."
     ],
     you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
     out:["The queue /dev-next picks from. /issue-map draws it as a graph."],

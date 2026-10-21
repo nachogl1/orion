@@ -1,0 +1,1 @@
+- Every story now carries one `tier:*` label saying what it is for: the tier the PRD gives it (`tier:mvp`, `tier:stretch`, …) or where it came from (`tier:bug`, `tier:dev-quick`, …), so anyone reading the issue list sees it; epics carry none and nothing orders work by it.

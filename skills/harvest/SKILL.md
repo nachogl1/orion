@@ -146,10 +146,10 @@ team a backlog nobody drains, or an hour of a person's attention on things that 
    - **Rule change** — a line in the project's `CLAUDE.md`, a skill or a reference file; goes in this harvest's pull
      request. The usual home for a slow-down or a tip.
    - **Ticket** — real work for later; one GitHub issue per group (or per set of groups merged in wave 3), written to
-     `.claude/skills/dev-next/references/new-issue.md` (the body headings, `story` plus exactly one readiness label,
-     the labels and the `### External reference` heading it prescribes when the work touches a repository this team
-     does not own, native sub-issue of its epic, both blocker forms). The epic is the one the items came from when
-     they share one, otherwise the human picks. `### References` names the audit runs the items came from.
+     `.claude/skills/dev-next/references/new-issue.md` (the body headings, `story` plus exactly one readiness label
+     and one tier label (`tier:bug` for a defect, else `tier:harvest`), the labels and the `### External reference`
+     heading it prescribes when the work touches a repository this team does not own, native sub-issue of its epic,
+     both blocker forms). The epic is the one the items came from when they share one, otherwise the human picks. `### References` names the audit runs the items came from.
    - **Add to an existing task** — an open story already owns the area but not this exact problem: a comment on that
      story (Phase 3, step 2); never on a `needs-human` story.
    - **Drop** — only on the human's explicit word, but **the recommendation for every item rated "probably never
