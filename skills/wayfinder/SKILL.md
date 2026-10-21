@@ -304,9 +304,11 @@ ticket is your job; do not ask them to pick.
    forms); turn every fog entry the answer made precise into a ticket and **remove that entry from *Fog*** so it
    exists in one place only; move anything the answer placed beyond the destination to *Out of scope*; update or
    close the tickets the decision made wrong.
-6. **Ask the PRD question** once, when this session created or edited any ticket ([The PRD question](#the-prd-question)).
-7. **Stop after this one ticket** (research excepted); when it was a TICKETS map's last one and no fog is left, first
-   [file the stories](#filing-the-stories-tickets-only). Report the ticket's title, the decision in one line, and what
+6. **File the stories** when this was a TICKETS map's last open ticket and no fog is left
+   ([Filing the stories](#filing-the-stories-tickets-only)).
+7. **Ask the PRD question** once, when this session created or edited any ticket or story
+   ([The PRD question](#the-prd-question)).
+8. **Stop after this one ticket** (research excepted). Report the ticket's title, the decision in one line, and what
    is on the frontier now.
 
 **Other sessions may be changing these issues at the same moment**: the user can run free tickets in parallel.
@@ -319,12 +321,16 @@ When the last ticket of a TICKETS map closes and no fog is left, the session tha
 stops, with the person present:
 
 1. Run the dedupe deep-dive below for every story; an open issue that already covers one is linked, not repeated.
-2. File one **epic** for the map's destination and one **story** per piece of work, each in the shape of
-   `.claude/skills/dev-next/references/new-issue.md` (body headings, a `### Seam`, the labels and its readiness
-   label, `tier:wayfinder`, the native sub-issue link to the epic, both blocker forms, every read-back). Each story's
-   `### References` links the map and the tickets whose answers it rests on. **No `wayfinder:*` label on any of
-   them**: `/dev-next` never takes an issue that carries one.
-3. Add one line under the map's **Settled** linking the epic, then close the map.
+2. File one **epic** for the map's destination: the `epic` label only (an epic never carries a tier), and a body
+   that states the destination in a line or two and links the map.
+3. File one **story** per piece of work, in the shape of `.claude/skills/dev-next/references/new-issue.md` (body
+   headings, a `### Seam`, the labels and its readiness label, `tier:wayfinder`, the native sub-issue link to the
+   epic, both blocker forms, every read-back). Each story's `### References` links the map and the tickets whose
+   answers it rests on. A story that adds or changes a screen names its screen in the UX prototype under
+   `### References`; a screen the prototype lacks becomes a UX pull request on `docs/ux/prototypes/` first, and the
+   story is blocked on it. **No `wayfinder:*` label on the epic or any story**: `/dev-next` never takes an issue that
+   carries one.
+4. Add one line under the map's **Settled** linking the epic, then close the map.
 
 A PRD map files nothing: it ends with the decisions, and the person writes the PRD.
 

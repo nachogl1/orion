@@ -277,7 +277,7 @@ PRD wins on product, the rules files win on process.
   `CLAUDE.md`, this file, every skill, the settings and the person's own rules file fit together; it fixes what is
   mechanical and asks before touching anything the project or the person owns.
 - `/wayfinder` plans work too big for one session as a map of decision tickets and settles them one at a time; it
-  produces decisions, never the deliverable.
+  produces decisions (and, when its destination is TICKETS, the epic and stories), never the built work.
 - `/prd-to-tickets` turns a PRD under `docs/PRDs/` into epics and stories with the person present: existing open
   issues become blockers, never duplicates; both blocker forms are set and read back; nothing is filed `agent-ready`
   with a question left.
