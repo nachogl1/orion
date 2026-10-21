@@ -1,0 +1,1 @@
+- Decision record proposed for `/dev-next`: cap heavy work on the machine instead of agents, bound every wait, and bring QA back before merge, so a run of four issues can finish on one laptop.
