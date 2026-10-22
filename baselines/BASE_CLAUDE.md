@@ -64,15 +64,16 @@
   with their read-back checks. A person writing a ticket by hand follows the same file; there is no separate issue
   template to keep in step. **An agent asked in chat to file a bug or open a ticket, with no skill running, is no
   exception**: it reads `new-issue.md` before its first `gh issue create`, files to that shape (`story` plus exactly
-  one readiness label, `agent-ready`, `needs-human` or `outside-change` with `needs-human`, one `tier:*` label,
-  `bug` when it reports a defect, the native epic link and both blocker forms) and reads the labels back. **Never
-  run `gh issue create` without those labels**: an issue with no readiness label is never taken by `/dev-next`, sits
-  on the issue map as a yellow box with no owner and no epic, and is lost to the workflow. When the person did not say
-  who takes it, ask once with clickable options, `needs-human` recommended because nobody has yet checked that nothing
-  is left to ask; in a run nobody is watching, `needs-human`. When no epic fits, ask which one; a story never hangs
-  loose. **A change wanted now that has no ticket goes through `/dev-quick`**: it files the issue to that shape and
-  hands it to `/dev-next` — never built by hand in the chat. **When the person asks for a code change in chat without starting a skill, ask once whether to ship it with
-  `/dev-quick`** (only when `.claude/skills/dev-quick/` is installed and no gate command reads `TBD`): yes runs it end
+  one readiness label, `agent-ready`, `needs-human` or `outside-change` with `needs-human`; one tier label,
+  `tier:bug` for a defect, else `tier:manual`; `bug` when it reports a defect; the native epic link and both blocker
+  forms) and reads the labels back as `new-issue.md` says. **Never run `gh issue create` without those labels**: an
+  issue with no readiness label is never taken by `/dev-next`, sits on the issue map as a yellow box with no owner
+  and no epic, and is lost to the workflow. When the person did not say who takes it, ask once with clickable
+  options, `needs-human` recommended because nobody has yet checked that nothing is left to ask. When no epic fits,
+  ask which one; a story never hangs loose. Filing a ticket is not a request to build it: offer `/dev-quick` only
+  when the person wants the change made now. **A change wanted now that has no ticket goes through `/dev-quick`**:
+  it files the issue to that shape and hands it to `/dev-next` — never built by hand in the chat. **When the person
+  asks for a code change in chat without starting a skill, ask once whether to ship it with `/dev-quick`** (only when `.claude/skills/dev-quick/` is installed and no gate command reads `TBD`): yes runs it end
   to end, merging on green with no further questions (it interviews only when the request is unclear); no means no
   change is made, by hand or otherwise.
 - **An issue filed while working on another is tied to where it came from**: the pull request in hand links the new
