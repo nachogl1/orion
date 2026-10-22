@@ -1,0 +1,1 @@
+- An agent asked in chat to file a bug or open a ticket, with no skill running, now files it to the dev-next issue shape with its readiness and tier labels, so the issue stays on the issue map and `/dev-next` can take it instead of being lost to the workflow.

@@ -2,9 +2,10 @@
 
 The checklist for every issue this skill files — a `Critical:` finding (`SKILL.md` phase 4) or the `bug` for a red
 gate on `main` (`SKILL.md` phase 3, `merge-and-ci.md` *After the merge*) — and the shape it expects
-of every issue it takes, whoever filed it: a harvest ticket (`/harvest`), a story cut by a planning process, or a
-ticket a person writes by hand (this file **is** the shape; there is no separate issue template to keep in step with
-it). Where the project's `CLAUDE.md` defines its own issue shape, that wins. **No step here is optional**: an
+of every issue it takes, whoever filed it: a harvest ticket (`/harvest`), a story cut by a planning process, a
+ticket a person writes by hand, or one an agent files from a chat request with no skill running ("file this bug")
+(this file **is** the shape; there is no separate issue template to keep in step with it). Where the project's
+`CLAUDE.md` defines its own issue shape, that wins. **No step here is optional**: an
 issue missing a blocker looks unblocked and is taken too early; one missing a readiness label stops the dev skill's
 preflight; one missing its epic link is invisible to anyone browsing the epic.
 
@@ -60,12 +61,16 @@ sees it. An epic never carries one. The first line that fits decides:
 | Was cut from a PRD (by `/prd-to-tickets`, `/reconcile-issue-map` or a person writing PRD work) | The tier the PRD gives that work, lowercase with spaces as hyphens: `tier:mvp`, `tier:stretch`, `tier:stretch-2`. A PRD that gives that work no tier → ask the person, `mvp` recommended. |
 | Reports or fixes a defect (a red `main`, a QA failure, a defect found anywhere else) | `tier:bug` |
 | Was filed by a skill for any other reason | The skill's name: `tier:dev-quick`, `tier:harvest`, `tier:wayfinder`, `tier:dev-next` (a `Critical:` finding that is not a defect) |
-| Was written by a person, outside any PRD | `tier:manual` |
+| Was written by a person, outside any PRD, or asked for in chat with no skill running | `tier:manual` |
 
 A tier label the repository does not have yet is created before the issue is filed: when
 `gh label list --limit 200 --json name --jq '.[].name'` does not list it, `gh label create "tier:<name>" --description
 "Tier: <name>" --force` (`--force` so a run that created it a moment earlier is no error). The tier is for readers
 only: **nothing picks or orders work by it**.
+
+Verify: `gh issue view <N> --json labels --jq '.labels[].name'` lists `story`, exactly one readiness label and exactly
+one `tier:*` label (plus `bug` when the issue reports a defect). A label missing here is added with `gh issue edit <N>
+--add-label <name>` before the issue is left.
 
 ## 3 · Epic link — native sub-issue, never a text list
 
