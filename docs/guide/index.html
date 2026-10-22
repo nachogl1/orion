@@ -412,7 +412,7 @@ const NODES = {
       "With nothing eligible, it names the issue that blocks the queue and who holds it, instead of saying \"nothing to do\"."
     ],
     you:["Only asked when an issue has no readiness label at all: you say what it is."],
-    out:["A claimed story, an entry in the in-flight file, a refreshed issue map."],
+    out:["A claimed story, an entry in the in-flight file."],
     rules:["Several stories at once: one terminal with /dev-next N, never N terminals started together.","It stops before the first story if the project's build or test command still reads TBD."]},
 
   qa:{phase:"B", actor:"agent", touch:"sometimes", kicker:"dev-next · 2", title:"Q&A", gsub:"Asks every open question, in one go.", sub:"Removes every guess before code is written.",
@@ -452,7 +452,7 @@ const NODES = {
       "Takes the machine's single merging slot, so merges happen one at a time.",
       "Merges the latest main into the branch and pushes, so CI tests what will actually land.",
       "Waits for green checks, squash-merges, verifies the issue closed.",
-      "Deletes the worktree and the branch, and silently rebuilds the issue map."
+      "Deletes the worktree and the branch."
     ],
     you:["Nothing: /dev-next is the only skill that merges its own pull requests."],
     out:["One commit on main per story. The story closed."],
