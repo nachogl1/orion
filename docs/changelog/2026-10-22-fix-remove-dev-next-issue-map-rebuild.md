@@ -1,0 +1,1 @@
+- `/dev-next` no longer rebuilds the issue map after every claim and merge, and no longer reads its footer as a drift sign: `/issue-map` is rebuilt only when a person asks for it, so a run spends nothing on a picture nobody is looking at.
