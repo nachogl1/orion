@@ -135,8 +135,8 @@ The loop, from idea to checked software:
   code change in chat.
 - `dev-next` — the engine: picks the next free story, claims it, builds it in a worktree, has a fresh agent review it,
   merges on green CI, closes it, writes the run report and QA record, and counts what is due.
-- `issue-map` — draws the blocked-by graph of every issue into a never-committed local HTML snapshot; `dev-next`
-  rebuilds it silently after every claim and merge.
+- `issue-map` — draws the blocked-by graph of every issue into a never-committed local HTML snapshot, rebuilt only
+  when a person asks for it.
 - `harvest` — works through the run reports with the person, in waves, and turns what matters into as few tickets
   as possible.
 - `harvest-qa` — drives the QA records against `main`, one agent at a time, shows the person each failure reproduced
