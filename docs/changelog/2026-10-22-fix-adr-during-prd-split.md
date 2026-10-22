@@ -1,0 +1,1 @@
+- A hard-to-reverse decision taken while `/prd-to-tickets` splits a PRD is now recorded in the PRD's build-decisions section instead of an ADR, so the backlog and the drift checks see it and no story waits on a document nobody reads.
