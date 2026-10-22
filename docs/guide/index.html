@@ -401,7 +401,7 @@ const NODES = {
     ],
     you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
     out:["The queue /dev-next picks from. /issue-map draws it as a graph."],
-    rules:["The assignee owns the issue: never work on, edit or unassign someone else's.","An issue with no readiness label is never taken automatically.","Read an issue with: gh issue view <N> --json title,body,labels,comments"]},
+    rules:["The assignee owns the issue: never work on, edit or unassign someone else's.","Every issue, filed by a skill or asked for in chat (\"file this bug\"), is filed to the dev-next issue shape with its labels: never a bare gh issue create.","An issue with no readiness label is never taken automatically and sits on the issue map with no owner.","Read an issue with: gh issue view <N> --json title,body,labels,comments"]},
 
   claim:{phase:"B", actor:"agent", touch:"sometimes", kicker:"dev-next · 1", title:"Claim", gsub:"Picks the next free story and claims it.", cmd:"/dev-next          one story\n/dev-next 3        up to four side by side\n/dev-next #12 #15  exactly these (also resumes a crashed run)",
     sub:"Checks tools and labels, picks the next free story and claims it.",

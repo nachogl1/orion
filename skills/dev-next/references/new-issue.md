@@ -2,9 +2,9 @@
 
 The checklist for every issue this skill files — a `Critical:` finding (`SKILL.md` phase 4) or the `bug` for a red
 gate on `main` (`SKILL.md` phase 3, `merge-and-ci.md` *After the merge*) — and the shape it expects
-of every issue it takes, whoever filed it: a harvest ticket (`/harvest`), a story cut by a planning process, or a
-ticket a person writes by hand (this file **is** the shape; there is no separate issue template to keep in step with
-it). Where the project's `CLAUDE.md` defines its own issue shape, that wins. **No step here is optional**: an
+of every issue it takes, whoever filed it: a harvest ticket (`/harvest`), a story cut by a planning process, a
+ticket a person writes by hand, or one an agent files from a chat request with no skill running ("file this bug")
+(this file **is** the shape; there is no separate issue template to keep in step with it). Where the project's `CLAUDE.md` defines its own issue shape, that wins. **No step here is optional**: an
 issue missing a blocker looks unblocked and is taken too early; one missing a readiness label stops the dev skill's
 preflight; one missing its epic link is invisible to anyone browsing the epic.
 
