@@ -187,7 +187,26 @@ esac
 EOF
 chmod +x "$SB/ghbin/gh"
 MAPHTML="$MAPREPO/docs/issue_map/issue_map.html"
-(cd "$MAPREPO" && PATH="$SB/ghbin:$PATH" "$PY" "$REPO/skills/issue-map/scripts/issue_map.py" >"$SB/out" 2>&1)
+# Python on Windows starts a bare "gh" only as gh.exe, so it never finds the bash fake: there the generator runs
+# through a wrapper that hands each gh call to this bash and the fake.
+if command -v cygpath >/dev/null 2>&1; then
+    (cd "$MAPREPO" && "$PY" - "$(cygpath -m "$BASH")" "$(cygpath -m "$SB/ghbin/gh")" \
+        "$(cygpath -m "$REPO/skills/issue-map/scripts/issue_map.py")" >"$SB/out" 2>&1 <<'EOF'
+import runpy, subprocess, sys
+bash, fake, script = sys.argv[1:4]
+real_run = subprocess.run
+def run(args, *rest, **kwargs):
+    if args and args[0] == "gh":
+        args = [bash, fake, *args[1:]]
+    return real_run(args, *rest, **kwargs)
+subprocess.run = run
+sys.argv = [script]
+runpy.run_path(script, run_name="__main__")
+EOF
+    )
+else
+    (cd "$MAPREPO" && PATH="$SB/ghbin:$PATH" "$PY" "$REPO/skills/issue-map/scripts/issue_map.py" >"$SB/out" 2>&1)
+fi
 check "the map is built from the issues and says how many it holds" eval '[ -f "$MAPHTML" ] && grep -q "6 issues + 1 epics" "$SB/out"'
 check "an issue's column is one more than its deepest blocker's" eval 'grep -q ">Level 2 <tspan" "$MAPHTML" && ! grep -q ">Level 3 <tspan" "$MAPHTML"'
 check "every dropped link and disagreement is listed in plain words, and in the sentence other skills read" eval 'grep -q "which is an epic: link dropped" "$MAPHTML" && grep -q "which is not on the map: link dropped" "$MAPHTML" && grep -q "which closes a loop: link dropped" "$MAPHTML" && grep -q "sources disagree" "$MAPHTML" && grep -q "they DISAGREE on: #4, #5, #6\." "$SB/out" && grep -q "#5->#1, #5->#99" "$SB/out" && grep -q "close a cycle: #5->#5, #6->#7" "$SB/out"'
