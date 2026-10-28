@@ -190,7 +190,8 @@ MAPHTML="$MAPREPO/docs/issue_map/issue_map.html"
 # Python on Windows starts a bare "gh" only as gh.exe, so it never finds the bash fake: there the generator runs
 # through a wrapper that hands each gh call to this bash and the fake.
 if command -v cygpath >/dev/null 2>&1; then
-    (cd "$MAPREPO" && "$PY" - "$(cygpath -m "$BASH")" "$(cygpath -m "$SB/ghbin/gh")"         "$(cygpath -m "$REPO/skills/issue-map/scripts/issue_map.py")" >"$SB/out" 2>&1 <<'EOF'
+    (cd "$MAPREPO" && "$PY" - "$(cygpath -m "$BASH")" "$(cygpath -m "$SB/ghbin/gh")" \
+        "$(cygpath -m "$REPO/skills/issue-map/scripts/issue_map.py")" >"$SB/out" 2>&1 <<'EOF'
 import runpy, subprocess, sys
 bash, fake, script = sys.argv[1:4]
 real_run = subprocess.run
