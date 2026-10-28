@@ -22,6 +22,8 @@ This repo is a collection of **general-purpose, publicly distributable** Claude 
 
 Run the build, the lint and the typecheck after any edit, and the full suite after every edit to `orion.sh`, `orion.ps1`, `scan.sh` or `tests/run.sh`, and always before a pull request opens; every edited `.md` must still render without parse errors. CI (`.github/workflows/ci.yml`) runs the same chain on every pull request.
 
+On Windows, run `bash tests/wsl.sh` (from Git Bash, after committing) in place of `bash tests/run.sh`: it runs the whole suite in WSL on the commit checked out, then the Windows part under Git Bash, the same split as CI, in about four minutes. The whole suite under Git Bash takes about 40, since every process start is slow there.
+
 ## Stack and layout
 
 - Stack: **bash** for `orion.sh` (runs under Git Bash, macOS bash and Linux, so no GNU-only flags), **Windows PowerShell 5.1** for `orion.ps1` (pure ASCII; it only finds Git Bash and runs `orion.sh`), **Python 3.9+, standard library only** for `skills/issue-map/scripts/issue_map.py`, Markdown for every skill. No test framework: `tests/run.sh` (plain bash) is the suite. CI runs on GitHub Actions: an Ubuntu job for bash, Python and the full suite, and a Windows job for the PowerShell parse and the suite's Windows part (`tests/run.sh --windows`) under Git Bash, which starts processes too slowly to run the whole suite in reasonable time (so every section after the settings editors, from the `check` hook to the status line, runs on Ubuntu only); a newer push to a pull request cancels its older run.
