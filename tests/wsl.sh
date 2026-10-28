@@ -26,12 +26,12 @@ BRANCH="$(git -C "$REPO" symbolic-ref -q --short HEAD)" \
 HEAD_SHA="$(git -C "$REPO" rev-parse HEAD)"
 # The repository itself, not this worktree: a worktree's .git file points at a Windows path that Linux git cannot follow.
 COMMON="$(cd "$REPO" && cd "$(git rev-parse --git-common-dir)" && pwd)"
-SRC="$(MSYS_NO_PATHCONV=1 wsl.exe "${DISTRO[@]}" -- wslpath -u "$(cygpath -w "$COMMON")" | tr -d '\r')"
+SRC="$(MSYS_NO_PATHCONV=1 wsl.exe "${DISTRO[@]}" --cd '~' -- wslpath -u "$(cygpath -m "$COMMON")" | tr -d '\r')"
 
 echo "== the whole suite in WSL, on $BRANCH at ${HEAD_SHA:0:7}"
 # Windows folders sit on WSL's PATH (/mnt/...): without them the suite cannot pick Windows' powershell.exe and
 # feed it Linux paths. origin/main comes from this repository's own copy, as CI fetches it before the suite.
-MSYS_NO_PATHCONV=1 wsl.exe "${DISTRO[@]}" -- bash -s -- "$SRC" "$BRANCH" "$HEAD_SHA" <<'EOF'
+MSYS_NO_PATHCONV=1 wsl.exe "${DISTRO[@]}" --cd '~' -- bash -s -- "$SRC" "$BRANCH" "$HEAD_SHA" <<'EOF'
 src="$1" branch="$2" sha="$3"
 PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '^/mnt/' | paste -sd: -)"; export PATH
 dir="$(mktemp -d)"; trap 'rm -rf "$dir"' EXIT
