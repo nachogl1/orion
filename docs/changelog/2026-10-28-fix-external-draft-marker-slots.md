@@ -1,0 +1,1 @@
+- Drafting an `outside-change` pull request may now build and commit in its own fresh clone, skill markers end in a newline so project lints pass, and `verify` stops calling a `<placeholder>` inside a real command an unfilled slot.

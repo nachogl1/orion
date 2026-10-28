@@ -390,6 +390,11 @@ check "a branch with no remote copy: silent" eval 'run_check && [ ! -s "$SB/hook
 echo "verify"
 newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
+check "every skill marker ends in a newline (a project lint may require one)" eval 'ls "$P"/.claude/skills/*/.orion-managed >/dev/null && [ -z "$(for m in "$P"/.claude/skills/*/.orion-managed; do [ "$(tail -c1 "$m" | od -An -c | tr -d " ")" = "\n" ] || echo "$m"; done)" ]'
+check "the starter's slots are flagged as unfilled" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  claude-md-slots" "$SB/out"'
+cp "$P/CLAUDE.md" "$SB/starter.md"; printf '%s\n\n| One test | `dotnet test --filter <test-name>` |\n- Branches: `feat/<N>-<slug>`.\n' "$IMPORT" > "$P/CLAUDE.md"
+check "a <placeholder> inside a real command is not a slot" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; ! grep -q "claude-md-slots" "$SB/out"'
+cp "$SB/starter.md" "$P/CLAUDE.md"
 check "no changelog folder: verify says to create docs/changelog/" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-missing: docs/changelog/" "$SB/out"'
 rm -f "$P/.claude/orion/BASE_CLAUDE.md"
 check "verify fails when a core file is missing" eval '! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  core-files" "$SB/out"'
