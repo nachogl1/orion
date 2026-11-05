@@ -75,7 +75,7 @@ how many run side by side, never the destination.
 | `review-N` | opus | xhigh | fresh context, reads the CI suite result (runs the suite itself only when there is no CI), posts the verdict |
 
 **Every brief** asks for a bounded result (the report shape its reference file gives, never an essay) and says: never
-`git stash`, never switch branches in any checkout, never `git add -A` — commit only the files you touched (the
+`git stash`, never switch branches in any checkout, never `git add -A` or `--no-verify` — commit only the files you touched (the
 reviewer and the ready-check commit nothing) — and on failure report and stop instead of attempting your own recovery.
 Mechanical work runs on the cheap model at low effort; only the dev and review roles run high.
 
@@ -206,10 +206,12 @@ project's `CLAUDE.md`.
 
 **Sibling terminals stagger.** Re-read the in-flight file before ranking (phase 0 step 9 already wrote this run's
 issue-less entry). Count *k* = the **other** runs with an entry that started in the last 5 minutes and before this one
-(by `startedAt`, then run id; any login on this machine), **issue-less entries included**; skip the top *k* candidates
-and start from candidate *k*+1, so siblings started together take distinct offsets. Counting only claimed runs lets
-them rank the same top candidate — learned the hard way. One terminal with `/dev-next N` stays the right way to run
-several.
+(by `startedAt`, then run id; any login on this machine) **that have not claimed yet** (issue-less entries only); skip
+the top *k* candidates and start from candidate *k*+1, so siblings started together take distinct offsets. Never skip
+past the last eligible candidate: with *k* or fewer eligible, take the last one and let the claim re-reads below settle
+any race. A sibling that already claimed is not counted: its issue is assigned and has left the eligible list. Ignoring
+the unclaimed ones lets siblings rank the same top candidate — learned the hard way. One terminal with `/dev-next N`
+stays the right way to run several.
 
 Load `references/eligibility.md`. Filter, then rank, then take the top **one** by default, or the top N when a number was
 asked for (never more than four). Fewer eligible than that → take what there is and say so; see *Parallelism* above.
@@ -285,8 +287,13 @@ dev agent each, none told anything about the others. Nothing waits for a slot.
 Dev reports FAILED → label `needs-human` and release the issue (the failure is the reason comment), **leave the branch
 and worktree for a human**, and carry on with whatever else the run has.
 
-Dev reports `INHERITED RED` (the gate was already failing on `main` before it changed anything) → the story is not the
-problem, `main` is. Open **one** `bug` issue for the red gate on `main` **per `references/new-issue.md`**: every
+Dev reports `INHERITED RED` (the gate was already failing on `main` before it changed anything) → **first compare it
+with CI on that same `main` commit** (`gh api repos/{owner}/{repo}/commits/<sha>/check-runs --jq
+'.check_runs[] | [.name, .conclusion]'`). CI green there → `main` is not red, this machine is: no bug issue. Send the
+dev agent back once to re-run each failure alone and its baseline one suite at a time (`references/dev-agent.md`);
+green → it carries on, and the flaky tests become a `friction` line in the audit report; still red → label
+`needs-human` and release the story, the comment naming the tests that fail only on this machine. CI red there too →
+the story is not the problem, `main` is. Open **one** `bug` issue for the red gate on `main` **per `references/new-issue.md`**: every
 heading, each failing test named under `### Acceptance criteria` (green again), `### Seam` the folder the failures sit
 in, labels `story` + `bug` + `tier:bug` + `needs-human` (its rule for an issue filed mid-run: nobody has checked it is ready; the
 reason comment, the issue's last, asks a person to confirm the failures and flip it to `agent-ready`), native sub-issue

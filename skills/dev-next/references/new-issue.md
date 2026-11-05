@@ -52,6 +52,8 @@ about, never only its number.
 `agent-ready` and `needs-human` never sit on one issue together. An issue filed mid-run — a `Critical:` finding or the
 `bug` for a red `main` — is `needs-human` by default: nobody has yet checked that nothing is left to ask. Pass the labels on creation
 (`gh issue create --label story --label needs-human --label tier:<name> …`); `bug` is added when the issue reports a defect.
+**File every story unassigned** — no `--assignee`, the filer included. The assignee is the claim (`eligibility.md`): an
+assigned story is invisible to every `/dev-next` run and reads as a live claim that nobody holds.
 
 **Every story also carries exactly one tier label, `tier:<name>`**: what the story is for, so anyone reading the list
 sees it. An epic never carries one. The first line that fits decides:

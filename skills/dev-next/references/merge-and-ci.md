@@ -9,8 +9,8 @@ Full autonomy means the agent may open, review and merge that pull request — n
 
 ## 0 · Take the merge slot
 
-Read the in-flight file (`in-flight.md`). `merging` held with a `since` under 30 minutes → wait, re-read every 60
-seconds; no elapsed-time limit — a live holder is bounded by its own 30-minute CI cap below, and a `since` older than
+Read the in-flight file (`in-flight.md`). `merging` held with a `since` under 30 minutes → wait in one background loop
+that re-reads every 10 seconds (`in-flight.md`, *The merge slot*, step 1); no elapsed-time limit — a live holder is bounded by its own 30-minute CI cap below, and a `since` older than
 30 minutes is a dead holder whose slot is free. Free → write this issue **and your run id** into `merging`, wait 5
 seconds, then **re-read**: any run id but yours means you lost the race — back off and wait again. Only your own run
 id on the read-back means you hold the slot, and you **re-confirm that on every poll in step 2 and again immediately
@@ -34,6 +34,10 @@ back to `dev-N` — the orchestrator does not resolve conflicts in application c
 
 GitHub can take **up to four minutes** to register a run. The first "no checks reported" is **not a verdict**.
 
+Run every `gh` call here from inside the worktree (`cd <wt root>/<N>-<slug>` first, or `-R <owner>/<repo>`): from the
+worktree root, which is no checkout, `gh` finds no repository and a poll that hides its error reads "nothing yet"
+until the cap.
+
 ```
 # poll until a run id exists, up to ~5 minutes — find it here, never with `gh run list --commit <sha>`,
 # which returns nothing on some gh versions (a run can then wait its full 30-minute cap on CI that finished long ago)
@@ -47,6 +51,11 @@ poll you do two things in the in-flight file: **refresh `merging.since` to now**
 is treated as dead by the others) and **re-read `merging.run`** — not yours → you lost the slot, stop polling, do not
 merge, re-queue at step 0. **The poll loop is capped at 30 minutes**: a run still not completed by then is treated
 exactly as red below, so a hung run can never hold the machine-wide queue.
+
+**A run stuck on GitHub's side is not red.** When every step of every job reads completed
+(`gh run view <run id> --json jobs`) while the run itself stays `in_progress`, cancel and rerun are refused (HTTP 409).
+Do not wait out the cap: push an empty commit from the worktree (`git commit --allow-empty -m "ci: re-run checks"`,
+then `git push`), poll the fresh run from the start, and count no red round for it.
 
 **Every poll also reads `gh pr view <P> --json mergeable,mergeStateStatus`.** `CONFLICTING` or `DIRTY` → release
 `merging` at once and hand the conflict to `dev-N` (step 1). GitHub registers no CI run on a conflicting head, so
@@ -87,6 +96,15 @@ Use the merge method the project's `CLAUDE.md` names; squash is the default.
 **As soon as `gh pr merge` returns — merged or failed — set `merging` to `null` in the in-flight file.** The slot is
 held for minutes, never across the clean-up below. A **failed** `gh pr merge` is treated exactly as red in step 3: back
 to step 0 once the cause is fixed, and after two failures `needs-human` with the issue released as in step 3.
+
+**A GitHub server error is not a failure of the pull request.** A `gh pr merge`, `gh` call or `git push` that fails
+with HTTP 5xx, a GraphQL server error, or SSH refused while GitHub reports an incident counts toward no failure limit.
+Release `merging`, read GitHub's status page (githubstatus.com), wait until Pull Requests and Git Operations read
+operational, then re-queue at step 0. A push refused over SSH can go over HTTPS meanwhile (`gh auth setup-git`, then
+`git push https://github.com/<owner>/<repo>.git feat/<N>-<slug>`). After an
+outage, check that the pull request's head (`gh pr view <P> --json headRefOid`) equals the remote branch
+(`git ls-remote origin feat/<N>-<slug>`): a push accepted during the outage may never reach the pull request, which
+then runs no CI. When they differ, push an empty commit at once; never force-push, never open a second pull request.
 
 If the issue did not close, the `Closes #N` line was missing or malformed. Close it manually and note it on the pull request.
 

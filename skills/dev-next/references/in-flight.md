@@ -25,8 +25,8 @@ worktrees, outside every checkout, never committed.
 - `merging` — the one issue currently between phase 5 step 1 (merge `origin/main` in) and step 4 (squash-merge landed),
   or `null`.
 
-**Every read tolerates a missing, empty or malformed file** — treat it as `{ "issues": [], "merging": null }` and
-rewrite it whole. Always write the whole file; never append.
+**Every read tolerates a missing, empty or malformed file** — treat it as `{ "issues": [], "merging": null }`. Always
+write the whole file back, never append, and only from the contents read in that same step (*Read-modify-write*).
 
 **Several machines, several files.** Each machine has its own file, so the queue below is per machine. Merges from two
 machines in the same minute are ordered by GitHub alone (the second one lands on a `main` its CI did not see). Accepted
@@ -35,9 +35,10 @@ for a small team; the day it bites, move the file to a shared location and recor
 ## Run entries
 
 A run writes its own issue-less entry in phase 0 step 9, **before ranking**: write, wait 5 s, re-read. Sibling
-terminals started together then see each other before any has claimed, and the phase 1 stagger counts every other run
-that started in the last 5 minutes and before this one, issue-less entries included. Counting only claimed entries lets
-siblings rank the same top candidate. The first claim fills the issue number into the run's entry; a further claim adds
+terminals started together then see each other before any has claimed, and the phase 1 stagger counts the other runs
+that started in the last 5 minutes and before this one **and have not claimed yet** (issue-less entries). A sibling that
+already claimed holds an assigned issue, which has left the eligible list, so counting it would skip one candidate too
+many. The first claim fills the issue number into the run's entry; a further claim adds
 an entry of its own. A run that ends without claiming anything drops its issue-less entry.
 
 ## Stale entries
@@ -61,8 +62,10 @@ one-at-a-time merge queue.
 
 Before `merge-and-ci.md` step 1 for an issue:
 
-1. Read the file. `merging` non-null with a **fresh** `since` (under 30 minutes) → **wait**, re-read every 60 seconds,
-   one line each time. There is no elapsed-time limit on this wait: the queue is bounded by the holder, not the waiter.
+1. Read the file. `merging` non-null with a **fresh** `since` (under 30 minutes) → **wait**: one background shell loop
+   that re-reads every 10 seconds and returns the moment the slot reads free or stale, one model turn per wait rather
+   than one per read. A waiter that re-reads only every minute loses every hand-over to sibling terminals that take the
+   slot within seconds of its release. There is no elapsed-time limit on this wait: the queue is bounded by the holder, not the waiter.
    A live holder refreshes `since` and its own CI poll is capped at 30 minutes (`merge-and-ci.md` step 2), so every
    holder either lands or releases within about 35 minutes, and a healthy queue of four moves on. A `since` older than
    30 minutes is a dead holder: treat the slot as free.
@@ -94,7 +97,7 @@ hold it — is what guarantees CI ran on the `main` that the branch actually lan
 | Phase 1, after the claim | Fill the issue into the issue-less entry (first claim) or add the issue entry. |
 | Phase 1, zero eligible, or the run ends having claimed nothing | Remove the issue-less entry. |
 | Phase 1, lost the claim race on the second re-read | Remove the issue entry; a run holding no other claim turns it back into its issue-less entry while it picks the next candidate. |
-| Phase 3, dev reports `INHERITED RED` | Remove the issue entry (the story is released without `needs-human`). |
+| Phase 3, dev reports `INHERITED RED` and CI on that `main` commit agrees | Remove the issue entry (the story is released without `needs-human`). |
 | Phase 5, before step 1 | Take `merging` (write, wait 5 s, re-read, confirm your run id). |
 | Phase 5, during step 2 | Refresh `merging.since` on every CI poll, re-confirming `merging.run` is yours each time; poll capped at 30 min. |
 | Phase 5, just before `gh pr merge` | Re-read; `merging.run` not yours → do not merge, re-queue. |
@@ -108,7 +111,11 @@ hold it — is what guarantees CI ran on the `main` that the branch actually lan
 ## Read-modify-write
 
 Two terminals can write within the same second. Keep the window small: read, change, write in one step — never hold the
-contents across a long command. For the `issues` list a lost write costs one missing entry in the visibility list until
+contents across a long command. **Change only your own entry, found by your run id**, with a short script that parses
+the JSON (Python or `jq`), changes that entry or `merging`, and writes the result back in the same command. Never a
+text replace across the file (`"issue": null` matches a sibling's issue-less entry too and stamps your issue into it),
+and never a whole file printed from memory or from a read taken before another command (it drops the entries siblings
+added since). For the `issues` list a lost write costs one missing entry in the visibility list until
 its owner's next write. For `merging` a lost write would cost a bad merge, which is why step 2 above **re-reads after writing**, step 3
 **re-checks on every refresh and right before the merge command**, and anything but your own run id means "not mine".
 Never assume you hold the slot because your write did not error, and never assume you still hold it because you did a
