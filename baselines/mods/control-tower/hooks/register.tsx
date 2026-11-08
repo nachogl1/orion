@@ -148,6 +148,12 @@ const refreshOutside = async ($: Engine) => {
   await update($, outside, () => ({ runs, prs, checkedAt: now, note: notes.join('; ') }))
 }
 
+// A low-effort answer may decorate the marker ("NOTHING_PENDING."): read it as the marker.
+const asSummary = (answer: string) => {
+  const text = answer.trim()
+  return text.toUpperCase().startsWith(NOTHING) ? NOTHING : text
+}
+
 const writeSummary = async ($: Engine): Promise<void> => {
   if ((await read($, summary)).isWriting) {
     isSummaryDue = true
@@ -157,7 +163,7 @@ const writeSummary = async ($: Engine): Promise<void> => {
   await update($, summary, s => ({ ...s, isWriting: true }))
   try {
     const r = await $.model.fork({ prompt: SUMMARY_PROMPT, effort: 'low' })
-    if (r.isAnswered) await update($, summary, s => ({ ...s, text: r.text.trim() }))
+    if (r.isAnswered) await update($, summary, s => ({ ...s, text: asSummary(r.text) }))
   } finally {
     await update($, summary, s => ({ ...s, isWriting: false }))
   }
@@ -238,13 +244,15 @@ export const register: Register = on => {
 
   on('tool.call', { tool: 'TaskCreate' }, async ($, e, next) => {
     const ran = await next(e)
-    const id = /#?(\d+)/.exec(JSON.stringify(ran.result ?? ''))?.[1] ?? String(Date.now())
+    if (ran.deny !== undefined || ran.isError) return ran
+    const id = ran.result.task.id
     await update($, tasks, l => [...l, { id, subject: e.subject, status: 'pending' }].slice(-TASK_KEEP))
     return ran
   })
 
   on('tool.call', { tool: 'TaskUpdate' }, async ($, e, next) => {
     const ran = await next(e)
+    if (ran.deny !== undefined || ran.isError) return ran
     await update($, tasks, l => l.map(t => t.id === e.taskId
       ? { ...t, subject: e.subject ?? t.subject, status: e.status ?? t.status } : t)
       .filter(t => t.status !== 'deleted'))

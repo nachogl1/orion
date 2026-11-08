@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 const PANE = {
   plugin: 'control-tower',
@@ -15,11 +15,14 @@ const PANE = {
   },
 } as const
 
+const START = Date.parse('2025-01-01T10:00:00Z')
+const POLL_MS = 20_000
+const SUMMARY_DELAY_MS = 100
+const FORK_MS = 1_000
 const NAMED_ROOT = 'Worktree root (outside the project): `<wt-root>`.'
 const HOME = '<home>'
-const startedAt = new Date().toISOString()
 const IN_FLIGHT = JSON.stringify({
-  issues: [{ issue: 7, run: '<repo>-20250101-000000-ab12', startedAt }],
+  issues: [{ issue: 7, run: '<repo>-20250101-095000-ab12', startedAt: '2025-01-01T09:50:00Z' }],
   merging: null,
 })
 const PULL_REQUESTS = JSON.stringify([
@@ -30,11 +33,6 @@ const PULL_REQUESTS = JSON.stringify([
   },
 ])
 
-// The test runner's timer; the mod itself only uses the engine's clock.
-declare const setTimeout: (done: () => void, ms: number) => unknown
-// The pane refreshes in the background: let that work land before reading it.
-const settle = () => new Promise<void>(done => setTimeout(done, 50))
-
 // The person typing /control-tower at the terminal.
 const TOGGLE = {
   command: 'control-tower', args: '', origin: { kind: 'composer' },
@@ -44,30 +42,35 @@ const NO_USAGE = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0
 const shownPane = (id: string) => ({ id, title: 'Orion Control Tower', isShown: true, isFocused: false, isPlaced: true })
 const turnEnd = (agentId?: string) =>
   ({ answer: 'done', text: 'done', durationMs: 1, isAborted: false, turnId: 't1', reason: 'end_turn', agentId }) as any
+const SESSION = { cwd: '/', surface: 'terminal', isInteractive: true } as const
 
-type World = { rules?: string; inFlightAt?: string; summary?: string; helpers?: { id: string; description: string }[] }
+type World = {
+  rules?: string; inFlightAt?: string; summary?: string; forkMs?: number
+  helpers?: { id: string; description: string }[]
+}
 
 // The engine hands file hooks absolute paths with the platform's separators.
 const slashed = (path: string) => path.replaceAll('\\', '/')
 
-// Everything outside the mod: the project's rules, the in-flight file, gh, the engine's clock and panes.
+// Everything outside the mod: the project's rules, the in-flight file, gh, the clock, panes and the model.
 // The hooks read `world` when called, so a test may change it between steps.
 const outsideWorld = (on: any, world: World = {}) => {
+  const clock = mock.clock(on, { now: START })
+  mock.env(on, { HOME })
   const forks: string[] = []
   const toggles: string[] = []
+  const prLists: number[] = []
   let panes: ReturnType<typeof shownPane>[] = []
   const isInFlight = (path: string) => slashed(path).endsWith(world.inFlightAt ?? '<wt-root>/in-flight.json')
   on('fs.read', (_: unknown, e: { path: string }) =>
     ({ value: isInFlight(e.path) ? IN_FLIGHT : world.rules ?? NAMED_ROOT }))
   on('fs.exists', (_: unknown, e: { path: string }) => ({ value: isInFlight(e.path) }))
-  on('env.get', (_: unknown, e: { name: string }) => ({ value: e.name === 'HOME' ? HOME : undefined }))
-  on('process.run', (_: unknown, e: { argv: string[] }) => ({
-    value: { exitCode: 0, stderr: '', stdout: e.argv.includes('pr') ? PULL_REQUESTS : 'Build the thing' },
-  }))
+  on('process.run', (_: unknown, e: { argv: string[] }) => {
+    const isPrList = e.argv.includes('pr')
+    if (isPrList) prLists.push(clock.now())
+    return { value: { exitCode: 0, stderr: '', stdout: isPrList ? PULL_REQUESTS : 'Build the thing' } }
+  })
   on('agent.list', () => ({ value: world.helpers ?? [] }))
-  on('clock.now', () => ({ value: Date.now() }))
-  on('clock.every', () => ({ value: undefined }))
-  on('clock.after', () => ({ value: undefined }))
   on('command.register', () => ({ value: { command: 'control-tower' } }))
   on('session.start', (_: unknown, e: { cwd: string }) => ({ cwd: e.cwd }))
   on('ui.open', (_: unknown, e: { id: string }) => {
@@ -75,13 +78,15 @@ const outsideWorld = (on: any, world: World = {}) => {
   })
   on('ui.close', (_: unknown, e: { id: string }) => { toggles.push(`close ${e.id}`); panes = []; return { value: undefined } })
   on('ui.panes', () => ({ value: panes }))
-  on('model.fork', (_: unknown, e: { prompt: string }) => {
+  on('model.fork', async (_: unknown, e: { prompt: string }) => {
     forks.push(e.prompt)
+    if (world.forkMs) await clock.sleep(world.forkMs)
     return { value: { isAnswered: true, text: world.summary ?? 'NOTHING_PENDING', usage: NO_USAGE } }
   })
   on('turn.complete', (_: unknown, e: { answer: string }) => ({ ...e, text: e.answer }))
-  on('tool.call', () => ({ result: {} }))
-  return { forks, toggles }
+  on('tool.call', (_: unknown, e: { tool: string }) =>
+    ({ result: e.tool === 'TaskCreate' ? { task: { id: '1', subject: 'Ship it' } } : {} }))
+  return { clock, forks, toggles, prLists }
 }
 
 const texts = async (ui: any, pattern: RegExp): Promise<string[]> =>
@@ -89,7 +94,7 @@ const texts = async (ui: any, pattern: RegExp): Promise<string[]> =>
 
 test('the command shows the pane, then hides it', async ($, on) => {
   const { toggles } = outsideWorld(on)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.session.start(SESSION)
 
   const shown = await $.command.run(TOGGLE)
   const hidden = await $.command.run(TOGGLE)
@@ -99,18 +104,31 @@ test('the command shows the pane, then hides it', async ($, on) => {
   expect(hidden.text).toContain('Ctrl+X then P shows it again')
 })
 
+test('GitHub is asked for pull requests only while the pane is open', async ($, on) => {
+  const { clock, prLists } = outsideWorld(on)
+  await $.session.start(SESSION)
+
+  await clock.advance(POLL_MS * 2)
+  const whileHidden = prLists.length
+  await $.command.run(TOGGLE)
+  await clock.advance(POLL_MS * 2)
+
+  expect(whileHidden).toBe(0)
+  expect(prLists.length).toBe(3)
+})
+
 test('the pane shows each run with its pull request, wherever the in-flight file lives', async ($, on) => {
   const roots = [
     { rules: NAMED_ROOT, inFlightAt: '<wt-root>/in-flight.json' },
     { rules: 'No worktree root named here.', inFlightAt: `${HOME}/wt/in-flight.json` },
   ]
   const world: World = {}
-  outsideWorld(on, world)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { clock } = outsideWorld(on, world)
+  await $.session.start(SESSION)
   for (const root of roots) {
     Object.assign(world, root)
     await $.command.run(TOGGLE)
-    await settle()
+    await clock.settle()
     const ui = await $.ui.mount(PANE)
 
     expect(await texts(ui, /^Orion Control Tower$/)).toEqual(['Orion Control Tower'])
@@ -125,26 +143,56 @@ test('the pane shows each run with its pull request, wherever the in-flight file
 test('after each reply the session says what is pending, or that the terminal can be closed', async ($, on) => {
   const cases = [
     { summary: 'NOTHING_PENDING', shown: 'Nothing pending. You can close this terminal.' },
+    { summary: 'NOTHING_PENDING.', shown: 'Nothing pending. You can close this terminal.' },
     { summary: 'Answer the merge question.', shown: 'Answer the merge question.' },
   ]
   const world: World = {}
-  outsideWorld(on, world)
+  const { clock } = outsideWorld(on, world)
   for (const c of cases) {
     world.summary = c.summary
     await $.turn.complete(turnEnd())
-    await settle()
+    await clock.advance(SUMMARY_DELAY_MS)
     const ui = await $.ui.mount(PANE)
 
-    expect(await texts(ui, new RegExp(c.shown.replace('.', '\\.')))).toEqual([c.shown])
+    expect(await texts(ui, /pending|Answer/)).toEqual([c.shown])
     await ui.unmount()
   }
 })
 
+test('a reply that ends while a summary is being written gets a summary of its own afterwards', async ($, on) => {
+  const { clock, forks } = outsideWorld(on, { forkMs: FORK_MS })
+
+  await $.turn.complete(turnEnd())
+  await clock.advance(SUMMARY_DELAY_MS)
+  await $.turn.complete(turnEnd())
+  await clock.advance(SUMMARY_DELAY_MS)
+  await clock.advance(FORK_MS * 2)
+  const ui = await $.ui.mount(PANE)
+
+  expect(forks.length).toBe(2)
+  expect(await texts(ui, /updating/)).toEqual([])
+  await ui.unmount()
+})
+
+test('a summary cut short by a reload is not left marked as being written', async ($, on) => {
+  const { clock } = outsideWorld(on, { forkMs: FORK_MS })
+  await $.turn.complete(turnEnd())
+  await clock.advance(SUMMARY_DELAY_MS)
+  const ui = await $.ui.mount(PANE)
+  const midway = await texts(ui, /updating/)
+
+  await $.session.start(SESSION)
+
+  expect(midway).toEqual(['updating…'])
+  expect(await texts(ui, /updating/)).toEqual([])
+  await ui.unmount()
+})
+
 test("a helper's turn writes no summary and is logged as finished", async ($, on) => {
-  const { forks } = outsideWorld(on, { helpers: [{ id: 'h1', description: 'review the change' }] })
+  const { clock, forks } = outsideWorld(on, { helpers: [{ id: 'h1', description: 'review the change' }] })
 
   await $.turn.complete(turnEnd('h1'))
-  await settle()
+  await clock.advance(SUMMARY_DELAY_MS)
   const ui = await $.ui.mount(PANE)
 
   expect(forks).toEqual([])
@@ -153,14 +201,14 @@ test("a helper's turn writes no summary and is logged as finished", async ($, on
 })
 
 test('activities show helpers sent and CI waits with their progress, and open tasks are counted', async ($, on) => {
-  outsideWorld(on)
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const { clock } = outsideWorld(on)
+  await $.session.start(SESSION)
   await $.command.run(TOGGLE)
 
   await $.tool.call({ tool: 'Agent', description: 'review the change', prompt: 'Review it.' } as any)
   await $.tool.call({ tool: 'Bash', command: 'gh pr checks 9 --watch' } as any)
   await $.tool.call({ tool: 'TaskCreate', subject: 'Ship it', description: 'Ship it.' } as any)
-  await settle()
+  await clock.settle()
   const ui = await $.ui.mount(PANE)
 
   expect((await texts(ui, /sent helper "review the change"/)).length).toBe(1)
