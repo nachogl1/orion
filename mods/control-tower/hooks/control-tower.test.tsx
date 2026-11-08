@@ -45,7 +45,7 @@ const turnEnd = (agentId?: string) =>
 const SESSION = { cwd: '/', surface: 'terminal', isInteractive: true } as const
 
 type World = {
-  rules?: string; inFlightAt?: string; summary?: string; forkMs?: number
+  rules?: string; inFlightAt?: string; summary?: string; forkMs?: number; refused?: string[]
   helpers?: { id: string; description: string }[]
 }
 
@@ -84,8 +84,11 @@ const outsideWorld = (on: any, world: World = {}) => {
     return { value: { isAnswered: true, text: world.summary ?? 'NOTHING_PENDING', usage: NO_USAGE } }
   })
   on('turn.complete', (_: unknown, e: { answer: string }) => ({ ...e, text: e.answer }))
-  on('tool.call', (_: unknown, e: { tool: string }) =>
-    ({ result: e.tool === 'TaskCreate' ? { task: { id: '1', subject: 'Ship it' } } : {} }))
+  on('tool.call', (_: unknown, e: { tool: string }) => {
+    if (world.refused?.includes(e.tool)) return { deny: 'refused' }
+    if (e.tool === 'TaskCreate') return { result: { task: { id: '1', subject: 'Ship it' } } }
+    return { result: e.tool === 'TaskUpdate' ? { success: true } : {} }
+  })
   return { clock, forks, toggles, prLists }
 }
 
@@ -215,5 +218,23 @@ test('activities show helpers sent and CI waits with their progress, and open ta
   expect((await texts(ui, /waiting for CI/)).length).toBe(1)
   expect((await texts(ui, /^PR #9 $/)).length).toBeGreaterThan(0)
   expect(await texts(ui, /Still working/)).toEqual(['Still working: 1 task open'])
+  await ui.unmount()
+})
+
+test('a completed task stops counting, and a refused one never counts', async ($, on) => {
+  const world: World = {}
+  const { clock } = outsideWorld(on, world)
+  const ui = await $.ui.mount(PANE)
+
+  await $.tool.call({ tool: 'TaskCreate', subject: 'Ship it', description: 'Ship it.' } as any)
+  await clock.settle()
+  const whileOpen = await texts(ui, /Still working/)
+  await $.tool.call({ tool: 'TaskUpdate', taskId: '1', status: 'completed' } as any)
+  world.refused = ['TaskCreate']
+  await $.tool.call({ tool: 'TaskCreate', subject: 'Refused', description: 'Refused.' } as any)
+  await clock.settle()
+
+  expect(whileOpen).toEqual(['Still working: 1 task open'])
+  expect(await texts(ui, /Still working/)).toEqual([])
   await ui.unmount()
 })

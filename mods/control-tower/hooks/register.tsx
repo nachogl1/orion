@@ -252,7 +252,7 @@ export const register: Register = on => {
 
   on('tool.call', { tool: 'TaskUpdate' }, async ($, e, next) => {
     const ran = await next(e)
-    if (ran.deny !== undefined || ran.isError) return ran
+    if (ran.deny !== undefined || ran.isError || !ran.result.success) return ran
     await update($, tasks, l => l.map(t => t.id === e.taskId
       ? { ...t, subject: e.subject ?? t.subject, status: e.status ?? t.status } : t)
       .filter(t => t.status !== 'deleted'))
