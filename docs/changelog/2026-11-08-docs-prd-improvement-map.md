@@ -1,0 +1,1 @@
+The PRD now records every decision of the 2026-11-03 improvement map (merging, tiers, the UX prototype order, ADRs-only maps, mods, three-part versions, harvest, test copies), so the stories that build them have one target.

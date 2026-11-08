@@ -3,6 +3,10 @@
 **Status: approved by the owner on 2026-10-19; amended the same day (decision 1: the status line and the personal
 rules follow the version number too).**
 
+**Replaced in part on 2026-11-08** by the PRD update recording the improvement map: decision 1's whole-number
+version gives way to three-part versions set by the release job, and decision 7's rejection of letting the person
+choose each time gives way to an ADRs-only ending for a later map. The rest stands.
+
 ## Context
 
 Using orion in real projects showed seven problems:
