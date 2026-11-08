@@ -8,11 +8,11 @@ A Claude Code mod: a pane docked on the right of the fullscreen layout that show
 
 ## What it shows
 
-1. **This session:** on the left, a short summary of unresolved errors and what you must still do, written after each reply (one small, low-effort model call), or that the terminal can be closed; on the right, the activities the session caused outside the chat (helpers sent and finished, pushes, pull requests opened, waiting for CI with its check count, merges).
+1. **This session:** on the left, a short summary of unresolved errors and what you must still do, written after each reply (one small, low-effort model call), or that the terminal can be closed; on the right, the activities the session caused outside the chat (helpers sent and finished, background ones included, pushes, pull requests opened, waiting for CI with its check count, merges).
 2. **dev-next runs on this computer:** each issue in flight, its pull request and stage, and the terminal and sub-agents working on it when dev-next reports them in its in-flight entry (`terminal`, `step`, `agents`); otherwise "not reported yet".
 3. **Open pull requests:** every one, with the issues it closes, its checks and the run working on it.
 
-It reads the in-flight file beside the worktrees (its folder is the `Worktree root` the project's `CLAUDE.md` names) and GitHub through `gh`, every 20 seconds. It changes nothing.
+It reads the in-flight file beside the worktrees (in the `Worktree root` the project's `CLAUDE.md` names, else in dev-next's default `C:/wt` or `~/wt`) and GitHub through `gh` (up to 200 open pull requests), every 20 seconds while the pane is open. It changes nothing.
 
 ## Develop
 

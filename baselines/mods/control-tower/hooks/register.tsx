@@ -8,8 +8,14 @@ const TITLE = 'Orion Control Tower'
 const TOGGLE_KEYS = 'Ctrl+X then P'
 const SCROLL_KEYS = 'Ctrl+X then Tab, then arrows, to scroll'
 const DOCK_COLUMNS = 96
+const INLINE_ROWS = 60
 const POLL_MS = 20_000
 const STALE_RUN_MIN = 240
+const MS_PER_MIN = 60_000
+const PR_LIST_LIMIT = 200
+const SUMMARY_DELAY_MS = 100
+const ACTIVITY_KEEP = 40
+const TASK_KEEP = 30
 const TITLE_CHARS = 40
 const ACTIVITY_ROWS = 8
 const NOT_REPORTED = 'not reported yet'
@@ -19,6 +25,8 @@ const SUMMARY_PROMPT = 'Answer in at most two short lines of plain words, no mar
   `If nothing is pending for the person and no work is still running, answer exactly ${NOTHING}.`
 const FAILED = ['FAILURE', 'ERROR', 'CANCELLED', 'TIMED_OUT']
 const PASSED = ['SUCCESS', 'SKIPPED', 'NEUTRAL']
+// dev-next's own default worktree roots, used when the project's CLAUDE.md names none.
+const DEFAULT_ROOTS = ['C:/wt', '~/wt']
 
 // The engine handle every hook receives, named once for the helpers below.
 type Engine = Parameters<Hook<'session.start'>>[0]
@@ -41,15 +49,16 @@ const summary = atom({ plugin: 'control-tower', key: 'summary' } as const,
   { text: '', isWriting: false } as Summary, { shape: 'summary-1' })
 const activities = atom({ plugin: 'control-tower', key: 'activities' } as const, [] as Activity[], { shape: 'activities-1' })
 const titles = new Map<number, string>()
+// A turn that ends while a summary is being written asks for one more afterwards.
+let isSummaryDue = false
 
-const INLINE_ROWS = 60
 const openPane = ($: Engine) => $.ui.open({ id: PANE, title: TITLE, columns: DOCK_COLUMNS, rows: INLINE_ROWS })
 const shortRun = (run: string) => `run ${run.split('-').pop()}`
 const clockTime = (ms: number) => new Date(ms).toTimeString().slice(0, 5)
 
 const logActivity = async ($: Engine, text: string, pr: number | null = null) => {
   const at = await $.clock.now()
-  await update($, activities, l => [...l, { at, text, pr }].slice(-40))
+  await update($, activities, l => [...l, { at, text, pr }].slice(-ACTIVITY_KEEP))
 }
 
 const checkStatus = (rollup: Check[] | undefined, isDraft: boolean) => {
@@ -64,11 +73,21 @@ const checkStatus = (rollup: Check[] | undefined, isDraft: boolean) => {
   return { status: `checks running ${checksDone}/${checksTotal}`, tone: 'yellow', ...counts }
 }
 
-const worktreeRoot = async ($: Engine): Promise<string | undefined> => {
+const namedRoot = async ($: Engine): Promise<string | undefined> => {
   try {
-    const m = /Worktree root[^`]*`([^`]+)`/.exec(await $.fs.read('CLAUDE.md'))
-    return m?.[1]?.replace(/\/$/, '')
+    return /Worktree root[^`]*`([^`]+)`/.exec(await $.fs.read('CLAUDE.md'))?.[1]
   } catch { return undefined }
+}
+
+// The in-flight file of the root the project names, else of dev-next's default root.
+const inFlightFile = async ($: Engine): Promise<string | undefined> => {
+  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? ''
+  const named = await namedRoot($)
+  for (const root of named ? [named] : DEFAULT_ROOTS) {
+    const file = `${root.replace(/^~(?=\/|$)/, home).replace(/\/$/, '')}/in-flight.json`
+    if (await $.fs.exists(file)) return file
+  }
+  return undefined
 }
 
 const issueTitle = async ($: Engine, n: number): Promise<string> => {
@@ -84,17 +103,17 @@ const refreshOutside = async ($: Engine) => {
   const now = await $.clock.now()
 
   let flight: InFlight = { issues: [], merging: null }
-  const root = await worktreeRoot($)
-  if (!root) notes.push('no worktree root in CLAUDE.md')
+  const file = await inFlightFile($)
+  if (!file) notes.push('no in-flight file')
   else {
-    try { flight = JSON.parse(await $.fs.read(`${root}/in-flight.json`)) } catch { notes.push('no in-flight file') }
+    try { flight = JSON.parse(await $.fs.read(file)) } catch { notes.push('in-flight file unreadable') }
   }
-  const live = (flight.issues ?? []).filter(it => (now - Date.parse(it.startedAt)) / 60000 <= STALE_RUN_MIN)
+  const live = (flight.issues ?? []).filter(it => (now - Date.parse(it.startedAt)) / MS_PER_MIN <= STALE_RUN_MIN)
   const runByIssue = new Map<number, InFlightEntry>(
     live.filter(it => it.issue != null).map(it => [it.issue as number, it]))
 
   let raw: GhPr[] = []
-  const pr = await $.process.run(['gh', 'pr', 'list', '--state', 'open', '--limit', '100', '--json',
+  const pr = await $.process.run(['gh', 'pr', 'list', '--state', 'open', '--limit', String(PR_LIST_LIMIT), '--json',
     'number,title,author,isDraft,closingIssuesReferences,statusCheckRollup'])
   if (pr.exitCode !== 0) notes.push('gh pr list failed')
   else raw = JSON.parse(pr.stdout)
@@ -129,11 +148,27 @@ const refreshOutside = async ($: Engine) => {
   await update($, outside, () => ({ runs, prs, checkedAt: now, note: notes.join('; ') }))
 }
 
-const writeSummary = async ($: Engine) => {
-  if ((await read($, summary)).isWriting) return
+const writeSummary = async ($: Engine): Promise<void> => {
+  if ((await read($, summary)).isWriting) {
+    isSummaryDue = true
+    return
+  }
+  isSummaryDue = false
   await update($, summary, s => ({ ...s, isWriting: true }))
-  const r = await $.model.fork({ prompt: SUMMARY_PROMPT, effort: 'low' })
-  await update($, summary, s => ({ text: r.isAnswered ? r.text.trim() : s.text, isWriting: false }))
+  try {
+    const r = await $.model.fork({ prompt: SUMMARY_PROMPT, effort: 'low' })
+    if (r.isAnswered) await update($, summary, s => ({ ...s, text: r.text.trim() }))
+  } finally {
+    await update($, summary, s => ({ ...s, isWriting: false }))
+  }
+  if (isSummaryDue) await writeSummary($)
+}
+
+const isPaneOpen = async ($: Engine) => (await $.ui.panes()).some(p => p.id === PANE)
+
+// The timer only reaches GitHub while the pane is open.
+const refreshIfOpen = async ($: Engine) => {
+  if (await isPaneOpen($)) await refreshOutside($)
 }
 
 // Background work never throws into the engine: a failed refresh is dropped and the next one tries again.
@@ -154,19 +189,18 @@ const bashActivity = (command: string): string | undefined => {
   return undefined
 }
 
-
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await $.command.register({ name: 'control-tower', description: `Show or hide ${TITLE} (${TOGGLE_KEYS})` })
-    inBackground(refreshOutside($))
-    $.clock.every(POLL_MS, () => { inBackground(refreshOutside($)) })
+    // A reload can cut a summary short: never leave it marked as being written.
+    await update($, summary, s => ({ ...s, isWriting: false }))
+    $.clock.every(POLL_MS, () => { inBackground(refreshIfOpen($)) })
     return started
   })
 
   on('command.run', { command: 'control-tower' }, async $ => {
-    const isOpen = (await $.ui.panes()).some(p => p.id === PANE)
-    if (isOpen) {
+    if (await isPaneOpen($)) {
       await $.ui.close({ id: PANE })
       return { text: `${TITLE} hidden. ${TOGGLE_KEYS} shows it again.` }
     }
@@ -177,16 +211,18 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
-    if (e.agentId === undefined && !e.isAborted) $.clock.after(100, () => { inBackground(writeSummary($)) })
+    if (e.agentId === undefined) {
+      if (!e.isAborted) $.clock.after(SUMMARY_DELAY_MS, () => { inBackground(writeSummary($)) })
+    } else {
+      const helper = (await $.agent.list()).find(a => a.id === e.agentId)
+      await logActivity($, `helper "${helper?.description ?? e.agentId}" ${e.isAborted ? 'stopped' : 'finished'}`)
+    }
     return done
   })
 
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
-    await logActivity($, `sent helper "${e.name ?? e.description}"`)
     const ran = await next(e)
-    if (ran.deny === undefined && !JSON.stringify(ran.result ?? '').includes('_launched"')) {
-      await logActivity($, `helper "${e.name ?? e.description}" ${ran.isError ? 'failed' : 'finished'}`)
-    }
+    if (ran.deny === undefined) await logActivity($, `sent helper "${e.description}"`)
     return ran
   })
 
@@ -203,7 +239,7 @@ export const register: Register = on => {
   on('tool.call', { tool: 'TaskCreate' }, async ($, e, next) => {
     const ran = await next(e)
     const id = /#?(\d+)/.exec(JSON.stringify(ran.result ?? ''))?.[1] ?? String(Date.now())
-    await update($, tasks, l => [...l, { id, subject: e.subject, status: 'pending' }].slice(-30))
+    await update($, tasks, l => [...l, { id, subject: e.subject, status: 'pending' }].slice(-TASK_KEEP))
     return ran
   })
 
