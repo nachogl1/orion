@@ -1,0 +1,7 @@
+{
+  "name": "control-tower",
+  "version": "0.1.0",
+  "description": "Orion Control Tower: a pane beside the chat showing this session's pending work and activity, the dev-next runs on this computer and every open pull request",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
