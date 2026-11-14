@@ -175,8 +175,12 @@ cache_key_set() {  # sets CACHE_KEY and LEGACY_KEY for $PROJECT; call it outside
 cache_file() {  # suffix
     local dir="${XDG_CACHE_HOME:-$HOME/.cache}/orion"
     cache_key_set
+    # copied, so an older orion.sh still running in the main checkout keeps its own; the one-shot marker moves
     if [ -n "$LEGACY_KEY" ] && [ ! -e "$dir/$CACHE_KEY.$1" ] && [ -e "$dir/$LEGACY_KEY.$1" ]; then
-        mv "$dir/$LEGACY_KEY.$1" "$dir/$CACHE_KEY.$1" 2>/dev/null || true
+        case "$1" in
+            verify-pending) mv "$dir/$LEGACY_KEY.$1" "$dir/$CACHE_KEY.$1" ;;
+            *) cp "$dir/$LEGACY_KEY.$1" "$dir/$CACHE_KEY.$1" ;;
+        esac 2>/dev/null || true
     fi
     printf '%s' "$dir/$CACHE_KEY.$1"
 }
@@ -209,8 +213,9 @@ rules_checked() {  # sum: 0 when this computer has checked these rules for the r
 rules_mark() {  # [sum]: adds these rules to the ones this computer has checked
     local f sum; f="$(cache_file rules-checked)"; sum="${1:-$(rules_sum)}"
     mkdir -p "$(dirname "$f")" 2>/dev/null || return 0
-    { { grep -vxF -- "$sum" "$f" 2>/dev/null || true; printf '%s\n' "$sum"; } | tail -n "$RULES_KEPT" > "$f.new" \
-        && mv "$f.new" "$f"; } || true
+    # stderr goes first in every write: a cache folder that cannot be written is no error for the hook
+    { { grep -vxF -- "$sum" "$f" 2>/dev/null || true; printf '%s\n' "$sum"; } | tail -n "$RULES_KEPT" 2>/dev/null > "$f.new" \
+        && mv "$f.new" "$f" 2>/dev/null; } || true
 }
 
 # The `name:` value of a skill's front matter (quotes stripped), or nothing.
@@ -1009,7 +1014,7 @@ cmd_check() {
         rm -f "$pending" 2>/dev/null || true
         rules_mark
         ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
-        global="$(check_global_ctx 1)"
+        global="$(check_global_ctx 1 "$(date +%s)")"
         [ -n "$global" ] && ctx="$ctx After /orion-verify: $global"
         [ -n "$pulled" ] && ctx="$ctx After that: $pulled"
         printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
@@ -1017,7 +1022,7 @@ cmd_check() {
     fi
     now=$(date +%s)
     ctx="$(check_update_ctx "$force")"
-    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_global_ctx "$force")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
+    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_global_ctx "$force" "$now")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
     done
@@ -1135,22 +1140,29 @@ global_newer() {
 }
 
 # Local only: offer the personal rules discussion while a clause is newer than the person's section, never under
-# updateMode off, in any other mode only offered. Once per clause version per computer (any project): global-offered
-# holds the highest clause version offered, and the offer comes back only when a project carries a higher one, or on
-# --force. A Unix time there (the once-a-day stamp of an older orion) counts as nothing offered. Prints the context or nothing.
-check_global_ctx() {  # force
-    local n top stamp offered
+# updateMode off, in any other mode only offered. Once per clause version per computer (any project):
+# global-offered-version holds "<highest clause version offered> <when>", and the offer comes back only when a project
+# carries a higher one, or on --force; no such record counts as nothing offered. global-offered is the Unix time an
+# older orion.sh on this computer reads and writes to offer at most once a day: an offer here refreshes it, and a time
+# there that is not this record's (an older orion.sh offered) keeps this one quiet for that day too. Prints the context or nothing.
+check_global_ctx() {  # force now
+    local n top dir offered ours last
     [ "$(config_get "$PROJECT/.claude/orion/config.json" updateMode ask)" = "off" ] && return 0
     read -r n top <<< "$(global_newer)"
     [ "${n:-0}" -gt 0 ] 2>/dev/null || return 0
-    stamp="${XDG_CACHE_HOME:-$HOME/.cache}/orion/global-offered"
-    offered="$(whole_number "$(tr -d ' \t\r\n' 2>/dev/null < "$stamp" || true)")"   # stderr first: no file yet is no error
-    { [ -n "$offered" ] && [ "$offered" -lt "$SL_OLD_STAMP_MIN" ]; } || offered=0
-    if [ "${top:-0}" -le "$offered" ]; then
-        [ "$1" = "1" ] || return 0
-        top="$offered"   # --force offers again and never lowers the record
+    dir="${XDG_CACHE_HOME:-$HOME/.cache}/orion"
+    # stderr goes first in every read and write: a missing or unwritable record is no error for the hook
+    read -r offered ours <<< "$(tr -d '\r' 2>/dev/null < "$dir/global-offered-version" || true)"
+    offered="$(whole_number "${offered:-}")"; ours="$(whole_number "${ours:-}")"
+    last="$(whole_number "$(tr -d ' \t\r\n' 2>/dev/null < "$dir/global-offered" || true)")"
+    if [ "$1" != "1" ]; then
+        [ "${top:-0}" -gt "${offered:-0}" ] || return 0
+        if [ -n "$last" ] && [ "$last" != "$ours" ] && [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ]; then return 0; fi
     fi
-    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$top" > "$stamp" || true
+    [ "${top:-0}" -gt "${offered:-0}" ] || top="${offered:-0}"   # --force offers again and never lowers the record
+    mkdir -p "$dir" 2>/dev/null || true
+    printf '%s %s\n' "$top" "$2" 2>/dev/null > "$dir/global-offered-version" || true
+    printf '%s' "$2" 2>/dev/null > "$dir/global-offered" || true
     printf '%s' "orion recommends personal rules for the user's own rules file (~/.claude/CLAUDE.md), and $n of them are not in its ORION GLOBAL section yet. Ask the user with the AskUserQuestion tool whether to go through them now (options: 'Go through them now' recommended, 'Not now'). If yes, follow the steps at the top of .claude/orion/global/GLOBAL_CLAUDE.md exactly as written: the user's file changes only inside its ORION GLOBAL section and only on their word. If no, continue with their request: it is offered again only when orion adds or changes one of these rules, and the user can ask to go through orion's personal rules any time."
 }
 
@@ -1200,7 +1212,7 @@ check_branches_ctx() {  # force now
         over="${over}has $w git worktrees (the limit is $wlimit, worktreeLimit)"
     fi
     [ -n "$over" ] || return 0
-    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
+    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" 2>/dev/null > "$stamp" || true
     printf '%s' "This project $over, set in .claude/orion/config.json. Before anything else, ask the user with the AskUserQuestion tool whether to tidy up now (options: 'Tidy up now' recommended, 'Not now'). If they say yes, run the /clear-git-resources skill (.claude/skills/clear-git-resources/SKILL.md) exactly as written: it deletes the user's own stale worktrees and branches whose work cannot be lost by itself, asks before deleting anyone else's stale ones, and never touches unmerged work or the audit and QA resources. If they say no, continue with their request and do not mention it again this session."
 }
 
@@ -1265,8 +1277,12 @@ cmd_uninstall() {
         say "  ~    CLAUDE.md (import line removed; your rules untouched)"
     fi
     settings_remove_hook "$PROJECT/.claude/settings.json"
-    # last-check: the daily update stamp older versions left
-    rm -f "$(cache_file verify-pending)" "$(cache_file rules-checked)" "$(cache_file update-skipped)" "$(cache_file last-check)" 2>/dev/null || true
+    # last-check: the daily update stamp older versions left; the main checkout's records an older orion keyed on its path go too
+    cache_key_set
+    for f in verify-pending rules-checked update-skipped last-check; do
+        rm -f "$(cache_file "$f")" 2>/dev/null || true
+        [ -z "$LEGACY_KEY" ] || rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/orion/$LEGACY_KEY.$f" 2>/dev/null || true
+    done
     say "done. The status line (if installed) is a per-computer copy under ~/.claude/statusline and was left alone,"
     say "and so was your own ~/.claude/CLAUDE.md: the personal rules you accepted are yours."
 }
