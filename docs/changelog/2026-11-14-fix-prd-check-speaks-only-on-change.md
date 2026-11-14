@@ -1,0 +1,1 @@
+The PRD describes the session-start check as shipped: no message for a missing copy, one rules record per repository with a fresh clone asked once, and the personal rules offer once per clause version.
