@@ -401,6 +401,9 @@ newproj; XDG_CACHE_HOME="$SB/cache-ro" init ask; XDG_CACHE_HOME="$SB/cache-ro" c
 set_cfg branchLimit 1   # one branch is enough to offer the tidy-up and write its stamp
 chmod 555 "$SB/cache-ro/orion"
 check "rules, personal rules and branch count records cannot be written: one JSON line, nothing on stderr" eval 'HOME="$SB/home-ro" XDG_CACHE_HOME="$SB/cache-ro" FAKE_LS_SHA="$V" run_check --force && [ -s "$SB/hook" ] && hook_out_ok "$SB/hook" && [ ! -s "$SB/hook-err" ]'
+# A hook runner may start the hook with SIGPIPE ignored (an ignored signal stays ignored in every child): a write
+# into a pipe whose reader failed then prints "Broken pipe" on stderr instead of ending quietly.
+check "and the same with SIGPIPE ignored: one JSON line, nothing on stderr" eval '( trap "" PIPE; HOME="$SB/home-ro" XDG_CACHE_HOME="$SB/cache-ro" FAKE_LS_SHA="$V" run_check --force ) && [ -s "$SB/hook" ] && hook_out_ok "$SB/hook" && [ ! -s "$SB/hook-err" ]'
 chmod 755 "$SB/cache-ro/orion"
 
 echo "branch counter (hook and scanner count the same, two remotes)"
