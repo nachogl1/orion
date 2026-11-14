@@ -1,0 +1,28 @@
+{
+  "run_id": "orion-20261114-012302-4725",
+  "issue": 186,
+  "title": "orion check: speak only when something changed (update offer, rules fingerprint, per-repository record, personal rules offer)",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T01:23:18Z",
+  "finished_at": "2026-11-14T02:46:24Z",
+  "outcome": "needs-human",
+  "pr": 200,
+  "summary": "Makes the session-start check speak only on a real change: no update offer at the installed version, a rules fingerprint that ignores line endings, one record per repository shared by its worktrees, a fresh clone asked once, and a personal rules offer that is not repeated daily. Built and pushed; released after three review rounds with one finding left (stderr on a broken pipe when the cache folder is read-only, red on CI only).",
+  "agents": [
+    { "name": "dev-186", "model": "opus", "tokens_total": 269086 },
+    { "name": "review-186", "model": "opus", "tokens_total": 200065 },
+    { "name": "review-186-r2", "model": "opus", "tokens_total": 191036 },
+    { "name": "review-186-r3", "model": "opus", "tokens_total": 188858 }
+  ],
+  "phases": { "qa_seconds": 0, "dev_seconds": 2982, "review_seconds": 1828, "ci_seconds": 0 },
+  "rounds": { "review": 3, "ci": 0 },
+  "friction": [
+    "three review rounds each found a different regression in per-computer state (one record overwritten by worktrees on different rules; a cache file shared with older scripts under a new meaning; a broken-pipe line on stderr) - about 80 minutes and a released story; one story carried five fixes to the same state",
+    "the local gate (the suite in WSL plus the Windows part) was green, 219 of 219, while CI failed one check: the CI runner ignores SIGPIPE and the local shells do not, so a stderr check passed locally and failed on CI"
+  ],
+  "lessons_learned": [
+    "A change to a per-computer record of the check hook is tested with an older orion.sh running beside the new one (another project, and another worktree of the same clone), opened in alternation: each of two review rounds found a repeat only there",
+    "A check that asserts empty stderr is also run with SIGPIPE ignored, as the CI runner does; a pipeline is silenced on both sides, or the function returns early when its folder cannot be written"
+  ],
+  "deferred": []
+}
