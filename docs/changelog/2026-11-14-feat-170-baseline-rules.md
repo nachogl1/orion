@@ -1,0 +1,1 @@
+The mandatory rules now say agents merge their own pull requests (with a short list a person still merges), tiers block each other, the prototype comes before the cut, ADRs may stand in for a PRD update, harvests go by importance, new tests are searched for first, and test copies are sized per computer.
