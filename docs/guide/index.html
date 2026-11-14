@@ -343,7 +343,7 @@ const NODES = {
     what:[
       "Asks the destination first, with two answers only: PRD (the decisions a PRD needs) or TICKETS (the stories filed, ready to build).",
       "Surveys every open question, wide before deep, and checks the open issues for duplicates.",
-      "Creates one map issue (Destination, Notes, Settled, Fog, Out of scope) and a decision ticket for every question it can already ask precisely.",
+      "Creates one map issue (Destination, Notes, Settled, Fog, Out of scope) and a decision ticket for every question it can already ask precisely; every ticket blocks the map, so the map closes last.",
       "Each ticket has one kind: research (the agent reads and cites), prototype (something rough to react to), grilling (a conversation with you) or task (hands-on work needed first).",
       "Next sessions: picks the next free ticket, settles it, records the answer on the map, and turns fog into new tickets as it clears."
     ],
