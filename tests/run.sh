@@ -568,19 +568,26 @@ check "check --force still offers" eval 'FAKE_LS_SHA="$V" gl_check --force && as
 cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "the offer no longer says it comes back tomorrow" eval '! grep -q tomorrow "$SB/hook"'
 # An older orion.sh on the same computer keeps writing a Unix time to global-offered when it offers (once a day);
-# this one keeps the highest version offered in global-offered-version and refreshes that time when it offers.
+# this one keeps the highest version offered in global-offered-version and pins that time in the future once it
+# offered, so an older orion.sh never offers again.
 OFFERED="$XDG_CACHE_HOME/orion/global-offered"; OFFERED_V="$XDG_CACHE_HOME/orion/global-offered-version"
 rm -f "$OFFERED_V"; printf '%s' "$(( $(date +%s) - 86401 ))" > "$OFFERED"
 check "no version offered yet and the older orion's time stamp a day old: one last offer" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
 check "and none after it, two days later" eval 'FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && ! asked_global'
-check "the offer refreshed the older orion's time stamp, so an older orion.sh waits a day" eval '[ $(( $(date +%s) - $(cat "$OFFERED") )) -lt 86400 ]'
-rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
-check "an older orion.sh offered between two checks today: silent until its day has passed" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && asked_global'
-older_offers() {  # one session of an older orion.sh: it offers when its time stamp is a day old or more, and stamps now
-    local now last; now=$(date +%s); last="$(cat "$OFFERED" 2>/dev/null || echo 0)"
+older_offers() {  # [now] one session of an older orion.sh: it offers when its time stamp is a day old or more, and stamps now
+    local now last; now="${1:-$(date +%s)}"; last="$(cat "$OFFERED" 2>/dev/null || echo 0)"
     [ $((now - last)) -ge 86400 ] || return 1
     printf '%s' "$now" > "$OFFERED"
 }
+check "the offer pinned the older orion's time stamp, so an older orion.sh never offers again" eval '! older_offers && ! older_offers "$LATER"'
+rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
+check "an older orion.sh offered earlier today: this one counts it as offered, silent today and later" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && ! asked_global'
+check "and pinned the time stamp, so that older orion.sh does not offer again the next day" eval '! older_offers "$LATER"'
+rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"; FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check
+printf -- '- a newer rule <!-- orion:v%s -->
+' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+check "a pinned time stamp never hides a clause with a higher version" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
+cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 mixed_offers() {  # first-opener (older|newer): six sessions on one day alternating; prints how many offered
     local n=0 i who="$1"
     rm -f "$OFFERED" "$OFFERED_V"
@@ -592,6 +599,19 @@ mixed_offers() {  # first-opener (older|newer): six sessions on one day alternat
 }
 check "an older orion.sh and this one alternating on one day, the older first: one offer in all" eval '[ "$(mixed_offers older)" = 1 ]'
 check "the same with this one first: one offer in all" eval '[ "$(mixed_offers newer)" = 1 ]'
+mixed_days() {  # first-opener (older|newer): both open a session each day for five days; prints how many offered
+    local n=0 day now
+    rm -f "$OFFERED" "$OFFERED_V"
+    for day in 0 1 2 3 4; do
+        now=$(( $(date +%s) + day * 86400 ))
+        [ "$1" = older ] && older_offers "$now" && n=$((n+1))
+        FAKE_NOW="$now" FAKE_LS_SHA="$V" gl_check && asked_global && n=$((n+1))
+        [ "$1" = newer ] && older_offers "$now" && n=$((n+1))
+    done
+    printf '%s' "$n"
+}
+check "an older orion.sh and this one on five days, the older opening first each day: one offer in all" eval '[ "$(mixed_days older)" = 1 ]'
+check "the same with this one first each day: one offer in all" eval '[ "$(mixed_days newer)" = 1 ]'
 section 1
 check "a clause above the section's version number is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 section "$NEWEST"
