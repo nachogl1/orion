@@ -16,7 +16,8 @@ with one orion ships or may tell the agent to do what the rules forbid, a line m
 that whole-picture check. It runs **once after install** (the hook asks for it at the next session start, or `init`'s
 own closing message asks for it when it ran inside a session), **again each time orion's rules change on this
 computer** (`BASE_CLAUDE.md` or any `.md` file of an orion skill, after an update or a pull that brought one: the hook
-asks once, and `update` says so when it changed them), and whenever the user types `/orion-verify`.
+asks once, and `update` says so when it changed them), **once on a computer where the repository is new** (a fresh
+clone with no record of a check here; every worktree of one clone shares that record), and whenever the user types `/orion-verify`.
 
 Three kinds of outcome, kept strictly apart:
 

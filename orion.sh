@@ -147,16 +147,40 @@ version_label() {  # sha number -> "orion <number>", or the short sha when there
 
 short() { printf '%s' "${1:0:7}"; }
 
-# Per-computer, per-project state that must never be committed (the orion version the person
-# declined with `update --skip`, the one-shot "post-install check pending" marker, the rules fingerprint last checked).
+# Per-computer, per-repository state that must never be committed (the orion version the person declined with
+# `update --skip`, the one-shot "post-install check pending" marker, the rules fingerprint last checked, the last
+# branch count). Keyed on the repository's shared git folder, so every worktree of one clone shares it; a folder
+# that is not the top of a git checkout keeps its path as the key. A record an older orion keyed on the main
+# checkout's path is carried over on first use.
+CACHE_KEY="" CACHE_KEY_OF="" LEGACY_KEY=""
+cache_key_set() {  # sets CACHE_KEY and LEGACY_KEY for $PROJECT; call it outside $(...) once, so later calls reuse it
+    [ "$CACHE_KEY_OF" = "$PROJECT" ] && return 0
+    local common
+    # git prints the prefix (an empty line at the top of a checkout), then the shared git folder
+    common="$(cd "$PROJECT" 2>/dev/null && out="$(git rev-parse --show-prefix --git-common-dir 2>/dev/null)" \
+        && case "$out" in ($'\n'?*) cd "${out#$'\n'}" 2>/dev/null && pwd ;; esac)" || common=""
+    CACHE_KEY_OF="$PROJECT" LEGACY_KEY=""
+    if [ -n "$common" ]; then
+        CACHE_KEY="$(printf '%s' "$common" | cksum | cut -d' ' -f1)"
+        case "$common" in */.git) LEGACY_KEY="$(printf '%s' "${common%/.git}" | cksum | cut -d' ' -f1)" ;; esac
+    else
+        CACHE_KEY="$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)"
+    fi
+}
 cache_file() {  # suffix
-    printf '%s/orion/%s.%s' "${XDG_CACHE_HOME:-$HOME/.cache}" "$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)" "$1"
+    local dir="${XDG_CACHE_HOME:-$HOME/.cache}/orion"
+    cache_key_set
+    if [ -n "$LEGACY_KEY" ] && [ ! -e "$dir/$CACHE_KEY.$1" ] && [ -e "$dir/$LEGACY_KEY.$1" ]; then
+        mv "$dir/$LEGACY_KEY.$1" "$dir/$CACHE_KEY.$1" 2>/dev/null || true
+    fi
+    printf '%s' "$dir/$CACHE_KEY.$1"
 }
 
 # A fingerprint of the rules orion ships into this project: BASE_CLAUDE.md and every .md file of every
-# orion-managed skill. The session-start hook asks for /orion-verify once each time it changes on this computer.
-# One find and one cat for all of it: a process per file costs seconds under Git Bash, on every session start.
-rules_sum() {
+# orion-managed skill, without carriage returns as in tree_sum, so line endings never count as a change ("raw": with
+# them, the fingerprint an older orion stored). The session-start hook asks for /orion-verify once each time it
+# changes on this computer. One find and one cat for all of it: a process per file costs seconds under Git Bash.
+rules_sum() {  # [raw]
     local entry f dirs=() files=()
     if [ -f "$PROJECT/.claude/orion/BASE_CLAUDE.md" ]; then files+=("$PROJECT/.claude/orion/BASE_CLAUDE.md"); fi
     for entry in "$PROJECT"/.claude/skills/*/; do
@@ -166,7 +190,8 @@ rules_sum() {
     if [ ${#dirs[@]} -gt 0 ]; then
         while IFS= read -r f; do files+=("$f"); done < <(find "${dirs[@]}" -type f -name '*.md' | LC_ALL=C sort)
     fi
-    if [ ${#files[@]} -gt 0 ]; then cat "${files[@]}" 2>/dev/null || true; fi | cksum | cut -d' ' -f1
+    if [ ${#files[@]} -gt 0 ]; then cat "${files[@]}" 2>/dev/null || true; fi \
+        | if [ "${1:-}" = raw ]; then cat; else tr -d '\r'; fi | cksum | cut -d' ' -f1
 }
 
 rules_mark() {  # [sum]: records that this computer has checked these rules
@@ -961,6 +986,7 @@ cmd_check() {
     PROJECT="$(resolve_project "$project")" || exit 0
     local dir="$PROJECT/.claude/orion" now ctx tidy pending pulled global
     [ -f "$dir/VERSION" ] || exit 0
+    cache_key_set
     pulled="$(check_pull_ctx)"
     # A fresh init leaves a one-shot marker: ask for the post-install check instead of an update.
     # Without the /orion-verify skill there is nothing to ask for, so the marker waits for it (or for `verify`).
@@ -969,7 +995,7 @@ cmd_check() {
         rm -f "$pending" 2>/dev/null || true
         rules_mark
         ctx="orion was just installed in this project and its post-install check has not run yet. Before anything else, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written: it checks that CLAUDE.md, the imported BASE_CLAUDE.md, the skills under .claude/skills and the settings are consistent after the install, fixes what is mechanical, asks before touching anything the project owns, and reports in a few lines. Then continue with the user's request."
-        global="$(check_global_ctx 1 "$(date +%s)")"
+        global="$(check_global_ctx 1)"
         [ -n "$global" ] && ctx="$ctx After /orion-verify: $global"
         [ -n "$pulled" ] && ctx="$ctx After that: $pulled"
         printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$ctx"
@@ -977,7 +1003,7 @@ cmd_check() {
     fi
     now=$(date +%s)
     ctx="$(check_update_ctx "$force")"
-    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_global_ctx "$force" "$now")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
+    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_global_ctx "$force")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
     done
@@ -1010,8 +1036,9 @@ check_update_ctx() {  # force
         latest="$(short "$LATEST_SHA")"
     fi
     current="$(version_label "$current" "$installed")"
-    # nothing newer, but an update run by an older orion.sh left out the status line or personal rules copy: offer it once more
-    [ "$newer" = 0 ] && [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && return 0
+    # Nothing newer: nothing to offer. A status line or personal rules folder an older orion.sh left out is copied
+    # again by the next update, which re-copies everything when either is missing.
+    [ "$newer" = 1 ] || return 0
     # declined with `update --skip`: quiet until a newer orion, unless the person asked for the check (--force)
     [ "$mode" = "auto" ] || [ "$1" = "1" ] || [ "$(cat "$(cache_file update-skipped)" 2>/dev/null)" != "$(latest_key "$installed" "$ref")" ] || return 0
     case "$mode" in
@@ -1034,12 +1061,21 @@ check_update_ctx() {  # force
 
 # Every session, local only: once each time orion's rules change on this computer (an update, or a pull that
 # brought one), ask for /orion-verify. Runs after the update check, so an auto-update is seen in the same session.
+# A repository with no record on this computer (a fresh clone) is asked once too, worded as new, not as changed.
 check_rules_ctx() {
-    local sum
+    local sum f stored
     [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ] || return 0
-    sum="$(rules_sum)"
-    [ "$(cat "$(cache_file rules-checked)" 2>/dev/null)" = "$sum" ] && return 0
+    sum="$(rules_sum)"; f="$(cache_file rules-checked)"
+    if [ ! -f "$f" ]; then
+        rules_mark "$sum"
+        printf '%s' "orion is new on this computer for this repository: its rules (.claude/orion/BASE_CLAUDE.md) and the instructions of its skills have not been checked here yet. Before anything else, ask the user with the AskUserQuestion tool whether to check now that they fit with the project's CLAUDE.md, the project's own skills and the user's own rules file (options: 'Check now' recommended, 'Not now'). If they say yes, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written. If they say no, continue with their request: it is not asked again until the rules change, and /orion-verify runs the check any time."
+        return 0
+    fi
+    stored="$(cat "$f" 2>/dev/null || true)"
+    [ "$stored" = "$sum" ] && return 0
     rules_mark "$sum"
+    # the fingerprint an older orion took of these same rules, line endings included: nothing changed
+    [ "$stored" = "$(rules_sum raw)" ] && return 0
     printf '%s' "orion's rules (.claude/orion/BASE_CLAUDE.md) or the instructions of its skills have changed since they were last checked on this computer, after an update or a pull that brought one. Before anything else, ask the user with the AskUserQuestion tool whether to check now that they still fit with the project's CLAUDE.md, the project's own skills and the user's own rules file (options: 'Check now' recommended, 'Not now'). If they say yes, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written. If they say no, continue with their request: it is not asked again until the rules change, and /orion-verify runs the check any time."
 }
 
@@ -1076,27 +1112,33 @@ global_stamp() {
     tr -d '\r' < "$f" | sed -n 's/^# ORION GLOBAL.* v\([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n1
 }
 
-# How many clauses of the project's GLOBAL_CLAUDE.md carry a version marker higher than that number (all of them without one).
+# "<count> <highest>": how many clauses of the project's GLOBAL_CLAUDE.md carry a version marker higher than that
+# number (all of them without one), and the highest version marker in the file.
 global_newer() {
     local f; f="$(global_copy)"
-    [ -f "$f" ] || { printf '0'; return 0; }
-    tr -d '\r' < "$f" | sed -n 's/.* <!-- orion:v\([0-9][0-9]*\) -->$/\1/p' | awk -v t="$(global_stamp)" 't == "" || $0 + 0 > t + 0 { n++ } END { print n+0 }'
+    [ -f "$f" ] || { printf '0 0'; return 0; }
+    tr -d '\r' < "$f" | sed -n 's/.* <!-- orion:v\([0-9][0-9]*\) -->$/\1/p' \
+        | awk -v t="$(global_stamp)" 't == "" || $0 + 0 > t + 0 { n++ } $0 + 0 > m + 0 { m = $0 + 0 } END { print n+0, m+0 }'
 }
 
-# Local only: offer the personal rules discussion while a clause is newer than the person's section, at most once a
-# day per computer (any project) and never under updateMode off, in any other mode only offered. Prints the context or nothing.
-check_global_ctx() {  # force now
-    local n stamp last
+# Local only: offer the personal rules discussion while a clause is newer than the person's section, never under
+# updateMode off, in any other mode only offered. Once per clause version per computer (any project): global-offered
+# holds the highest clause version offered, and the offer comes back only when a project carries a higher one, or on
+# --force. A Unix time there (the once-a-day stamp of an older orion) counts as nothing offered. Prints the context or nothing.
+check_global_ctx() {  # force
+    local n top stamp offered
     [ "$(config_get "$PROJECT/.claude/orion/config.json" updateMode ask)" = "off" ] && return 0
-    n="$(global_newer)"
-    [ "$n" -gt 0 ] 2>/dev/null || return 0
+    read -r n top <<< "$(global_newer)"
+    [ "${n:-0}" -gt 0 ] 2>/dev/null || return 0
     stamp="${XDG_CACHE_HOME:-$HOME/.cache}/orion/global-offered"
-    if [ "$1" != "1" ] && [ -f "$stamp" ]; then
-        last=$(cat "$stamp" 2>/dev/null || echo 0)
-        [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && return 0
+    offered="$(whole_number "$(tr -d ' \t\r\n' < "$stamp" 2>/dev/null || true)")"
+    { [ -n "$offered" ] && [ "$offered" -lt "$SL_OLD_STAMP_MIN" ]; } || offered=0
+    if [ "${top:-0}" -le "$offered" ]; then
+        [ "$1" = "1" ] || return 0
+        top="$offered"   # --force offers again and never lowers the record
     fi
-    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$2" > "$stamp" || true
-    printf '%s' "orion recommends personal rules for the user's own rules file (~/.claude/CLAUDE.md), and $n of them have not been offered on this computer yet. Ask the user with the AskUserQuestion tool whether to go through them now (options: 'Go through them now' recommended, 'Not now'). If yes, follow the steps at the top of .claude/orion/global/GLOBAL_CLAUDE.md exactly as written: the user's file changes only inside its ORION GLOBAL section and only on their word. If no, continue with their request: it is offered again tomorrow, and the user can ask to go through orion's personal rules any time."
+    mkdir -p "$(dirname "$stamp")" 2>/dev/null && printf '%s' "$top" > "$stamp" || true
+    printf '%s' "orion recommends personal rules for the user's own rules file (~/.claude/CLAUDE.md), and $n of them are not in its ORION GLOBAL section yet. Ask the user with the AskUserQuestion tool whether to go through them now (options: 'Go through them now' recommended, 'Not now'). If yes, follow the steps at the top of .claude/orion/global/GLOBAL_CLAUDE.md exactly as written: the user's file changes only inside its ORION GLOBAL section and only on their word. If no, continue with their request: it is offered again only when orion adds or changes one of these rules, and the user can ask to go through orion's personal rules any time."
 }
 
 # Every session: bring the branch the session opens on up to date with its remote copy, fast-forward only, as
