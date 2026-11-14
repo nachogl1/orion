@@ -61,6 +61,8 @@ CHECK_INTERVAL_SECONDS=86400
 # The time this orion.sh pins in global-offered once the personal rules were offered (2100-01-01 UTC): an older
 # orion.sh offers when that time is a day old, so a time in the future keeps it quiet for good.
 GLOBAL_OFFER_PIN=4102444800
+# The last orion version whose orion.sh offered the personal rules once a day: such a script carries no clause above it.
+LAST_DAILY_OFFER_VERSION=17
 BRANCH_LIMIT_DEFAULT=20
 WORKTREE_LIMIT_DEFAULT=20
 
@@ -1149,7 +1151,8 @@ global_newer() {
 # carries a higher one, or on --force; no such record counts as nothing offered. global-offered is the Unix time an
 # older orion.sh on this computer reads and writes to offer at most once a day. Once an offer is recorded here, that
 # time is pinned to GLOBAL_OFFER_PIN, so an older orion.sh never offers again; a past time there (an older orion.sh
-# offered) less than a day old counts as this computer's offer of the project's clauses, recorded without a word.
+# offered) less than a day old counts as this computer's offer of the project's clauses, recorded without a word,
+# unless a clause is newer than any older orion.sh carries (LAST_DAILY_OFFER_VERSION): that one is still offered.
 # Prints the context or nothing.
 check_global_ctx() {  # force now
     local n top dir offered ours last
@@ -1166,7 +1169,8 @@ check_global_ctx() {  # force now
             [ "$last" = "$GLOBAL_OFFER_PIN" ] || global_offer_record "$dir" "$offered" "$2"
             return 0
         fi
-        if [ -n "$last" ] && [ "$last" != "$ours" ] && [ "$last" -le "$2" ] && [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ]; then
+        if [ -n "$last" ] && [ "$last" != "$ours" ] && [ "$last" -le "$2" ] 2>/dev/null \
+            && [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && [ "${top:-0}" -le "$LAST_DAILY_OFFER_VERSION" ]; then
             global_offer_record "$dir" "$top" "$2"
             return 0
         fi

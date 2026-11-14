@@ -584,10 +584,16 @@ rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
 check "an older orion.sh offered earlier today: this one counts it as offered, silent today and later" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && ! asked_global'
 check "and pinned the time stamp, so that older orion.sh does not offer again the next day" eval '! older_offers "$LATER"'
 rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"; FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check
-printf -- '- a newer rule <!-- orion:v%s -->
-' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+printf -- '- a newer rule <!-- orion:v%s -->\n' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "a pinned time stamp never hides a clause with a higher version" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
 cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+printf -- '- a rule no once-a-day orion.sh carries <!-- orion:v18 -->\n' >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
+check "an older orion.sh offered today, but a rule above any it carries is still offered, once" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
+cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+# orion 18 wrote the same real time to both files when it offered: this one pins it on its next check
+NOW18="$(date +%s)"; printf '%s %s\n' "$NEWEST" "$NOW18" > "$OFFERED_V"; printf '%s' "$NOW18" > "$OFFERED"
+check "a record left by orion 18: silent, and the time stamp is pinned so an older orion.sh stays quiet" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && ! older_offers "$LATER"'
 mixed_offers() {  # first-opener (older|newer): six sessions on one day alternating; prints how many offered
     local n=0 i who="$1"
     rm -f "$OFFERED" "$OFFERED_V"
