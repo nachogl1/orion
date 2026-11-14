@@ -259,7 +259,11 @@ next candidate.
 run) is resumed, not claimed: naming it is the person's word that no other of their terminals holds it. The
 assignee check above passes for it, and the eligibility tests on the assignee, the open pull request and the remote
 branch are skipped; every other test still holds (`agent-ready`, every blocker closed). Skip step 1, then steps 2-4 as
-above, the comment reading `resumed by run <run id>`. Phase 3 reuses what the stopped run left: the worktree when it
+above, the comment reading `resumed by run <run id>`. **Two of your own terminals never resume one story:** before
+step 2, a live entry for the issue in the in-flight file from another run id stops the resume (pick nothing in its
+place, and say which run holds it). After step 3, the re-read counts only `claimed by run …` and `resumed by run …`
+comments posted after this run's `startedAt` (the stopped run's old claim comment never counts); when another run id
+has one, the lower comment id wins and the other run backs off as above. Phase 3 reuses what the stopped run left: the worktree when it
 still exists, else `git -C <main checkout> worktree add <wt root>/<N>-<slug> feat/<N>-<slug>` on the existing branch
 (when only the remote one is left, `git -C <main checkout> fetch origin feat/<N>-<slug>:feat/<N>-<slug>` first), and
 an open pull request stays the pull request. Another person's assignee is never resumed.

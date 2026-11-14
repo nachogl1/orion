@@ -56,7 +56,9 @@ about, never only its number.
 **`owner-merges`** may sit on any story next to its readiness label, never in place of one: a person merges that
 story's pull request. `/dev-next` builds and reviews it as usual, brings its pull request to green checks and stops
 there, assignee kept (`merge-and-ci.md`, *Owner merges*). Add it when the owner must try the change before it lands
-(every story that builds or changes a mod carries it).
+(every story that builds or changes a mod carries it). When `gh label list --limit 200 --json name --jq '.[].name'`
+does not list it yet, `gh label create owner-merges --description "A person merges this story's pull request" --force`
+before the issue is filed.
 
 **Every story also carries exactly one tier label, `tier:<name>`**: what the story is for, so anyone reading the list
 sees it. An epic never carries one. The first line that fits decides:
