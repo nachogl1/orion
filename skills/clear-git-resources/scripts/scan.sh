@@ -239,9 +239,9 @@ flush_wt
 checked_out() { grep -qxF "$1" "$TMP/wt-branches" 2>/dev/null; }
 
 # --- local branches -------------------------------------------------------------------------------------
-# Fields are split on \001, not tab: tab is IFS whitespace, so an empty field (no upstream) would collapse.
-g for-each-ref refs/heads --format='%(refname:short)%01%(upstream:short)%01%(upstream:track)%01%(committerdate:short)' 2>/dev/null > "$TMP/heads"
-while IFS=$'\001' read -r b up track date; do
+# Fields are split on \037, not tab: tab is IFS whitespace, so an empty field (no upstream) would collapse; not \001: bash 3.2 (stock macOS) never splits on it.
+g for-each-ref refs/heads --format='%(refname:short)%1f%(upstream:short)%1f%(upstream:track)%1f%(committerdate:short)' 2>/dev/null > "$TMP/heads"
+while IFS=$'\037' read -r b up track date; do
     [ -n "$b" ] || continue
     local_cmd="git -C \"$MAIN\" branch -D \"$b\""
     if protected_branch "$b"; then
@@ -268,8 +268,8 @@ done < "$TMP/heads"
 
 # --- remote branches ------------------------------------------------------------------------------------
 if [ -n "$REMOTE" ]; then
-    g for-each-ref "refs/remotes/$REMOTE" --format='%(refname)%01%(committerdate:short)%01%(authorname)' 2>/dev/null > "$TMP/remotes"
-    while IFS=$'\001' read -r ref date author; do
+    g for-each-ref "refs/remotes/$REMOTE" --format='%(refname)%1f%(committerdate:short)%1f%(authorname)' 2>/dev/null > "$TMP/remotes"
+    while IFS=$'\037' read -r ref date author; do
         [ -n "$ref" ] || continue
         rb="${ref#refs/remotes/}"           # origin/<branch>; refname:short would print origin/HEAD as plain origin
         [ "$rb" = "$REMOTE/HEAD" ] && continue
