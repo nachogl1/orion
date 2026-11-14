@@ -213,9 +213,10 @@ rules_checked() {  # sum: 0 when this computer has checked these rules for the r
 rules_mark() {  # [sum]: adds these rules to the ones this computer has checked
     local f sum; f="$(cache_file rules-checked)"; sum="${1:-$(rules_sum)}"
     mkdir -p "$(dirname "$f")" 2>/dev/null || return 0
-    # stderr goes first in every write: a cache folder that cannot be written is no error for the hook
-    { { grep -vxF -- "$sum" "$f" 2>/dev/null || true; printf '%s\n' "$sum"; } | tail -n "$RULES_KEPT" 2>/dev/null > "$f.new" \
-        && mv "$f.new" "$f" 2>/dev/null; } || true
+    # stderr goes for the whole write: a cache folder that cannot be written is no error for the hook, and neither
+    # is the "Broken pipe" a hook runner that ignores SIGPIPE gets when tail cannot open its file
+    { { { grep -vxF -- "$sum" "$f" || true; printf '%s\n' "$sum"; } | tail -n "$RULES_KEPT" > "$f.new" \
+        && mv "$f.new" "$f"; } 2>/dev/null; } || true
 }
 
 # The `name:` value of a skill's front matter (quotes stripped), or nothing.
