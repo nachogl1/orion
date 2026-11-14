@@ -88,7 +88,7 @@ hook_out_ok() {
 set_cfg() { sed "s|\"$1\": [^,}]*|\"$1\": $2|" "$P/.claude/orion/config.json" > "$SB/cfg" && mv "$SB/cfg" "$P/.claude/orion/config.json"; }
 run_check() {  # extra env assignments go before the call: runs the INSTALLED copy, as the hook does
     mkdir -p "$SB/tmp"; rm -rf "$SB/tmp"/*
-    env PATH="$FAKEPATH" TMPDIR="$SB/tmp" bash "$P/.claude/orion/orion.sh" check --project "$P" "$@" >"$SB/hook" 2>/dev/null
+    env PATH="$FAKEPATH" TMPDIR="$SB/tmp" bash "$P/.claude/orion/orion.sh" check --project "$P" "$@" >"$SB/hook" 2>"$SB/hook-err"
 }
 consume_marker() { bash "$ORION" verify --project "$P" >/dev/null 2>&1 || true; }   # verify clears the one-shot marker
 nothing_left_in_tmp() { [ -z "$(ls -A "$SB/tmp" 2>/dev/null)" ]; }
@@ -368,6 +368,27 @@ P="$SB/wt-second"
 check "a second worktree of a checked repository: silent" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
 check "update --skip given in one worktree holds in another" eval 'skip_update 1111111111111111111111111111111111111111 && P="$MAIN" && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && [ ! -s "$SB/hook" ]'
 P="$MAIN"
+# The main checkout gets newer rules while the worktree keeps the older ones: sessions that switch between the two
+# folders are asked once, not every time.
+printf '\n- a rule only the main checkout has\n' >> "$MAIN/.claude/orion/BASE_CLAUDE.md"
+"$REAL_GIT" -C "$MAIN" -c core.autocrlf=false commit -qam "newer rules"
+alternate_asks() {  # main, worktree, main, worktree: prints how many sessions asked about the rules
+    local n=0 p
+    for p in "$MAIN" "$SB/wt-second" "$MAIN" "$SB/wt-second"; do
+        P="$p" FAKE_LS_SHA="$V" run_check --force && grep -q "have changed since they were last checked" "$SB/hook" && n=$((n+1))
+    done
+    P="$MAIN"; printf '%s' "$n"
+}
+check "a main checkout and a worktree on different rules, sessions alternating: asked once in all" eval '[ "$(alternate_asks)" = 1 ]'
+# A checkout reached through a symbolic link: its worktrees still share its record, and an older orion's record,
+# keyed on the path the checkout was opened by, is still carried over.
+mkdir -p "$SB/real-repo"; ln -s "$SB/real-repo" "$SB/link-repo"
+P="$SB/link-repo"; init ask; consume_marker; LINKED="$P"
+"$REAL_GIT" -C "$LINKED" init -q -b main && "$REAL_GIT" -C "$LINKED" -c core.autocrlf=false add . && "$REAL_GIT" -C "$LINKED" commit -qm init
+"$REAL_GIT" -C "$LINKED" worktree add -q "$SB/wt-linked" -b second 2>/dev/null
+check "a checkout opened through a symbolic link: its older record is carried over, silent" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+check "and its worktree shares the record: silent" eval 'P="$SB/wt-linked" && FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+P="$MAIN"
 
 echo "branch counter (hook and scanner count the same, two remotes)"
 newproj; "$REAL_GIT" -C "$P" init -q -b main; "$REAL_GIT" -C "$P" commit -q --allow-empty -m one
@@ -513,8 +534,10 @@ NEWEST="$(clauses "$GLOBAL" | cut -d' ' -f1 | sort -n | tail -n1)"
 gl_check() { HOME="$GH" run_check "$@"; }
 asked_global() { grep -q "GLOBAL_CLAUDE.md" "$SB/hook"; }
 section() { mkdir -p "$GH/.claude"; printf '# my own rules\n\n- keep this\n\n# ORION GLOBAL — v%s\n<!-- /ORION GLOBAL -->\n' "$1" > "$PERSONAL"; }
+rm -f "$XDG_CACHE_HOME/orion/global-offered"   # no personal rules offer yet on this computer
 newproj; HOME="$GH" init ask
 check "right after init, the post-install message also offers the discussion" eval 'gl_check && grep -q orion-verify "$SB/hook" && asked_global && hook_out_ok "$SB/hook"'
+check "the first offer on a computer prints nothing on stderr" eval '[ ! -s "$SB/hook-err" ]'
 check "the project carries GLOBAL_CLAUDE.md, listed in the manifest" eval '[ -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md" ] && grep -qx "global/GLOBAL_CLAUDE.md" "$P/.claude/orion/.orion-manifest"'
 check "no ORION GLOBAL section yet: the discussion is offered, in one JSON line" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 check "and the hook wrote no personal rules file" eval '[ ! -e "$PERSONAL" ]'
