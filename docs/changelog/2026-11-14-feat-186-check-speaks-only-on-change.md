@@ -1,0 +1,1 @@
+The session-start check speaks only when something changed: no update offer at the installed version, no false "rules changed" from line endings or a new worktree, and the personal rules offer no longer comes back every day.

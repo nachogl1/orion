@@ -275,7 +275,7 @@ aside.drawer.on{transform:none}
     <div class="grid3">
       <div class="tile"><h3>The base rules</h3><p><b>Where:</b> <code>.claude/orion/BASE_CLAUDE.md</code>, imported by your <code>CLAUDE.md</code>. <b>Owner:</b> orion; never edit the copy. <b>Updates:</b> replaced on every update. When they change, the next session offers <code>/orion-verify</code> once, to check they still fit your project.</p></div>
       <div class="tile"><h3>The skills</h3><p><b>Where:</b> <code>.claude/skills/&lt;name&gt;/</code>, each marked with an <code>.orion-managed</code> file. <b>Owner:</b> orion; your own skills (no marker) are never touched. <b>Updates:</b> replaced on every update.</p></div>
-      <div class="tile"><h3>Your personal rules</h3><p><b>Where:</b> offered for your own <code>~/.claude/CLAUDE.md</code>, on this computer only. <b>Owner:</b> you. <b>Updates:</b> each rule orion offers carries the orion version number that last changed it, and your file's ORION GLOBAL heading records the version you last went through. A rule from a higher version is offered, at most once a day; nothing is written without your yes.</p></div>
+      <div class="tile"><h3>Your personal rules</h3><p><b>Where:</b> offered for your own <code>~/.claude/CLAUDE.md</code>, on this computer only. <b>Owner:</b> you. <b>Updates:</b> each rule orion offers carries the orion version number that last changed it, and your file's ORION GLOBAL heading records the version you last went through. A rule from a higher version is offered once on each computer; nothing is written without your yes.</p></div>
       <div class="tile"><h3>The status bar (optional)</h3><p><b>Where:</b> <code>~/.claude/statusline</code>, on this computer only; the project carries orion's copy. <b>Owner:</b> you. <b>Updates:</b> it records the orion version number of the copy it came from. When the project brings one from a higher version, the session start offers it: an unedited copy is replaced, an edited one gets orion's changes merged in, and you can skip that version.</p></div>
     </div>
   </section>
@@ -288,7 +288,7 @@ aside.drawer.on{transform:none}
     </div>
     <div class="grid3">
       <div class="tile"><h3>Updates</h3><p>Every session start compares the orion version number your project has with the newest release, and offers an update only when there is a higher one; "Not now" keeps it quiet until the next release. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
-      <div class="tile"><h3>Your personal rules</h3><p>At most once a day, orion offers rules for your own <code>~/.claude/CLAUDE.md</code>. You accept, skip or reword each one; nothing is written without your yes, and the rest of your file is never touched.</p></div>
+      <div class="tile"><h3>Your personal rules</h3><p>orion offers rules for your own <code>~/.claude/CLAUDE.md</code> once, and again only when it adds or changes one. You accept, skip or reword each one; nothing is written without your yes, and the rest of your file is never touched.</p></div>
       <div class="tile"><h3>A tidy repository</h3><p>Once the project reaches <code>branchLimit</code> or <code>worktreeLimit</code> (20 each by default), the session start offers <code>/clear-git-resources</code>. Set them higher, or to <code>off</code>.</p></div>
     </div>
   </section>
@@ -521,8 +521,8 @@ const NODES = {
     what:[
       "Pulls the latest commits of your branch, only when that needs no merge.",
       "Checks for a newer orion (your updateMode: ask, auto or off).",
-      "Offers /orion-verify after install and whenever orion's rules change.",
-      "Offers new personal rules for your own ~/.claude/CLAUDE.md, at most once a day.",
+      "Offers /orion-verify after install, whenever orion's rules change, and once on a computer new to the project.",
+      "Offers new personal rules for your own ~/.claude/CLAUDE.md, once per new rule version.",
       "Offers /clear-git-resources once branches or worktrees reach their limit (20 each by default)."
     ],
     you:["Say yes or no to what it offers."],
