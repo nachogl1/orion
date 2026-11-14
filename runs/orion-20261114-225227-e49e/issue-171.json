@@ -1,0 +1,36 @@
+{
+  "run_id": "orion-20261114-225227-e49e",
+  "issue": 171,
+  "title": "dev-next briefs: search existing tests first, and use SOLID and six named code smells",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T22:52:27Z",
+  "finished_at": "2026-11-14T23:20:00Z",
+  "outcome": "merged",
+  "pr": 205,
+  "summary": "The dev brief now searches existing tests first, tests each behaviour once at the cheapest level, and carries SOLID as a guide plus six named code smells; the review brief marks repeated tests and small new smells as Fix now, never blocking. Version 22.",
+  "agents": [
+    {
+      "name": "dev-171",
+      "model": "opus",
+      "tokens_total": 117609
+    },
+    {
+      "name": "review-171",
+      "model": "opus",
+      "tokens_total": 110382
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 599,
+    "review_seconds": 149,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}

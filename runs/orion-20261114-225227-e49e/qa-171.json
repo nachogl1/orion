@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261114-225227-e49e",
+  "issue": 171,
+  "title": "dev-next briefs: search existing tests first, and use SOLID and six named code smells",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 205,
+  "merged_at": "2026-11-14T23:19:00Z",
+  "seam": "skills/dev-next/references/dev-agent.md, skills/dev-next/references/review-agent.md",
+  "story": "The dev-next developer agent is now told to search the existing tests before writing one, to prove each behaviour once at the cheapest level, and to use SOLID and six named code smells as a guide. The reviewer flags a repeated new test or a small new smell as a fix-now line and never blocks on them.",
+  "checks": [],
+  "no_qa_reason": "Agent instructions only; nothing a user can drive.",
+  "merge_commit": "9cd4b29c251cc78ccf4d17f3337384d37e7deb04"
+}
