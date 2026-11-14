@@ -45,9 +45,12 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
    before the whole app; a slow whole-app test only for what a fast one cannot reach). **Never delete, skip or weaken
    an existing test. Never widen a timeout.** Tests never reach the network: any external service is mocked behind its
    interface.
-6. Green the gate the project's `CLAUDE.md` lists (build → lint → typecheck → full suite). Every command in the chain.
-   No exceptions.
-7. `git merge origin/main` if you are behind — **never rebase, never stash**. Resolve conflicts in your own files only.
+6. `git fetch origin` and `git merge origin/main` **before the gate, not after it**, so the gate runs on the newest
+   `main`, not on a stale base — **never rebase, never stash**. Resolve conflicts in your own files only.
+7. Green the gate the project's `CLAUDE.md` lists (build → lint → typecheck → full suite). Every command in the chain.
+   No exceptions. Size the full suite's test copies (parallel test workers) right before it runs, with the recipe in
+   `in-flight.md`, *Test copies* (`.claude/skills/dev-next/references/`), and pass them the way the project's
+   `CLAUDE.md` *Test copies* row says.
 8. Add this pull request's **own changelog file**, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (today's date, the branch name with `/`
    turned into `-`), holding one line: what changed and why it matters, a few words, never a restatement of the diff.
    Never edit another pull request's file or an old single-file changelog, so parallel pull requests never conflict
@@ -124,8 +127,8 @@ pull request. The orchestrator opens a `bug` issue for `main` and releases your 
 `INHERITED RED` — the issue names which commands are expected red; any other red command still stops you.
 
 **When review findings come back** (the orchestrator sends them to you): fix every must-fix and every `Fix now:` line in
-this branch, re-green the gate, push, and report again. `Defer:` lines are not yours to act on: the orchestrator
-records them in the audit report.
+this branch, merge `origin/main` and re-green the gate (steps 6 and 7, in that order), push, and report again.
+`Defer:` lines are not yours to act on: the orchestrator records them in the audit report.
 Never argue a must-fix away in code comments — if you think one is wrong, say so in your report and the next fresh
 reviewer decides.
 

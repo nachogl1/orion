@@ -350,7 +350,8 @@ request already changes** → fixed in this pull request. Critical → a GitHub 
 ## Phase 5 — Merge
 
 Follow `references/merge-and-ci.md`. In short: take the `merging` slot in the in-flight file → merge `origin/main` into
-the branch and push so CI runs on what will actually land → poll for the check run id, then watch it → squash-merge →
+the branch and push so CI runs on what will actually land → poll for the check run id, then watch it → check the
+branch is not behind `origin/main` (behind → back to the merge step) → squash-merge →
 release the slot → verify the issue closed → delete worktree and branch → remove the issue from the in-flight file.
 
 **Never merge on red or pending. "No checks reported" is red.** Red after two rounds → `needs-human` and the issue released.
