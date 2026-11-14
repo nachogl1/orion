@@ -12,6 +12,9 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
 **Your environment — nobody else's:**
 
 - Worktree: `<wt root>/<N>-<slug>` — work **only** here. Never touch the main checkout, never touch another worktree.
+  Your shell may start in the main checkout: use `git -C <worktree>` or chain a `cd` with `&&`, never `;` — a failed
+  `cd` then runs the rest in the main checkout (`shell-traps.md`). Pass settings as environment variables; never write
+  a `.env` outside your worktree.
 - Branch: `feat/<N>-<slug>`, already created and checked out. **Never switch branches and never `git stash`**, here
   or in any other checkout.
 - Runtimes: use the exact interpreter and SDK paths in this brief (`<runtime paths>`), never the plain command on PATH —
@@ -44,6 +47,8 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
 6. Green the gate the project's `CLAUDE.md` lists (build → lint → typecheck → full suite). Every command in the chain.
    No exceptions.
 7. `git merge origin/main` if you are behind — **never rebase, never stash**. Resolve conflicts in your own files only.
+   After every merge, re-read what it brought into the files and rules your change touches: a clean merge can still
+   let your code bypass a sibling story's new behaviour, or add a case your own rule must now cover.
 8. Add this pull request's **own changelog file**, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (today's date, the branch name with `/`
    turned into `-`), holding one line: what changed and why it matters, a few words, never a restatement of the diff.
    Never edit another pull request's file or an old single-file changelog, so parallel pull requests never conflict
@@ -51,6 +56,7 @@ You are implementing GitHub issue **#N** of this repository (the one `origin` po
    change to user-visible behaviour** (a screen, a command, an output a person reads) **also updates
    `docs/runbook.md`** in this pull request (create it with a `# Runbook` heading if it does not exist). Then
    commit with Conventional Commits (`type(scope): summary`). **Never `git add -A`** — add the files you actually touched.
+   **Never `--no-verify`**, not even on a local work-in-progress commit.
 9. Push the branch the first time with `git push -u origin feat/<N>-<slug>` (it was created with no upstream, so a
    plain `git push` has nowhere to go), then open the pull request with **`Closes #<N>`** in the body, plus the
    evidence table below.
@@ -103,8 +109,10 @@ report; **you never write a file for it**. Name an owner story only when that st
 whose seam excludes the fix leaves the finding orphaned). **A low finding is reported nowhere** — not in a `Defer:`
 line, not in a bullet; if it is worth a sentence it is a `Fix now:` in a file you already touch, or nothing.
 
-**If the gate is already red before you change anything** (run it once after step 1, before step 2): stop. Report
-`INHERITED RED` with every failing test named. Do not fix tests outside your issue, do not weaken them, do not open a
+**If the gate is already red before you change anything** (run it once after step 1, before step 2): first re-run each
+failing test alone. One that passes alone failed under load: re-run the baseline one suite at a time, and carry on when
+that is green. Otherwise stop and report `INHERITED RED` with the `main` commit, every failing test's whole failure line
+(an output filter that cuts it loses the test's name and message), and whether it passed alone. Do not fix tests outside your issue, do not weaken them, do not open a
 pull request. The orchestrator opens a `bug` issue for `main` and releases your issue; nobody blames the story.
 **Exception:** when your issue *is* the bug that greens the gate on `main`, the red gate is the starting point, not
 `INHERITED RED` — the issue names which commands are expected red; any other red command still stops you.

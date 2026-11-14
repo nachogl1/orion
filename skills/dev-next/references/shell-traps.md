@@ -31,6 +31,16 @@ real run, add it here in a pull request. Read this the moment a command behaves 
   the file with the file tool.
 - **Never pass a body inline with `--body "..."`**: backticks in it are run as commands by bash. Always `--body-file`.
 
+## Where a command runs
+
+- **A failed `cd` in a `;` chain runs the rest in the folder you started in** — for a sub-agent, the main checkout.
+  One failed clone and `cd` that way overwrote a developer's gitignored `.env` there with placeholders, with no copy
+  to restore. Chain with `&&` (bash) or `; if ($?) { … }` (PowerShell 5.1), prefer `git -C <path>` over `cd`, and
+  pass settings as environment variables rather than writing a `.env`.
+- **`gh` run outside a git checkout** (the worktree root, say) finds no repository, and a script that hides its error
+  reads the answer as empty: a CI poll then waits out its cap on checks that are already green. Run `gh` from inside
+  the worktree, or pass `-R <owner>/<repo>`.
+
 ## Paths
 
 - Windows refuses paths over roughly 260 characters. A worktree inside the project plus a dependency folder gets
@@ -41,6 +51,10 @@ real run, add it here in a pull request. Read this the moment a command behaves 
 
 - `gh` and the runtimes may be **off PATH in a fresh shell** even though they work in your terminal. Check in preflight.
 - `git` returns `index.lock` when another terminal is mid-command. Wait 5 seconds, retry, up to 3 times. It is not corruption.
+- **Refs pointing at missing objects after a GitHub incident** (`git fsck` or a fetch names a missing object; seen
+  with sibling terminals fetching at once): a plain `git fetch` cannot repair it. Delete the broken remote-tracking
+  refs (`git update-ref -d refs/remotes/origin/<name>`, re-fetched anyway), then `git -c
+  fetch.negotiationAlgorithm=noop fetch origin`.
 - **Git Bash: `git rev-parse` with two revisions in one call** fails with `Needed a single revision`. One call per revision.
 - **Git Bash: `$TEMP` is not the session scratchpad** — it resolves to a different folder, so a file written there is
   not where the next tool looks. Use the scratchpad's explicit path.

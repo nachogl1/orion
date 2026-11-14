@@ -18,14 +18,20 @@ never change the worktree's git state.
 1. `gh issue view <N> --json title,body,labels,comments` — the acceptance criteria, any `## Decisions (agent-ready)`,
    and every harvest comment that hands a finding to this story: those bind like the Decisions.
 2. `gh pr diff <P>` — read the whole diff.
-3. **Get the suite result once, never twice.** If CI exists and ran the full suite on the pull request's head commit,
+3. **Conflict first.** Read `gh pr view <P> --json mergeable,mergeStateStatus`: `CONFLICTING` or `DIRTY` → stop and
+   report `CHANGES REQUESTED` with the conflict as the one must-fix. GitHub registers no CI run on a conflicting head,
+   so waiting for one only burns time.
+   **Get the suite result once, never twice.** If CI exists and ran the full suite on the pull request's head commit,
    read it with `gh pr checks <P>` and do not re-run. Still pending → keep polling in a loop until it completes; never
    stop with a monitor armed and no verdict posted. If CI does not exist, or does not run the suite, run the gate
    yourself in the worktree, exactly as the project's `CLAUDE.md` lists it. Either way, do not trust the dev agent's
    report.
 4. Spot-check the evidence table: pick one row and re-run it. If it does not hold, that is a blocking finding. Put any
    file you create in a fresh `mktemp -d` of your own: a scratch folder shared with earlier agents can turn a
-   spot-check into a silent no-op. A test count that differs from CI's because `main` moved is not a finding.
+   spot-check into a silent no-op. A clean copy of the branch goes there too (`git -C <worktree> archive HEAD | tar -x
+   -C <that folder>`), never a clone whose failure leaves you in the main checkout. Chain every `cd` with `&&`, never
+   `;`, and pass settings as environment variables, never by writing a `.env` (`shell-traps.md`). A test count that
+   differs from CI's because `main` moved is not a finding.
 
 ## Block the merge only on these
 

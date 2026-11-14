@@ -1,0 +1,1 @@
+dev-next survives GitHub outages and stuck CI runs without handing green stories to a person, edits the in-flight file by run id only, stops staggering past claimed siblings, and briefs its agents against a few traps that cost recent runs real time.
