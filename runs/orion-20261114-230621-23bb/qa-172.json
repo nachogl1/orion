@@ -1,0 +1,26 @@
+{
+  "run_id": "orion-20261114-230621-23bb",
+  "issue": 172,
+  "title": "dev-next: runs on one computer test on the newest main and cap their test copies",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 206,
+  "merged_at": "2026-11-14T23:49:00Z",
+  "seam": "skills/dev-next/references/, orion.sh starter, tests/run.sh",
+  "story": "A new project's starter rules file now has a row saying how its full suite takes a number of test copies, or none. /dev-next now merges the newest main before its checks instead of after them, refuses to merge a branch that has fallen behind main, and works out how many test copies to run from the computer's cores, the runs in progress and the free memory.",
+  "checks": [
+    {
+      "key": "orion.sh/init-starter-test-copies-row",
+      "criterion": "init writes the new test-copies row into the starter CLAUDE.md",
+      "steps": "Make an empty git folder, run bash orion.sh init --project <tmp> --update-mode ask, then open <tmp>/CLAUDE.md.",
+      "expected": "The commands table has a Test copies row reading TBD."
+    },
+    {
+      "key": "orion.sh/verify-filled-copies-row",
+      "criterion": "A filled copies row is not reported as an unfilled slot",
+      "steps": "In that project, replace CLAUDE.md with the import line plus a row '| Test copies | `-n <copies>` |', then run bash orion.sh verify --project <tmp>.",
+      "expected": "No claude-md-slots warning."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "22d280000e9e28d6980429674add86d4e071a46f"
+}

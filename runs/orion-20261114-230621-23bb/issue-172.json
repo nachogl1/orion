@@ -1,0 +1,43 @@
+{
+  "run_id": "orion-20261114-230621-23bb",
+  "issue": 172,
+  "title": "dev-next: runs on one computer test on the newest main and cap their test copies",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T23:06:21Z",
+  "finished_at": "2026-11-14T23:50:00Z",
+  "outcome": "merged",
+  "pr": 206,
+  "summary": "dev-next now merges origin/main before its gate, refuses to merge a branch behind main, and sizes test copies from physical cores, live runs and free memory with one recipe in in-flight.md; the starter CLAUDE.md gains a test-copies row. Version 23.",
+  "agents": [
+    {
+      "name": "dev-172",
+      "model": "opus",
+      "tokens_total": 163068
+    },
+    {
+      "name": "review-172",
+      "model": "opus",
+      "tokens_total": 128101
+    },
+    {
+      "name": "review-172-r2",
+      "model": "opus",
+      "tokens_total": 121368
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 724,
+    "review_seconds": 1208,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [
+    "On Windows Git Bash python3 is often the Microsoft Store alias; any shell recipe a skill ships must pick its interpreter the way tests/run.sh does"
+  ],
+  "deferred": []
+}
