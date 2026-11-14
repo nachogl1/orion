@@ -666,7 +666,7 @@ HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/
 rm -rf "$P/.claude/orion/statusline"; sed -n '1,3p' "$P/.claude/orion/VERSION" > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
 check "update at the same commit still adds what an older orion.sh did not copy" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/statusline/statusline.sh" ] && [ -n "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
 rm -rf "$P/.claude/orion/statusline"; set_cfg updateMode '"ask"'
-check "check offers the update to a project an older orion.sh updated, though the commit is the same" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "check offers no update to a project an older orion.sh updated, at the same commit (the next update copies what is missing)" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 set_cfg updateMode '"off"'; HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1
 : > "$SLH/.claude/statusline/.DS_Store"
 sl_release 10 2 '# orion v5d'; sl_pull
