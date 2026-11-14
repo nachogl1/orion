@@ -97,8 +97,9 @@ case "$(uname -s)" in
           cores=$(powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Measure-Object NumberOfCores -Sum).Sum" | tr -d '\r')
           free_mb=$(powershell -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1024)" | tr -d '\r') ;;
 esac
-# runs: the live entries of the in-flight file (python3, or python on Windows)
-runs=$(python3 - "<wt root>/in-flight.json" <<'PY'
+# runs: the live entries of the in-flight file. Windows often has a python3 that is only a store alias, so test it
+python3 -c 'import json' >/dev/null 2>&1 && PY=python3 || PY=python
+runs=$("$PY" - "<wt root>/in-flight.json" <<'PY'
 import json, sys, datetime as dt
 try: issues = json.load(open(sys.argv[1], encoding="utf-8-sig")).get("issues") or []
 except Exception: issues = []
@@ -109,14 +110,18 @@ def live(e):
 print(max(1, sum(1 for e in issues if isinstance(e, dict) and live(e))))
 PY
 )
+# a reading that printed no number: half the logical cores, one run, and memory counted as not free
+case "$cores" in ''|*[!0-9]*|0) cores=$(( $(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2) / 2 )) ;; esac
+case "$runs" in ''|*[!0-9]*|0) runs=1 ;; esac
+case "$free_mb" in ''|*[!0-9]*) free_mb=0 ;; esac
 copies=$(( cores / runs )); [ $(( cores / 2 )) -lt "$copies" ] && copies=$(( cores / 2 ))
 [ "$copies" -lt 1 ] && copies=1
 [ "$free_mb" -lt 2048 ] && copies=1
 ```
 
-A reading that fails or prints no number (a minimal container without `lscpu`, say): take the logical cores from
-`getconf _NPROCESSORS_ONLN` and halve them for `cores`, and take copies = 1 when free memory cannot be read. Inside a
-virtual machine or WSL the readings are what that machine is given, not the host's.
+A reading that fails or prints no number (a minimal container without `lscpu`, a missing Python, say) never stops
+the run: `cores` falls back to half the logical cores from `getconf _NPROCESSORS_ONLN`, `runs` to 1, and free memory
+to none, so copies = 1. Inside a virtual machine or WSL the readings are what that machine is given, not the host's.
 
 ## The merge slot
 
