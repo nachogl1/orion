@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261114-222814-bb0b",
+  "issue": 170,
+  "title": "Baseline: write the rule changes the improvement map decided",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 204,
+  "merged_at": "2026-11-14T23:04:00Z",
+  "seam": "baselines/BASE_CLAUDE.md",
+  "story": "The mandatory rules file now says agents merge their own pull requests on green except PRD, ADR, prototype, CLAUDE.md, outside-change and owner-merges ones; later PRD tiers are blocked by the earlier tier's final stories; a PRD that names screens waits for its merged prototype; maps after the first may end in ADRs only; the harvest asks one question per group; new tests are budgeted; and local test runs size their test copies.",
+  "checks": [],
+  "no_qa_reason": "A rules document only; nothing a user can run.",
+  "merge_commit": "6d36ab3a50e305943716c0aeea58cb1f2c609e4f"
+}

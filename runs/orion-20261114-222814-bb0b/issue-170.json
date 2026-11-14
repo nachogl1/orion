@@ -1,0 +1,49 @@
+{
+  "run_id": "orion-20261114-222814-bb0b",
+  "issue": 170,
+  "title": "Baseline: write the rule changes the improvement map decided",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T22:28:14Z",
+  "finished_at": "2026-11-14T23:05:00Z",
+  "outcome": "merged",
+  "pr": 204,
+  "summary": "Wrote the seven decided rule changes (who merges, tier order, UX prototype gate, PRD or ADRs, harvest grouping, test budget, test copies) into the baseline, and fixed two contradictions they caused in orion's own CLAUDE.md. Version 21.",
+  "agents": [
+    {
+      "name": "dev-170",
+      "model": "opus",
+      "tokens_total": 155891
+    },
+    {
+      "name": "review-170",
+      "model": "opus",
+      "tokens_total": 136275
+    },
+    {
+      "name": "review-170-r2",
+      "model": "opus",
+      "tokens_total": 129158
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 710,
+    "review_seconds": 434,
+    "ci_seconds": 120
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "docs/guide/",
+      "what": "The public guide's dev-next Merge box still says /dev-next is the only skill that merges its own pull requests and every other pull request is merged by a person, which contradicts the baseline's new Who merges rule",
+      "why": "Outside this story's seam (baseline and CLAUDE.md only); no open story on the epic lists that box",
+      "owner": "unowned — next harvest"
+    }
+  ]
+}
