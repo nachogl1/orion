@@ -234,7 +234,7 @@ stand in. **Disagreement is a bug**: the PRD wins on product, the rules files wi
   a slow whole-app test only for what a fast one cannot reach. A new test checks behaviour a user or caller relies on,
   through the public way in, never the internals; it fails if that behaviour breaks; it repeats no other test (the same
   behaviour over several inputs is one test over a list of inputs); it never tests a library, trivial code or the
-  test's own mocks. There is no cap on the count. Tests already in the suite stay untouched.
+  test's own mocks. There is no cap on the count. Tests already in the suite are not pruned to meet this rule.
 - **Never delete, skip or weaken a test. Never widen a timeout to make a run pass. The skip count is baselined; a
   change to it fails.**
 - **Pre-existing failures are still your responsibility:** fix them or surface them explicitly and get an
