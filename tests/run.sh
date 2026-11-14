@@ -61,6 +61,14 @@ if [ -n "\${FAKE_CP_SLEEP:-}" ] && [ ! -e "$SB/cp-slept" ]; then : > "$SB/cp-sle
 exec "$REAL_CP" "\$@"
 EOF
 chmod +x "$SB/bin/cp"
+# The fake date: `date +%s` answers $FAKE_NOW when set, so a check can run days later without waiting for them.
+REAL_DATE="$(command -v date)"
+cat > "$SB/bin/date" <<EOF
+#!/usr/bin/env bash
+if [ "\${1:-}" = +%s ] && [ -n "\${FAKE_NOW:-}" ]; then printf '%s\n' "\$FAKE_NOW"; exit 0; fi
+exec "$REAL_DATE" "\$@"
+EOF
+chmod +x "$SB/bin/date"
 # The fake npx: installing the status line warms a cost cache through npx, which would reach the network.
 printf '#!/usr/bin/env bash\nexit 1\n' > "$SB/bin/npx"; chmod +x "$SB/bin/npx"
 FAKEPATH="$SB/bin:$PATH"
@@ -263,6 +271,10 @@ check "init records orion's version number" eval '[ "$(sed -n 5p "$P/.claude/ori
 check "status shows it" eval 'bash "$ORION" status --project "$P" | grep -q "version:    orion $NUM,"'
 check "a newer commit without a higher release number: silent" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && [ ! -s "$SB/hook" ]'
 check "a higher release number: the update is offered by number, in one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM $((NUM+1))" run_check --force && grep -q "newer orion.*orion $((NUM+1))" "$SB/hook" && hook_out_ok "$SB/hook"'
+mv "$P/.claude/orion/global" "$SB/global-aside"
+check "the newest release installed and a baseline folder missing: no update offer, one JSON line or none" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "the same commit and a baseline folder missing: no update offer" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" run_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
+mv "$SB/global-aside" "$P/.claude/orion/global"
 set_cfg ref '"other"'
 check "a ref other than main goes by commit, not by release number" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && grep -q "newer orion" "$SB/hook"'
 # A pull request that changes what projects receive must raise the number, or no project is offered it.
@@ -313,7 +325,26 @@ printf '\nmore\n' >> "$P/.claude/skills/dev-next/references/new-issue.md"
 check "a changed file of an orion skill asks again" eval 'FAKE_LS_SHA="$V" run_check --force && asked_rules'
 printf '\nmore\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"
 check "a changed script does not ask" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
-check "a computer that never checked these rules asks (a teammate after a pull)" eval 'XDG_CACHE_HOME="$SB/cache-mate" FAKE_LS_SHA="$V" run_check --force && asked_rules'
+asked_new() { grep -q "orion is new on this computer" "$SB/hook" && ! asked_rules; }
+check "a computer that never checked these rules asks once, as new on this computer, not as changed rules" eval 'XDG_CACHE_HOME="$SB/cache-mate" FAKE_LS_SHA="$V" run_check --force && asked_new && hook_out_ok "$SB/hook"'
+check "and nothing on the next check" eval 'XDG_CACHE_HOME="$SB/cache-mate" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+# Line endings: the same rules with Windows or Unix line endings are the same rules.
+crlf() { local f; for f in "$@"; do awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$f" > "$SB/crlf" && mv "$SB/crlf" "$f"; done; }
+lf() { local f; for f in "$@"; do tr -d '\r' < "$f" > "$SB/lf" && mv "$SB/lf" "$f"; done; }
+RULE_FILES=("$P/.claude/orion/BASE_CLAUDE.md" "$P/.claude/skills/dev-next/SKILL.md")
+crlf "${RULE_FILES[@]}"
+check "rules checked with Windows line endings: silent once they turn to Unix line endings" eval 'XDG_CACHE_HOME="$SB/cache-mate" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ] && lf "${RULE_FILES[@]}" && XDG_CACHE_HOME="$SB/cache-mate" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+# The fingerprint orion took before it ignored line endings: the raw bytes of BASE_CLAUDE.md, then every .md file
+# of every orion skill in sorted path order.
+raw_rules_sum() {
+    local d dirs=()
+    for d in "$P"/.claude/skills/*/; do [ -f "${d%/}/.orion-managed" ] && dirs+=("${d%/}"); done
+    { cat "$P/.claude/orion/BASE_CLAUDE.md"; find "${dirs[@]}" -type f -name '*.md' | LC_ALL=C sort | while IFS= read -r f; do cat "$f"; done; } | cksum | cut -d' ' -f1
+}
+crlf "${RULE_FILES[@]}"; mkdir -p "$SB/cache-raw/orion"; raw_rules_sum > "$SB/raw-sum"
+for f in "$SB/cache-mate/orion/"*.rules-checked; do cp "$SB/raw-sum" "$SB/cache-raw/orion/${f##*/}"; done
+check "a fingerprint stored by the older orion (raw bytes) is silent and rewritten" eval 'XDG_CACHE_HOME="$SB/cache-raw" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ] && ! cmp -s "$SB/raw-sum" "$SB/cache-raw/orion/"*.rules-checked'
+check "so the line endings may change after it, still silent" eval 'lf "${RULE_FILES[@]}" && XDG_CACHE_HOME="$SB/cache-raw" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
 check "verify records the rules it checked" eval 'XDG_CACHE_HOME="$SB/cache-mate2" bash "$ORION" verify --project "$P" >/dev/null 2>&1; XDG_CACHE_HOME="$SB/cache-mate2" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
 rm -rf "$P/.claude/skills/orion-verify"
 check "without the /orion-verify skill nothing is asked" eval 'XDG_CACHE_HOME="$SB/cache-mate3" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
@@ -326,6 +357,17 @@ check "an update that leaves the rules alone does not" eval 'bash "$P/.claude/or
 printf '\n- the newest rule\n' >> "$SRC/baselines/BASE_CLAUDE.md"; "$REAL_GIT" -C "$SRC" -c core.autocrlf=false commit -qam rules2
 set_cfg updateMode '"auto"'
 check "an auto-update that changes the rules asks for /orion-verify in the same session, one JSON line" eval 'run_check --force && grep -q "updated automatically" "$SB/hook" && asked_rules && hook_out_ok "$SB/hook"'
+
+echo "one record per repository (every worktree of one clone shares what this computer recorded)"
+# Checked by an older orion first (its records are keyed on the folder), then the folder becomes a git repository.
+newproj; init ask; consume_marker; MAIN="$P"
+"$REAL_GIT" -C "$MAIN" init -q -b main && "$REAL_GIT" -C "$MAIN" -c core.autocrlf=false add . && "$REAL_GIT" -C "$MAIN" commit -qm init
+"$REAL_GIT" -C "$MAIN" worktree add -q "$SB/wt-second" -b second 2>/dev/null
+check "the main checkout's folder record is carried over: silent" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+P="$SB/wt-second"
+check "a second worktree of a checked repository: silent" eval 'FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
+check "update --skip given in one worktree holds in another" eval 'skip_update 1111111111111111111111111111111111111111 && P="$MAIN" && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && [ ! -s "$SB/hook" ]'
+P="$MAIN"
 
 echo "branch counter (hook and scanner count the same, two remotes)"
 newproj; "$REAL_GIT" -C "$P" init -q -b main; "$REAL_GIT" -C "$P" commit -q --allow-empty -m one
@@ -476,9 +518,19 @@ check "right after init, the post-install message also offers the discussion" ev
 check "the project carries GLOBAL_CLAUDE.md, listed in the manifest" eval '[ -f "$P/.claude/orion/global/GLOBAL_CLAUDE.md" ] && grep -qx "global/GLOBAL_CLAUDE.md" "$P/.claude/orion/.orion-manifest"'
 check "no ORION GLOBAL section yet: the discussion is offered, in one JSON line" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 check "and the hook wrote no personal rules file" eval '[ ! -e "$PERSONAL" ]'
-check "it is offered once a day per computer" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global'
+check "it is offered once: the next check is silent" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global'
+LATER=$(( $(date +%s) + 2 * 86400 )); GP="$P"
+newproj; HOME="$GH" init ask; consume_marker; GP2="$P"; P="$GP"
+check "two days later still silent, in this project and in another" eval 'FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && [ ! -s "$SB/hook" ] && P="$GP2" && FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && [ ! -s "$SB/hook" ]'
+P="$GP"; cp "$P/.claude/orion/global/GLOBAL_CLAUDE.md" "$SB/global-copy"
+printf -- '- a newer rule <!-- orion:v%s -->\n' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+check "a clause with a higher version than the one offered is offered once more" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook" && FAKE_LS_SHA="$V" gl_check && ! asked_global'
+check "check --force still offers" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
+cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+check "the offer no longer says it comes back tomorrow" eval '! grep -q tomorrow "$SB/hook"'
 printf '%s' "$(( $(date +%s) - 86401 ))" > "$XDG_CACHE_HOME/orion/global-offered"
-check "and offered again once that day has passed" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
+check "a time stamp an older orion left counts as nothing offered: one last offer" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
+check "and none after it, two days later" eval 'FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && ! asked_global'
 section 1
 check "a clause above the section's version number is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 section "$NEWEST"
