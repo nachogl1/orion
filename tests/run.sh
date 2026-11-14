@@ -160,6 +160,15 @@ for tool in $tools; do
 done
 if [ "$WINDOWS_ONLY" = 1 ]; then summary; exit; fi
 
+echo "a renamed skill (update swaps orion's old copy, never a project's own folder)"
+# An install from before the drift check was renamed: its managed copy still carries the old folder name.
+newproj; init ask
+mv "$P/.claude/skills/reconcile" "$P/.claude/skills/reconcile-issue-map"
+check "an install carrying the old managed folder has the new one and not the old after update" eval 'bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && [ -f "$P/.claude/skills/reconcile/SKILL.md" ] && [ ! -e "$P/.claude/skills/reconcile-issue-map" ]'
+newproj; init ask
+mkdir -p "$P/.claude/skills/reconcile-issue-map"; printf 'own skill\n' > "$P/.claude/skills/reconcile-issue-map/SKILL.md"
+check "a project's own folder with the old name is left alone by update" eval 'bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && [ "$(cat "$P/.claude/skills/reconcile-issue-map/SKILL.md")" = "own skill" ] && [ ! -e "$P/.claude/skills/reconcile-issue-map/.orion-managed" ]'
+
 echo "issue map (the generator against fixture issues: a fake gh, no network)"
 # Epic #1 holds #2 and #3; #2 -> #3 -> #4 is a chain three levels deep, and #3 is assigned while #2 is still open;
 # #4's body section names a blocker GitHub's relation does not, and #6 has a native blocker but no section; #5 is

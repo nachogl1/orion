@@ -211,7 +211,7 @@ aside.drawer.on{transform:none}
     <div class="graph-card">
       <div class="graph-scroll"><svg id="flow" class="og" viewBox="0 0 1200 980" role="img" aria-labelledby="flowTitle flowDesc">
         <title id="flowTitle">The orion workflow</title>
-        <desc id="flowDesc">Define: stakeholders and brief, wayfinder, PRD, prd-to-tickets into GitHub Issues. Build: dev-next claims, asks, develops, reviews, merges and audits each story. Learn: harvest-qa, harvest and reconcile-issue-map turn what runs left behind into new issues. Always on: housekeeping and sharing skills.</desc>
+        <desc id="flowDesc">Define: stakeholders and brief, wayfinder, PRD, prd-to-tickets into GitHub Issues. Build: dev-next claims, asks, develops, reviews, merges and audits each story. Learn: harvest-qa, harvest and reconcile turn what runs left behind into new issues. Always on: housekeeping and sharing skills.</desc>
       </svg></div>
       <div class="graph-foot">
         <span>Click any box for the full detail. <span class="kbd">←</span> <span class="kbd">→</span> step through, <span class="kbd">Esc</span> closes.</span>
@@ -465,7 +465,7 @@ const NODES = {
       "Counts the piles across the team and ends with a nudge when one is due."
     ],
     you:["Read the closing lines: they tell you which learning skill to run next."],
-    out:["\"Harvest due: run /harvest\" at 10 unharvested notes.","\"QA due: run /harvest-qa\" at 5 untested records.","\"Drift found: run /reconcile-issue-map\" when the issues, labels or PRD look out of step."],
+    out:["\"Harvest due: run /harvest\" at 10 unharvested notes.","\"QA due: run /harvest-qa\" at 5 untested records.","\"Drift found: run /reconcile\" when the issues, labels or PRD look out of step."],
     rules:["The audit branch is pushed directly, has no pull request and never merges into main."]},
 
   records:{phase:"B", actor:"store", touch:"none", kicker:"The one pile", title:"audit/<login> branches",
@@ -505,7 +505,7 @@ const NODES = {
     out:["As few new tasks as possible, back in the backlog.","Rule improvements the runs taught."],
     rules:["Nothing is filed or dropped without your word.","Run by a person, never by another skill."]},
 
-  reconcile:{phase:"C", actor:"both", touch:"always", kicker:"Learn · Drift", title:"/reconcile-issue-map", cmd:"/reconcile-issue-map",
+  reconcile:{phase:"C", actor:"both", touch:"always", kicker:"Learn · Drift", title:"/reconcile", cmd:"/reconcile",
     sub:"Checks that the PRDs, the issues and the code on main still tell one story.",
     what:[
       "Looks through four lenses: the PRD asks for something no story covers; a story the PRD does not ask for; the issue map is broken; the product does not match what the issues say.",
