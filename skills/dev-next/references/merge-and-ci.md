@@ -60,7 +60,7 @@ on the pull request is the gate**; otherwise every check that ran on the pull re
 shows `SKIPPED` on pull requests (a job that runs only on `main`, such as a publish or deploy job) is not red. Nobody
 runs the suite locally a second time — the suite runs once per gate, never once locally and once in CI. If no CI exists,
 or it does not run the full suite, the orchestrator runs the gate on the merged branch in the worktree before merging,
-and that run is the gate.
+and that run is the gate; it sizes the full suite's test copies right before it runs (`in-flight.md`, *Test copies*).
 
 - **Green** → merge.
 - **Red** → release `merging`, then send the failure back to a fresh `dev-N` round; the branch re-takes the slot when
@@ -77,10 +77,17 @@ and that run is the gate.
 
 ```
 # first: re-read the in-flight file — merging.run must be yours, else do NOT merge (in-flight.md, The merge slot, step 3)
+# then: the branch must not be behind main — anything but 0 means main moved, so go back to step 1
+git -C <wt root>/<N>-<slug> fetch origin
+git -C <wt root>/<N>-<slug> rev-list --count HEAD..origin/main
 gh pr merge <P> --squash               # no --delete-branch: step 5 deletes the branches
 gh pr view <P> --json state           # must be MERGED; judge by this, not by the exit code
 gh issue view <N> --json title,body,labels,comments,state   # state must be CLOSED
 ```
+
+**Right before `gh pr merge`, check the branch is not behind `origin/main`.** The slot keeps this machine's other
+terminals out, but a person or another machine can still land on `main` while CI runs. A count above 0 → do not
+merge: keep the slot and go back to step 1 (merge `main` in, push, then the gate of steps 2 and 3 on the new head).
 
 Use the merge method the project's `CLAUDE.md` names; squash is the default.
 

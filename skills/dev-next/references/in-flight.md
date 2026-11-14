@@ -54,8 +54,69 @@ each other and so the merge queue below has a picture of what is coming; it neve
 **never waits** on its length. In phase 1 a terminal reads the file, claims its issue (phase 1 steps 1-3), then fills in its
 entry and writes the file.
 
-There is no per-terminal agent cap either: every issue a session picks runs at once. Nothing caps the machine but the
-one-at-a-time merge queue.
+There is no per-terminal agent cap either: every issue a session picks runs at once. Nothing caps how many runs start
+but the one-at-a-time merge queue; what each run's tests take of the machine is sized by *Test copies* below.
+
+## Test copies
+
+Runs sharing one computer each size their own test load (the baseline's *Test copies* rule), so neither one waits long
+nor do they clash. **This is the one place the recipe is written**; every local run of the full suite follows it: the
+dev agent's gate (`dev-agent.md`), the reviewer's run when it runs the suite itself (`review-agent.md`) and the
+orchestrator's run on the merged branch (`merge-and-ci.md` step 3). Work it out fresh, right before each run, never
+once per session:
+
+1. `cores` = the computer's physical cores, not its logical ones.
+2. `runs` = the live entries in this file's `issues` list: issue-less ones included, stale ones (*Stale entries* above)
+   left out, and never fewer than 1, since your own run is one of them.
+3. copies = the smaller of `cores ÷ runs` and `cores ÷ 2`, rounded down, and at least 1.
+4. Less than 2 GB of memory free → copies = 1, whatever step 3 says.
+
+| Computer | `cores` | `runs` | Free memory | Copies |
+|---|---|---|---|---|
+| A laptop testing alone | 4 | 1 | plenty | 2 (the half-the-cores ceiling) |
+| The same laptop, two runs | 4 | 2 | plenty | 2 each |
+| The same laptop, four runs | 4 | 4 | plenty | 1 each |
+| Any computer with memory almost full | any | any | under 2 GB | 1 each |
+| A desktop, two runs | 16 | 2 | plenty | 8 each |
+
+**Passing the count.** The project's `CLAUDE.md` has a *Test copies* row in its commands table: how the full suite
+takes `<copies>` (a flag such as `-n <copies>`, or a whole command or variable that holds it). Run the full suite with
+that `<copies>` replaced by the number. A row reading `none` or `TBD`, or no row at all, changes nothing: the suite runs
+exactly as listed. Say the copies and how they were worked out (`cores`, `runs`, free memory) in the evidence table.
+
+**Reading the computer** — portable bash; Windows means Git Bash:
+
+```bash
+case "$(uname -s)" in
+  Linux)  cores=$(lscpu -p=Core,Socket | grep -v '^#' | sort -u | wc -l)
+          free_mb=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo) ;;
+  Darwin) cores=$(sysctl -n hw.physicalcpu)
+          free_mb=$(vm_stat | awk '/page size of/ {ps=$8} /^Pages free:/ {f=$3} /^Pages inactive:/ {i=$3}
+                                   /^Pages speculative:/ {s=$3} END {print int((f+i+s)*ps/1048576)}') ;;
+  MINGW*|MSYS*|CYGWIN*)
+          cores=$(powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Measure-Object NumberOfCores -Sum).Sum" | tr -d '\r')
+          free_mb=$(powershell -NoProfile -Command "[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1024)" | tr -d '\r') ;;
+esac
+# runs: the live entries of the in-flight file (python3, or python on Windows)
+runs=$(python3 - "<wt root>/in-flight.json" <<'PY'
+import json, sys, datetime as dt
+try: issues = json.load(open(sys.argv[1], encoding="utf-8-sig")).get("issues") or []
+except Exception: issues = []
+now = dt.datetime.now(dt.timezone.utc)
+def live(e):
+    try: return now - dt.datetime.fromisoformat(e["startedAt"].replace("Z", "+00:00")) < dt.timedelta(hours=4)
+    except Exception: return False
+print(max(1, sum(1 for e in issues if isinstance(e, dict) and live(e))))
+PY
+)
+copies=$(( cores / runs )); [ $(( cores / 2 )) -lt "$copies" ] && copies=$(( cores / 2 ))
+[ "$copies" -lt 1 ] && copies=1
+[ "$free_mb" -lt 2048 ] && copies=1
+```
+
+A reading that fails or prints no number (a minimal container without `lscpu`, say): take the logical cores from
+`getconf _NPROCESSORS_ONLN` and halve them for `cores`, and take copies = 1 when free memory cannot be read. Inside a
+virtual machine or WSL the readings are what that machine is given, not the host's.
 
 ## The merge slot
 
