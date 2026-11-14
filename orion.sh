@@ -155,14 +155,19 @@ short() { printf '%s' "${1:0:7}"; }
 CACHE_KEY="" CACHE_KEY_OF="" LEGACY_KEY=""
 cache_key_set() {  # sets CACHE_KEY and LEGACY_KEY for $PROJECT; call it outside $(...) once, so later calls reuse it
     [ "$CACHE_KEY_OF" = "$PROJECT" ] && return 0
-    local common
-    # git prints the prefix (an empty line at the top of a checkout), then the shared git folder
-    common="$(cd "$PROJECT" 2>/dev/null && out="$(git rev-parse --show-prefix --git-common-dir 2>/dev/null)" \
-        && case "$out" in ($'\n'?*) cd "${out#$'\n'}" 2>/dev/null && pwd ;; esac)" || common=""
+    local out common="" main
+    # git prints the prefix (an empty line at the top of a checkout), then the shared git folder: ".git" in the main
+    # checkout, the physical path from a worktree, so the folder is resolved physically (pwd -P) in both
+    out="$(cd "$PROJECT" 2>/dev/null && git rev-parse --show-prefix --git-common-dir 2>/dev/null)" || out=""
+    case "$out" in
+        ($'\n'?*) out="${out#$'\n'}"; common="$(cd "$PROJECT" 2>/dev/null && cd "$out" 2>/dev/null && pwd -P)" || common="" ;;
+    esac
     CACHE_KEY_OF="$PROJECT" LEGACY_KEY=""
     if [ -n "$common" ]; then
         CACHE_KEY="$(printf '%s' "$common" | cksum | cut -d' ' -f1)"
-        case "$common" in */.git) LEGACY_KEY="$(printf '%s' "${common%/.git}" | cksum | cut -d' ' -f1)" ;; esac
+        # an older orion keyed the main checkout on the path it was opened by: that path in the main checkout itself
+        main="${common%/.git}"; [ "$out" = .git ] && main="$PROJECT"
+        case "$common" in */.git) LEGACY_KEY="$(printf '%s' "$main" | cksum | cut -d' ' -f1)" ;; esac
     else
         CACHE_KEY="$(printf '%s' "$PROJECT" | cksum | cut -d' ' -f1)"
     fi
@@ -194,9 +199,18 @@ rules_sum() {  # [raw]
         | if [ "${1:-}" = raw ]; then cat; else tr -d '\r'; fi | cksum | cut -d' ' -f1
 }
 
-rules_mark() {  # [sum]: records that this computer has checked these rules
-    local f; f="$(cache_file rules-checked)"
-    mkdir -p "$(dirname "$f")" 2>/dev/null && printf '%s' "${1:-$(rules_sum)}" > "$f" || true
+# The rules-checked record holds every fingerprint this computer has checked for the repository, one per line, newest
+# last, the last RULES_KEPT kept: a main checkout and a worktree on different orion rules both stay checked. A record
+# an older orion wrote holds one fingerprint and reads the same way.
+RULES_KEPT=20
+rules_checked() {  # sum: 0 when this computer has checked these rules for the repository
+    grep -qxF -- "$1" "$(cache_file rules-checked)" 2>/dev/null
+}
+rules_mark() {  # [sum]: adds these rules to the ones this computer has checked
+    local f sum; f="$(cache_file rules-checked)"; sum="${1:-$(rules_sum)}"
+    mkdir -p "$(dirname "$f")" 2>/dev/null || return 0
+    { { grep -vxF -- "$sum" "$f" 2>/dev/null || true; printf '%s\n' "$sum"; } | tail -n "$RULES_KEPT" > "$f.new" \
+        && mv "$f.new" "$f"; } || true
 }
 
 # The `name:` value of a skill's front matter (quotes stripped), or nothing.
@@ -1063,7 +1077,7 @@ check_update_ctx() {  # force
 # brought one), ask for /orion-verify. Runs after the update check, so an auto-update is seen in the same session.
 # A repository with no record on this computer (a fresh clone) is asked once too, worded as new, not as changed.
 check_rules_ctx() {
-    local sum f stored
+    local sum f
     [ -f "$PROJECT/.claude/skills/orion-verify/SKILL.md" ] || return 0
     sum="$(rules_sum)"; f="$(cache_file rules-checked)"
     if [ ! -f "$f" ]; then
@@ -1071,11 +1085,10 @@ check_rules_ctx() {
         printf '%s' "orion is new on this computer for this repository: its rules (.claude/orion/BASE_CLAUDE.md) and the instructions of its skills have not been checked here yet. Before anything else, ask the user with the AskUserQuestion tool whether to check now that they fit with the project's CLAUDE.md, the project's own skills and the user's own rules file (options: 'Check now' recommended, 'Not now'). If they say yes, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written. If they say no, continue with their request: it is not asked again until the rules change, and /orion-verify runs the check any time."
         return 0
     fi
-    stored="$(cat "$f" 2>/dev/null || true)"
-    [ "$stored" = "$sum" ] && return 0
-    rules_mark "$sum"
+    rules_checked "$sum" && return 0
     # the fingerprint an older orion took of these same rules, line endings included: nothing changed
-    [ "$stored" = "$(rules_sum raw)" ] && return 0
+    if rules_checked "$(rules_sum raw)"; then rules_mark "$sum"; return 0; fi
+    rules_mark "$sum"
     printf '%s' "orion's rules (.claude/orion/BASE_CLAUDE.md) or the instructions of its skills have changed since they were last checked on this computer, after an update or a pull that brought one. Before anything else, ask the user with the AskUserQuestion tool whether to check now that they still fit with the project's CLAUDE.md, the project's own skills and the user's own rules file (options: 'Check now' recommended, 'Not now'). If they say yes, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written. If they say no, continue with their request: it is not asked again until the rules change, and /orion-verify runs the check any time."
 }
 
@@ -1131,7 +1144,7 @@ check_global_ctx() {  # force
     read -r n top <<< "$(global_newer)"
     [ "${n:-0}" -gt 0 ] 2>/dev/null || return 0
     stamp="${XDG_CACHE_HOME:-$HOME/.cache}/orion/global-offered"
-    offered="$(whole_number "$(tr -d ' \t\r\n' < "$stamp" 2>/dev/null || true)")"
+    offered="$(whole_number "$(tr -d ' \t\r\n' 2>/dev/null < "$stamp" || true)")"   # stderr first: no file yet is no error
     { [ -n "$offered" ] && [ "$offered" -lt "$SL_OLD_STAMP_MIN" ]; } || offered=0
     if [ "${top:-0}" -le "$offered" ]; then
         [ "$1" = "1" ] || return 0
