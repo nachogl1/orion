@@ -1,0 +1,44 @@
+{
+  "run_id": "orion-20261114-220614-23ef",
+  "issue": 169,
+  "title": "Rename the drift-check skill from reconcile-issue-map to reconcile",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T22:06:14Z",
+  "finished_at": "2026-11-14T22:28:00Z",
+  "outcome": "merged",
+  "pr": 203,
+  "summary": "Renamed the drift-check skill to /reconcile across skills, baseline, README and guide; orion update already pruned the old managed folder, so only two tests were added. Version 20.",
+  "agents": [
+    {
+      "name": "dev-169",
+      "model": "opus",
+      "tokens_total": 136344
+    },
+    {
+      "name": "review-169",
+      "model": "opus",
+      "tokens_total": 119699
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 789,
+    "review_seconds": 229,
+    "ci_seconds": 120
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "orion.sh (apply_skills)",
+      "what": "A project whose own unmarked skill is already named 'reconcile' loses orion's drift check on its next orion update: the managed reconcile-issue-map copy is pruned and the new reconcile is skipped as not an orion copy, so 'Drift found: run /reconcile' sends the person to their own unrelated skill",
+      "why": "Needs a design choice (keep the old copy until the new one installs, or warn loudly), outside a rename",
+      "owner": "unowned — next harvest"
+    }
+  ]
+}

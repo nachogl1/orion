@@ -1,0 +1,38 @@
+{
+  "run_id": "orion-20261114-220614-23ef",
+  "issue": 169,
+  "title": "Rename the drift-check skill from reconcile-issue-map to reconcile",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 203,
+  "merged_at": "2026-11-14T22:27:20Z",
+  "merge_commit": "fd5ca66d06c05cc86c5b2e684035bacd319afc7f",
+  "seam": "skills/reconcile/",
+  "story": "The drift-check skill is now called /reconcile instead of /reconcile-issue-map. The rename covers the skill list, dev-next's and dev-quick's end-of-run 'Drift found' line, the rules file, the README and the guide page with its graph. On the next orion update an existing project loses its old orion-installed copy and gets the new one; a project's own folder with the old name is never touched.",
+  "checks": [
+    {
+      "key": "skills/reconcile/update-replaces-old-copy",
+      "criterion": "After orion update, an install that still has the old managed copy has .claude/skills/reconcile/ and no .claude/skills/reconcile-issue-map/",
+      "steps": "Make an empty folder demo-project and run git init in it. Run bash orion.sh init --project demo-project --no-statusline --update-mode ask. Rename demo-project/.claude/skills/reconcile to reconcile-issue-map. Run bash orion.sh update --project demo-project --force.",
+      "expected": "The update output lists reconcile-issue-map (orion no longer ships it) as removed and reconcile as added; only reconcile/ is left on disk."
+    },
+    {
+      "key": "skills/reconcile/update-keeps-own-folder",
+      "criterion": "orion update leaves alone a project's own skill folder named reconcile-issue-map with no .orion-managed marker",
+      "steps": "Use a fresh demo-project with init as above. Create demo-project/.claude/skills/reconcile-issue-map/SKILL.md containing 'own skill'. Run bash orion.sh update --project demo-project --force.",
+      "expected": "The folder and its file are unchanged, and no marker was added."
+    },
+    {
+      "key": "skills/dev-next/drift-line",
+      "criterion": "dev-next's drift probe and the baseline both say 'Drift found: run /reconcile'",
+      "steps": "In an installed project, open .claude/skills/dev-next/SKILL.md and .claude/orion/BASE_CLAUDE.md.",
+      "expected": "'Drift found: run /reconcile' appears, and /reconcile-issue-map appears nowhere."
+    },
+    {
+      "key": "docs/guide/reconcile-box",
+      "criterion": "The guide page box is renamed",
+      "steps": "Open docs/guide/index.html in a browser and click the 'Learn · Drift' box.",
+      "expected": "The title and command read /reconcile."
+    }
+  ],
+  "no_qa_reason": null
+}
