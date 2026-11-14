@@ -1,0 +1,44 @@
+{
+  "run_id": "orion-20261114-083011-2679",
+  "issue": 186,
+  "title": "orion check: speak only when something changed (update offer, rules fingerprint, per-repository record, personal rules offer)",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 200,
+  "merged_at": "2026-11-14T08:49:04Z",
+  "merge_commit": "9573283549f45485b9bc6097e42b25ded14c98ea",
+  "seam": "orion.sh",
+  "story": "Opening a session no longer offers an orion update when nothing newer exists. It no longer says the rules have changed just because line endings changed or because you opened another worktree of the same clone. A fresh clone is asked once whether to check orion's rules, worded as \"new on this computer\". The personal rules offer comes once, and comes back only when orion adds or changes a rule, instead of every day.",
+  "checks": [
+    {
+      "key": "orion.sh/check-no-offer-at-installed-version",
+      "criterion": "When the installed number equals the newest release and one baseline folder is missing, check offers no update.",
+      "steps": "Init orion into an empty folder and run verify. Delete .claude/orion/global. Run bash .claude/orion/orion.sh check --force while the newest release equals line 5 of .claude/orion/VERSION.",
+      "expected": "No \"A newer orion is available\" text, and exit 0."
+    },
+    {
+      "key": "orion.sh/check-line-endings",
+      "criterion": "Changing the line endings of the rule files does not count as a rules change.",
+      "steps": "Init orion, run verify, convert .claude/orion/BASE_CLAUDE.md to Windows line endings, then run check.",
+      "expected": "Nothing printed."
+    },
+    {
+      "key": "orion.sh/check-worktree-shares-record",
+      "criterion": "A second worktree of a checked repository is silent, and update --skip holds across worktrees.",
+      "steps": "In a git repository with orion committed and verified, run git worktree add ../wt -b second. Run check in ../wt. Then run update --skip in one worktree and check in the other.",
+      "expected": "Nothing printed both times."
+    },
+    {
+      "key": "orion.sh/check-fresh-clone-asks-once",
+      "criterion": "A fresh clone with no record asks once, worded as new.",
+      "steps": "Clone a repository that has orion committed, using an empty ~/.cache/orion. Run check twice.",
+      "expected": "The first run prints one JSON line containing \"orion is new on this computer\". The second prints nothing."
+    },
+    {
+      "key": "orion.sh/check-personal-rules-once",
+      "criterion": "The personal rules offer is not repeated on later days, and --force still offers it.",
+      "steps": "Use a ~/.claude/CLAUDE.md with no ORION GLOBAL section. Run check, then run it again a day or more later. Then run check --force.",
+      "expected": "The offer on the first run, nothing on the later run, and the offer again with --force."
+    }
+  ],
+  "no_qa_reason": null
+}

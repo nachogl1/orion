@@ -1,0 +1,44 @@
+{
+  "run_id": "orion-20261114-083011-2679",
+  "issue": 186,
+  "title": "orion check: speak only when something changed (update offer, rules fingerprint, per-repository record, personal rules offer)",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T08:30:11Z",
+  "finished_at": "2026-11-14T08:50:12Z",
+  "outcome": "merged",
+  "pr": 200,
+  "summary": "Resumed the story an earlier run released after three review rounds: the last finding (a broken-pipe line on stderr when the cache folder cannot be written and SIGPIPE is ignored) is fixed with a test that fails without it, a fresh review approved, and the pull request merged. The session-start check now speaks only when something changed; orion goes from version 17 to 18.",
+  "agents": [
+    {
+      "name": "dev-186",
+      "model": "opus",
+      "tokens_total": 114303
+    },
+    {
+      "name": "review-186",
+      "model": "opus",
+      "tokens_total": 164430
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 678,
+    "review_seconds": 353,
+    "ci_seconds": 0
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "docs/PRDs/",
+      "what": "The PRD still says a missing status line or personal rules copy is named as what it is, and that the personal rules offer comes once a day per computer; the shipped check stays silent on a missing copy and offers once per clause version, so a later story or a reconcile pass could read the new behaviour as a bug",
+      "why": "A PRD is edited by its owner, never by an agent in a dev run",
+      "owner": "unowned — next harvest"
+    }
+  ]
+}
