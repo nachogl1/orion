@@ -122,7 +122,7 @@ line, not in a bullet; if it is worth a sentence it is a `Fix now:` in a file yo
 
 **If the gate is already red before you change anything** (run it once after step 1, before step 2): stop. Report
 `INHERITED RED` with every failing test named. Do not fix tests outside your issue, do not weaken them, do not open a
-pull request. The orchestrator opens a `bug` issue for `main` and releases your issue; nobody blames the story.
+pull request. The orchestrator opens a `bug` issue for `main` and stops your issue, still `agent-ready`; nobody blames the story.
 **Exception:** when your issue *is* the bug that greens the gate on `main`, the red gate is the starting point, not
 `INHERITED RED` — the issue names which commands are expected red; any other red command still stops you.
 

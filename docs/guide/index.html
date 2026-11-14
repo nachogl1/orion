@@ -396,14 +396,14 @@ const NODES = {
     what:[
       "Epic to story is a native GitHub sub-issue, never a text list.",
       "A story is blocked until every blocker is closed, whether listed under Blocked by or set as GitHub's native relation.",
-      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug (and wayfinder:* for planning tickets).",
+      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug, owner-merges (a person merges its pull request), and wayfinder:* for planning tickets.",
       "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). Nothing orders work by it."
     ],
     you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
     out:["The queue /dev-next picks from. /issue-map draws it as a graph."],
     rules:["The assignee owns the issue: never work on, edit or unassign someone else's.","Every issue, filed by a skill or asked for in chat (\"file this bug\"), is filed to the dev-next issue shape with its labels: never a bare gh issue create.","An issue with no readiness label is never taken automatically and sits on the issue map with no owner.","Read an issue with: gh issue view <N> --json title,body,labels,comments"]},
 
-  claim:{phase:"B", actor:"agent", touch:"sometimes", kicker:"dev-next · 1", title:"Claim", gsub:"Picks the next free story and claims it.", cmd:"/dev-next          one story\n/dev-next 3        up to four side by side\n/dev-next #12 #15  exactly these (also resumes a crashed run)",
+  claim:{phase:"B", actor:"agent", touch:"sometimes", kicker:"dev-next · 1", title:"Claim", gsub:"Picks the next free story and claims it.", cmd:"/dev-next          one story\n/dev-next 3        up to four side by side\n/dev-next #12 #15  exactly these (also resumes a stopped or crashed run)",
     sub:"Checks tools and labels, picks the next free story and claims it.",
     what:[
       "Checks git, the GitHub CLI and the project's pinned runtimes; creates any missing label.",
@@ -421,7 +421,7 @@ const NODES = {
       "Labelled during this run: a cheap ready-check agent lists every question, each with a recommended answer, and checks the story against the project's rules and current main.",
       "All questions come to you in one batch; the answers are written onto the issue under ## Decisions (agent-ready)."
     ],
-    you:["Answer the batch, or accept the recommended answers.","\"I don't know, ask someone else\" releases the story as needs-human."],
+    you:["Answer the batch, or accept the recommended answers.","\"I don't know, ask someone else\" stops the story as needs-human; it stays assigned to you."],
     out:["Binding decisions on the issue: the developer and the reviewer both follow them."],
     rules:["An unanswered question becomes a guess baked into the code: a long list is cheaper than that."]},
 
@@ -454,9 +454,9 @@ const NODES = {
       "Waits for green checks, squash-merges, verifies the issue closed.",
       "Deletes the worktree and the branch."
     ],
-    you:["Nothing: /dev-next is the only skill that merges its own pull requests."],
+    you:["Only for a story labelled owner-merges: try the change, then merge its open pull request yourself."],
     out:["One commit on main per story. The story closed."],
-    rules:["Never push to main: every change reaches main as a merged pull request.","Only /dev-next merges its own pull requests; every other pull request is merged by a person.","Never merge on red or pending: \"no checks reported\" counts as red.","Red after two rounds: the story becomes needs-human and is released."]},
+    rules:["Never push to main: every change reaches main as a merged pull request.","An owner-merges story stops at its pull request with green checks: a person merges it.","Never merge on red or pending: \"no checks reported\" counts as red.","A run that gives up keeps the story assigned to its runner and agent-ready (needs-human only for a real question); resume it with /dev-next #<N>."]},
 
   audit:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 6", title:"Audit", gsub:"Leaves a report and a QA record.", sub:"Leaves a run report and a QA record, then counts what is due.",
     what:[
