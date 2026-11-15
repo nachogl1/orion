@@ -365,7 +365,7 @@ const NODES = {
     you:["Write or provide the PRD, and merge its pull request yourself.","Confirm when an ADR is needed, and approve it before any ticket or code for that change."],
     out:["A PRD on main.","An ADR for each decision that is costly to undo.","(For front-end work) a UX prototype every screen story will follow."],
     rules:["Three sizes of change: a fix or a tweak needs no document; a hard-to-reverse decision needs an ADR you approve first; a big change only gets the question whether you want a PRD.","Disagreement is a bug: the PRD wins on product, the rules files win on process.","Rules files never restate the product: they point at the PRD."],
-    tip:"An approved ADR does not change the PRD by itself: fold it in the next time you update the PRD."},
+    tip:"An approved ADR does not change the PRD by itself: /reconcile lists the pending ones and offers to fold them in."},
 
   tickets:{phase:"A", actor:"both", touch:"always", kicker:"4 · Split", title:"/prd-to-tickets", cmd:"/prd-to-tickets",
     sub:"Cuts the PRD into epics and stories built so several agents can work side by side.",
@@ -511,11 +511,14 @@ const NODES = {
   reconcile:{phase:"C", actor:"both", touch:"always", kicker:"Learn · Drift", title:"/reconcile", cmd:"/reconcile",
     sub:"Checks that the PRDs, the issues and the code on main still tell one story.",
     what:[
-      "Looks through four lenses: the PRD asks for something no story covers; a story the PRD does not ask for; the issue map is broken; the product does not match what the issues say.",
+      "Reads the PRDs together with their pending ADRs (decision records not yet folded into the PRD), so a story an ADR asks for is not reported as unasked-for.",
+      "Looks through four lenses: the PRD asks for something no story covers; a story the PRD does not ask for, or a decision the PRD never absorbed; the issue map is broken; the product does not match what the issues say.",
+      "Two findings to know: a pending ADR not yet folded into the PRD, and a later-tier story (a stretch story) that can be started while earlier-tier stories are still open.",
       "Explains every finding in plain words, with how much it matters.",
-      "Fixes each one with your word: issue edits on the spot, PRD edits and its bookmark in a pull request."
+      "Fixes each one with your word: issue edits on the spot; PRD edits, folded ADRs (their status line changed in the same pull request) and its bookmark in one pull request.",
+      "That pull request merges itself on green when it holds only the bookmark; one that touches the PRD or an ADR is yours to merge."
     ],
-    you:["Decide every finding.","Merge its pull request."],
+    you:["Decide every finding.","Merge its pull request when it edits the PRD or folds an ADR."],
     out:["A backlog and a PRD back in step with main."],
     rules:["The PRD wins on what to build; main wins on what is done.","Run by a person, never by another skill."]},
 
