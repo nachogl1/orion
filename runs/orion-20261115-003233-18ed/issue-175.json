@@ -1,0 +1,43 @@
+{
+  "run_id": "orion-20261115-003233-18ed",
+  "issue": 175,
+  "title": "Planning interview: one shared file that prd-to-tickets and wayfinder both follow",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T00:32:33Z",
+  "finished_at": "2026-11-15T10:15:41Z",
+  "outcome": "merged",
+  "pr": 209,
+  "summary": "The PRD-split interview rules moved into skills/dev-next/references/planning-interview.md; prd-to-tickets phase 4 loads it and wayfinder runs it before filing stories (hard-to-reverse answers become grilling tickets, answers so far saved under Settled). Version 26.",
+  "agents": [
+    {
+      "name": "dev-175",
+      "model": "opus",
+      "tokens_total": 163698
+    },
+    {
+      "name": "review-175",
+      "model": "opus",
+      "tokens_total": 118920
+    },
+    {
+      "name": "review-175-r2",
+      "model": "opus",
+      "tokens_total": 104157
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 2100,
+    "review_seconds": 260,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    "orion CLAUDE.md section on which skills read which reference files may want a line naming planning-interview.md (owner edit, not required by the acceptance criteria)."
+  ]
+}

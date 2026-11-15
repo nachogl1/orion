@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261115-003233-18ed",
+  "issue": 175,
+  "title": "Planning interview: one shared file that prd-to-tickets and wayfinder both follow",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 209,
+  "merged_at": "2026-11-15T10:15:17Z",
+  "seam": "skills/dev-next/references/planning-interview.md, skills/prd-to-tickets/SKILL.md, skills/wayfinder/SKILL.md",
+  "story": "The interview that settles every open question before stories are filed now lives in one shared file. /prd-to-tickets follows it as before, and /wayfinder now runs the same interview before it files stories; a hard-to-reverse question there becomes a new decision ticket, and the answers already given are saved on the map.",
+  "checks": [],
+  "no_qa_reason": "Skill instructions only; a suite check guards that both skills point at the one file.",
+  "merge_commit": "710dba0c5394a24ace89c0ab43d853c3871fb6b0"
+}
