@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261115-185109-ee16",
+  "issue": 184,
+  "title": "Personal rules: a risk line states in its label whether it is open or fixed",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 218,
+  "merged_at": "2026-11-15T19:43:06Z",
+  "seam": "baselines/global/GLOBAL_CLAUDE.md",
+  "story": "The personal rules orion offers now ask that a risk line say in its label whether the risk is still open or already fixed (Risk (open): / Risk (fixed):), so a reader never mistakes a solved problem for a live one. People on an older copy are offered the change once.",
+  "checks": [],
+  "no_qa_reason": "Rules text people are offered; nothing to drive. Suite checks guard the label wording and the offer logic.",
+  "merge_commit": "c71fee4ec9bb01c89a3c2303541e1728f18d165e"
+}

@@ -1,0 +1,45 @@
+{
+  "run_id": "orion-20261115-185109-ee16",
+  "issue": 184,
+  "title": "Personal rules: a risk line states in its label whether it is open or fixed",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T18:51:09Z",
+  "finished_at": "2026-11-15T19:43:31Z",
+  "outcome": "merged",
+  "pr": 218,
+  "summary": "GLOBAL_CLAUDE.md's line-labelling rule (v35) asks for Risk (open): or Risk (fixed): with the decided four-line example; older-orion offer tests use a copy capped at v17 only where needed. Version 35.",
+  "agents": [
+    {
+      "name": "dev-184",
+      "model": "opus",
+      "tokens_total": 141436
+    },
+    {
+      "name": "review-184",
+      "model": "opus",
+      "tokens_total": 133371
+    },
+    {
+      "name": "review-184-r2",
+      "model": "opus",
+      "tokens_total": 130863
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 2050,
+    "review_seconds": 970,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [
+    "Several sessions on one machine ran full suites under two different locks (C:/wt/gate.lock.d and C:/git/DaVinci-wt/suite.lock) that do not see each other; agreed mid-run to use the DaVinci run-suite.sh lock for all orion runs. Grillo still uses the older lock."
+  ],
+  "lessons_learned": [
+    "Adapting a test fixture to a new version bump can silently drop a boundary case; review caught it by mutation testing. Keep a fixture override scoped to the scenarios that need it."
+  ],
+  "deferred": []
+}
