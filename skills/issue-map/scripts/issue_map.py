@@ -82,7 +82,7 @@ ENCODING = ("Background = who takes it (green agent-ready, red needs-human, blue
             "else, purple epic). Icon = progress (\U0001F528 in progress, \U0001F7E2 ready, \U0001F512 blocked). "
             "A cross means closed.")
 HINT = ("Drag to move around, scroll the wheel to zoom (or use the buttons). Click an issue to see its chain and its "
-        "card, click it again to clear. Double-click opens it on GitHub. The filter menus hide or show issues "
+        "card, click outside to close. Double-click opens it on GitHub. The filter menus hide or show issues "
         "(hidden issues leave the map and the rest close up); each option shows shown/total.")
 LEVELS = ("An issue's level is 1 + the highest level among its blockers; Level 0 has no blockers. Only GitHub's "
           "'blocked by' relation and a '### Blocked by' section count. Epics sit in the far-left column, outside "
@@ -797,7 +797,7 @@ if(m.kind==='epic'){h+='<div class="row"><b>Stories:</b> '+(m.stories.length?'':
 else{if(m.parent!==null&&META[m.parent])h+='<div class="row"><b>Epic</b> #'+m.parent+' '+esc(META[m.parent].title)+'</div>';
 h+='<div class="row"><b>Blocked by:</b> '+(m.blockers.length?'':'nothing')+'</div>';if(m.blockers.length)h+=list(m.blockers,b=>b.state==='OPEN'?'o':'c');
 h+='<div class="row"><b>Waiting on it:</b> '+(m.waiting.length?m.waiting.map(w=>'#'+w).join(', '):'nothing')+'</div>'}
-return h+'<div class="acts"><button type="button" class="tb" data-open>Open on GitHub</button><span class="m">Click the box again to clear \\u00b7 double-click opens it on GitHub \\u00b7 drag the title to move this card</span></div>'}
+return h+'<div class="acts"><button type="button" class="tb" data-open>Open on GitHub</button><span class="m">Click outside to close \\u00b7 double-click opens it on GitHub \\u00b7 drag the title to move this card</span></div>'}
 function place(ev){if(tipSpot){tip.style.left=tipSpot.left+'px';tip.style.top=tipSpot.top+'px';return}
 const r=tip.getBoundingClientRect();let x=ev.clientX+16,y=ev.clientY+16;if(x+r.width>innerWidth-8)x=ev.clientX-r.width-16;if(y+r.height>innerHeight-8)y=ev.clientY-r.height-16;
 tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px'}
@@ -826,6 +826,9 @@ tipSpot={left,top};tip.style.left=left+'px';tip.style.top=top+'px';return}
 if(!drag)return;const dx=ev.clientX-drag.x,dy=ev.clientY-drag.y;if(!moved&&Math.hypot(dx,dy)<4)return;moved=true;wrap.classList.add('drag');if(!tipSpot)tip.style.display='none';tx=drag.tx+dx;ty=drag.ty+dy;paint()});
 addEventListener('pointerup',()=>{drag=null;tipDrag=null;wrap.classList.remove('drag')});
 wrap.addEventListener('click',ev=>{if(moved){ev.stopPropagation();moved=false}},true);
+let pressInTip=false;addEventListener('pointerdown',ev=>{pressInTip=tip.contains(ev.target);moved=false},true);
+document.addEventListener('click',ev=>{const inTip=pressInTip||tip.contains(ev.target);pressInTip=false;if(moved){moved=false;return}
+if(pinned!==null&&!inTip&&!ev.target.closest('.node')){pinned=null;clear()}});
 const mid=()=>[wrap.clientWidth/2,wrap.clientHeight/2];
 document.getElementById('zin').onclick=()=>zoomAt(1.25,...mid());document.getElementById('zout').onclick=()=>zoomAt(0.8,...mid());
 document.getElementById('zfit').onclick=()=>fit(true);document.getElementById('z100').onclick=()=>{const [cx,cy]=mid();zoomAt(1/z,cx,cy)};

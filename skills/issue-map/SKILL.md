@@ -32,7 +32,10 @@ looks at it, and carries a banner saying who built it and when. The source of tr
   the card's grey line reads `<column> · GitHub state: <STATE> · opened by <login> · assigned to <logins>` (or
   `· nobody assigned`), and says `opened by unknown` when GitHub names no author login (missing, empty, or a
   deleted account, which GitHub reports as `ghost`), faded boxes included;
-  Esc closes a menu, then the card. Four filter menus (who takes it, progress, assignee, labels, each option with
+  a click anywhere outside the card (an empty spot, the header, a filter menu, a zoom button, the problems pane)
+  closes it and clears the chain while that control still does its own job, a click on another box switches the
+  card, and clicks or drags that start in the card, or a pan of the map, keep it (its hint reads "Click outside to
+  close"); Esc closes a menu, then the card. Four filter menus (who takes it, progress, assignee, labels, each option with
   shown/total and "only") hide issues; hidden issues leave the map and the rest close up. Dark theme, light when the
   system asks for it.
 - **With a search** (`--search`, below): only the matching issues, plus every blocker the search left out, drawn as a
