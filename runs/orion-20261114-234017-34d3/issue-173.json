@@ -1,0 +1,54 @@
+{
+  "run_id": "orion-20261114-234017-34d3",
+  "issue": 173,
+  "title": "dev-next: a run that stops keeps its claim, and an owner-merges story stops at its pull request",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-14T23:40:18Z",
+  "finished_at": "2026-11-15T00:45:00Z",
+  "outcome": "merged",
+  "pr": 207,
+  "summary": "A dev-next run that gives up now keeps its assignee (technical failures stay agent-ready, real questions go needs-human), a Resuming rule lets /dev-next #<N> pick a stopped story back up safely, and an owner-merges story stops at a green pull request. Version 24.",
+  "agents": [
+    {
+      "name": "dev-173",
+      "model": "opus",
+      "tokens_total": 207709
+    },
+    {
+      "name": "review-173",
+      "model": "opus",
+      "tokens_total": 160339
+    },
+    {
+      "name": "review-173-r2",
+      "model": "opus",
+      "tokens_total": 174884
+    },
+    {
+      "name": "review-173-r3",
+      "model": "opus",
+      "tokens_total": 133590
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 730,
+    "review_seconds": 892,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 3,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "skills/dev-next/ (SKILL.md rule 0, references/merge-and-ci.md phase 5)",
+      "what": "The baseline's Who merges rule says a person merges any pull request touching docs/PRDs/, docs/ADRs/, docs/ux/prototypes/ or the project's CLAUDE.md, but /dev-next still squash-merges its own story when its diff touches one of them, so a /dev-quick edit to CLAUDE.md lands with no person",
+      "why": "Issue #173 covered only owner-merges; no open story on the 2026-11-03 epic carries dev-next's part of decision #161; the owner-merges stop is the natural mechanism",
+      "owner": "unowned — next harvest"
+    }
+  ]
+}

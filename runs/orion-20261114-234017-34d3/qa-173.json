@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261114-234017-34d3",
+  "issue": 173,
+  "title": "dev-next: a run that stops keeps its claim, and an owner-merges story stops at its pull request",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 207,
+  "merged_at": "2026-11-15T00:44:00Z",
+  "seam": "skills/dev-next/",
+  "story": "A /dev-next run that stops now keeps the story assigned to its runner, says why, and can be resumed with /dev-next #<N>; only a real question for a person turns it needs-human. A story labelled owner-merges is built, reviewed and brought to green checks, then left open for its owner to try and merge.",
+  "checks": [],
+  "no_qa_reason": "Skill text the orchestrator follows; nothing a user can drive on main.",
+  "merge_commit": "56e1827ace45e04ca5b7d157215526cee917d841"
+}
