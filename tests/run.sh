@@ -550,23 +550,41 @@ cat > "$SB/links.json" <<'EOF'
  "i5":{"number":6,"parent":null,"blockedBy":{"nodes":[{"number":7}]},"subIssues":{"nodes":[]}},
  "i6":{"number":7,"parent":null,"blockedBy":{"nodes":[{"number":6}]},"subIssues":{"nodes":[]}}}}}
 EOF
+# The search answer: only #3, #4 and #5 match. #3 waits on #2 (open, assigned), which the search left out; #5 names
+# the epic #1 and #99, which does not exist. The second GraphQL answer is the generator fetching those left-out
+# blockers (its query asks for titles; the links query never does).
+cat > "$SB/issues-search.json" <<'EOF'
+[{"number":3,"title":"Build on it","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[{"login":"dev-2"}],"body":"### Blocked by\n#2 — Lay the base\n","url":"https://example.invalid/3"},
+ {"number":4,"title":"Decide the next step","state":"OPEN","labels":[{"name":"needs-human","color":"d93f0b"}],"assignees":[],"body":"### Blocked by\n#3 — Build on it\n","url":"https://example.invalid/4"},
+ {"number":5,"title":"Odd links","state":"OPEN","labels":[],"assignees":[],"body":"### Blocked by\n#1\n#5\n#99\n","url":"https://example.invalid/5"}]
+EOF
+cat > "$SB/outside.json" <<'EOF'
+{"data":{"repository":{
+ "i0":{"number":1,"title":"Epic one","state":"OPEN","url":"https://example.invalid/1","body":"","labels":{"nodes":[{"name":"epic","color":"8250df"}]},"assignees":{"nodes":[]}},
+ "i1":{"number":2,"title":"Lay the base","state":"OPEN","url":"https://example.invalid/2","body":"### Blocked by\n(none)\n","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"},{"name":"story","color":"cccccc"}]},"assignees":{"nodes":[{"login":"dev-1"}]}},
+ "i2":null}}}
+EOF
 cat > "$SB/ghbin/gh" <<EOF
 #!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$SB/gh.log"
 case "\$1 \$2" in
-    "issue list") cat "$SB/issues.json" ;;
-    "repo view") echo '{"name":"demo","owner":{"login":"owner"}}' ;;
+    "issue list") case " \$* " in *" --search "*) cat "$SB/issues-search.json" ;; *) cat "$SB/issues.json" ;; esac ;;
+    "repo view") case "\${3:-}" in --json) echo '{"name":"demo","owner":{"login":"owner"}}' ;; *) echo "{\"name\":\"\${3#*/}\",\"owner\":{\"login\":\"\${3%%/*}\"}}" ;; esac ;;
     "api user") echo tester ;;
-    "api graphql") cat "$SB/links.json" ;;
+    "api graphql") case "\$*" in *title*) cat "$SB/outside.json" ;; *) cat "$SB/links.json" ;; esac ;;
     *) exit 1 ;;
 esac
 EOF
 chmod +x "$SB/ghbin/gh"
 MAPHTML="$MAPREPO/docs/issue_map/issue_map.html"
+# Runs the generator with the given options; its output goes to $SB/out and every gh call it made to $SB/gh.log.
 # Python on Windows starts a bare "gh" only as gh.exe, so it never finds the bash fake: there the generator runs
 # through a wrapper that hands each gh call to this bash and the fake.
-if command -v cygpath >/dev/null 2>&1; then
-    (cd "$MAPREPO" && "$PY" - "$(cygpath -m "$BASH")" "$(cygpath -m "$SB/ghbin/gh")" \
-        "$(cygpath -m "$REPO/skills/issue-map/scripts/issue_map.py")" >"$SB/out" 2>&1 <<'EOF'
+run_map() {
+    rm -f "$SB/gh.log" "$MAPHTML"
+    if command -v cygpath >/dev/null 2>&1; then
+        (cd "$MAPREPO" && "$PY" - "$(cygpath -m "$BASH")" "$(cygpath -m "$SB/ghbin/gh")" \
+            "$(cygpath -m "$REPO/skills/issue-map/scripts/issue_map.py")" "$@" >"$SB/out" 2>&1 <<'EOF'
 import runpy, subprocess, sys
 bash, fake, script = sys.argv[1:4]
 real_run = subprocess.run
@@ -575,14 +593,17 @@ def run(args, *rest, **kwargs):
         args = [bash, fake, *args[1:]]
     return real_run(args, *rest, **kwargs)
 subprocess.run = run
-sys.argv = [script]
+sys.argv = [script, *sys.argv[4:]]
 runpy.run_path(script, run_name="__main__")
 EOF
-    )
-else
-    (cd "$MAPREPO" && PATH="$SB/ghbin:$PATH" "$PY" "$REPO/skills/issue-map/scripts/issue_map.py" >"$SB/out" 2>&1)
-fi
+        )
+    else
+        (cd "$MAPREPO" && PATH="$SB/ghbin:$PATH" "$PY" "$REPO/skills/issue-map/scripts/issue_map.py" "$@" >"$SB/out" 2>&1)
+    fi
+}
+run_map
 check "the map is built from the issues and says how many it holds" eval '[ -f "$MAPHTML" ] && grep -q "6 issues + 1 epics" "$SB/out"'
+check "with neither option, every issue is listed and no blocker is fetched apart" eval '! grep -q -- "--search\|--repo" "$SB/gh.log" && ! grep -q "^api graphql.*title" "$SB/gh.log" && ! grep -q "outside" "$SB/out" && ! grep -q "node[a-z -]* outside" "$MAPHTML"'
 check "an issue's column is one more than its deepest blocker's" eval 'grep -q ">Level 2 <tspan" "$MAPHTML" && ! grep -q ">Level 3 <tspan" "$MAPHTML"'
 check "every dropped link and disagreement is listed in plain words, and in the sentence other skills read" eval 'grep -q "which is an epic: link dropped" "$MAPHTML" && grep -q "which is not on the map: link dropped" "$MAPHTML" && grep -q "which closes a loop: link dropped" "$MAPHTML" && grep -q "sources disagree" "$MAPHTML" && grep -q "they DISAGREE on: #4, #5, #6\." "$SB/out" && grep -q "#5->#1, #5->#99" "$SB/out" && grep -q "close a cycle: #5->#5, #6->#7" "$SB/out"'
 map_offers_filters_and_problems() {
@@ -592,6 +613,29 @@ map_offers_filters_and_problems() {
 check "the page offers the four filter menus and the data problems pane" map_offers_filters_and_problems
 check "an assigned issue with a blocker still open shows as blocked, not in progress" grep -q 'class="node blocked k-agent" data-id="3"' "$MAPHTML"
 check "the map never shows up as a change in git" eval '[ -z "$(cd "$MAPREPO" && "$REAL_GIT" status --porcelain)" ]'
+run_map --search "label:bug"
+search_map_holds_matches() {
+    grep -q "^issue list .*--search label:bug" "$SB/gh.log" && grep -q "3 issues + 0 epics + 2 outside the search" "$SB/out" \
+        && grep -q 'class="node blocked k-human" data-id="4"' "$MAPHTML" && ! grep -q 'data-id="6"' "$MAPHTML" \
+        && ! grep -q 'data-id="7"' "$MAPHTML"
+}
+check "--search hands the search to the issue list and maps only the matching issues" search_map_holds_matches
+check "a blocker the search left out is drawn as a faded box" grep -q 'class="node inprog k-agent outside" data-id="2"' "$MAPHTML"
+check "and the issue waiting on it still shows as blocked, never free" grep -q 'class="node blocked k-agent" data-id="3"' "$MAPHTML"
+check "a left-out blocker that is no issue, or is an epic, is still a dropped link" eval 'grep -q "#5->#1, #5->#99" "$SB/out" && grep -q "which is not on the map: link dropped" "$MAPHTML"'
+check "the page says it holds only the issues the search matched" grep -q 'Only the issues matching the GitHub search <b>label:bug</b>' "$MAPHTML"
+run_map --repo other-owner/other.repo
+repo_map_built() {
+    grep -q "^issue list .*--repo other-owner/other.repo" "$SB/gh.log" && grep -q "^repo view other-owner/other.repo " "$SB/gh.log" \
+        && grep -qF 'repository(owner: "other-owner", name: "other.repo")' "$SB/gh.log" && grep -q "6 issues + 1 epics" "$SB/out" \
+        && grep -q "<title>other-owner/other.repo · issue map" "$MAPHTML"
+}
+check "--repo builds the map for that repository" repo_map_built
+bad_repo_refused() {  # repository value: refused before any gh call, nothing rebuilt
+    run_map --repo "$1"
+    [ ! -f "$MAPHTML" ] && [ ! -s "$SB/gh.log" ] && grep -q "owner/name" "$SB/out"
+}
+check "a --repo value that is not owner/name is refused before gh runs" eval 'bad_repo_refused nope && bad_repo_refused "a/b\" x" && bad_repo_refused "a/b/c" && bad_repo_refused "/b"'
 
 echo "check (the session-start hook: silent unless it has news, always exit 0)"
 newproj; init ask
