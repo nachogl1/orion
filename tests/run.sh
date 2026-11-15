@@ -805,7 +805,7 @@ printf 'x\n' > "$VSRC/next.txt"
 "$REAL_GIT" -C "$VSRC" -c core.autocrlf=false add next.txt && "$REAL_GIT" -C "$VSRC" commit -qm next && "$REAL_GIT" -C "$VSRC" tag v2.4.0
 check "and its next update writes the three-part version of the newest release" eval 'env PATH="$FAKEPATH" bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.4.0 ]'
 
-echo "release versions (the release job sizes one tag from the Conventional Commit types since the last release)"
+echo "release versions (the release job sizes one version tag from the Conventional Commit types since the last release)"
 RV="$REPO/.github/scripts/release-version.sh"
 RR="$SB/release"; mkdir -p "$RR"; "$REAL_GIT" -C "$RR" init -q -b main
 rel_commit() {  # file subject: a squash-merged pull request that changes <file>
@@ -822,20 +822,20 @@ check "the first release is v2.0.0 whatever the types, plus one whole-number tag
 tag_release
 check "nothing new since the release: nothing to tag" eval '[ -z "$(next_tags)" ]'
 rel_commit skills/a/SKILL.md "fix(a): a typo (#12)"
-check "fix: the last part" eval '[ "$(next_tags)" = v2.0.1 ]'
+check "fix: the last part, and the next whole-number tag beside it" eval '[ "$(next_tags)" = "v2.0.1 v40" ]'
 tag_release
 rel_commit baselines/BASE_CLAUDE.md "feat(base): a new rule"
-check "feat: the middle part" eval '[ "$(next_tags)" = v2.1.0 ]'
+check "feat: the middle part" eval '[ "$(next_tags)" = "v2.1.0 v41" ]'
 tag_release
 "$REAL_GIT" -C "$RR" checkout -q -b develop
 rel_commit orion.sh "fix: one"; rel_commit skills/a/SKILL.md "feat(a): two"; rel_commit docs/x.md "docs: three"
 "$REAL_GIT" -C "$RR" checkout -q main && "$REAL_GIT" -C "$RR" merge -q --no-ff --no-edit -m "Merge the develop branch" develop
-check "a release carrying a fix and a feat, merged with a merge commit: one tag, the middle part" eval '[ "$(next_tags)" = v2.2.0 ]'
+check "a release carrying a fix and a feat, merged with a merge commit: one version tag, the middle part" eval '[ "$(next_tags)" = "v2.2.0 v42" ]'
 tag_release
 rel_commit docs/guide.md "feat(guide): a new page"
 check "a merge outside skills/, baselines/ and orion.sh tags nothing, even a feat" eval '[ -z "$(next_tags)" ]'
 rel_commit skills/a/SKILL.md "fix(a): three"; rel_commit skills/a/SKILL.md "feat(a)!: a breaking change"
-check "feat!: the first part" eval '[ "$(next_tags)" = v3.0.0 ]'
+check "feat!: the first part" eval '[ "$(next_tags)" = "v3.0.0 v43" ]'
 title_ok() { bash "$RV" title "$1" >/dev/null 2>&1; }
 check "the title check passes every valid form" eval 'title_ok "feat: x" && title_ok "fix(scope): x" && title_ok "feat(two-words)!: x" && title_ok "docs!: x" && title_ok "chore(skills): refresh a skill (#7)"'
 check "and fails a title with no valid type" eval '! title_ok "Add a thing" && ! title_ok "feat x" && ! title_ok "feet: x" && ! title_ok "Feat: x" && ! title_ok "feat(): x" && ! title_ok "feat:x" && ! title_ok "feat: " && ! title_ok ""'

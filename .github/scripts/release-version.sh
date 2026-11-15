@@ -28,10 +28,11 @@ usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 highest_three_part() { git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1; }
 highest_whole() { git tag -l 'v*' | grep -E '^v[0-9]+$' | sed 's/^v//' | sort -n | tail -n1; }
 
-# One tag, sized by the biggest change among the pull requests since the last release (each one a squash commit
-# whose subject is its title; a release's own merge commit is left out): any ! raises the first part, else any feat
-# the middle part, else the last part. The first release is FIRST_VERSION whatever the types, plus one more
-# whole-number tag, the only kind an orion.sh from before three-part versions reads, so those installs are offered it.
+# One version tag, sized by the biggest change among the pull requests since the last release (each one a squash
+# commit whose subject is its title; a release's own merge commit is left out): any ! raises the first part, else any
+# feat the middle part, else the last part; the first release is FIRST_VERSION whatever the types. Every release
+# also gets one more whole-number tag, the only kind an orion.sh from before three-part versions reads, so such an
+# install is offered every release, even after declining one (update --skip records the tag it declined).
 cmd_next() {
     local last whole since subjects major minor patch
     last="$(highest_three_part)"; whole="$(highest_whole)"
@@ -39,14 +40,14 @@ cmd_next() {
     if [ -n "$since" ] && git diff --quiet "v$since" HEAD -- $SHIPPED; then return 0; fi
     if [ -z "$last" ]; then
         printf 'v%s\n' "$FIRST_VERSION"
-        [ -z "$whole" ] || printf 'v%s\n' "$((whole + 1))"
-        return 0
+    else
+        subjects="$(git log --no-merges --format=%s "v$last..HEAD")"
+        major="${last%%.*}"; minor="${last#*.}"; patch="${minor#*.}"; minor="${minor%.*}"
+        if printf '%s\n' "$subjects" | grep -qE "$BREAKING_PATTERN"; then printf 'v%s.0.0\n' "$((major + 1))"
+        elif printf '%s\n' "$subjects" | grep -qE "$FEATURE_PATTERN"; then printf 'v%s.%s.0\n' "$major" "$((minor + 1))"
+        else printf 'v%s.%s.%s\n' "$major" "$minor" "$((patch + 1))"; fi
     fi
-    subjects="$(git log --no-merges --format=%s "v$last..HEAD")"
-    major="${last%%.*}"; minor="${last#*.}"; patch="${minor#*.}"; minor="${minor%.*}"
-    if printf '%s\n' "$subjects" | grep -qE "$BREAKING_PATTERN"; then printf 'v%s.0.0\n' "$((major + 1))"
-    elif printf '%s\n' "$subjects" | grep -qE "$FEATURE_PATTERN"; then printf 'v%s.%s.0\n' "$major" "$((minor + 1))"
-    else printf 'v%s.%s.%s\n' "$major" "$minor" "$((patch + 1))"; fi
+    [ -z "$whole" ] || printf 'v%s\n' "$((whole + 1))"
 }
 
 # The title is never echoed back: a pull request title is untrusted text, and the log reads workflow commands.
