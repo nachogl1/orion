@@ -165,6 +165,7 @@ aside.drawer.on{transform:none}
       <a href="#install">Install</a>
       <a class="hide-sm" href="#parts">What you get</a>
       <a class="hide-sm" href="#updates">Updates</a>
+      <a class="hide-sm" href="#why">Why</a>
       <a class="hide-sm" href="https://github.com/nachogl1/orion">GitHub</a>
       <button class="btn icon" id="theme" aria-label="Switch colour theme">◐</button>
     </div>
@@ -293,11 +294,23 @@ aside.drawer.on{transform:none}
       <div class="tile"><h3>A tidy repository</h3><p>Once the project reaches <code>branchLimit</code> or <code>worktreeLimit</code> (20 each by default), the session start offers <code>/clear-git-resources</code>. Set them higher, or to <code>off</code>.</p></div>
     </div>
   </section>
+  <section class="sec wrap" id="why" aria-labelledby="whyTitle">
+    <div class="sec-head">
+      <div class="eyebrow">Why it works this way</div>
+      <h2 id="whyTitle">Three choices orion makes, and what they give you</h2>
+      <p>Why the checking after a merge waits for one batch, and what the status bar and the personal rules do for you.</p>
+    </div>
+    <div class="grid3">
+      <div class="tile"><h3>Harvest and QA run apart</h3><p>Every story <code>/dev-next</code> merges leaves notes and QA checks behind, but nobody works through them there and then. <code>/harvest</code> and <code>/harvest-qa</code> take them all later, in one long batch session per harvest, instead of about 30 minutes on every pull request. That saves your time and your computer: stories merge sooner, and the machine is not busy re-testing after each merge. <code>/dev-next</code> tells you when one is due: at 10 notes for <code>/harvest</code>, at 5 QA records for <code>/harvest-qa</code>.</p></div>
+      <div class="tile"><h3>The status bar (optional)</h3><p>One line at the bottom of Claude Code that answers what you would otherwise ask: how long the session has run and its name, how full the conversation is (context use), the branch with its stashed, untracked, modified, unstaged and unpushed counts, what the session and the month cost at API prices, the model and its effort level, and, on a subscription, how much of your 5-hour and weekly usage is gone, with the time until each resets. A second line shows the folder you work in and, in a worktree, its name.</p></div>
+      <div class="tile"><h3>Your personal rules</h3><p>Rules for your own <code>~/.claude/CLAUDE.md</code> that follow you into every project. They make the assistant reply in a way you can follow: short labelled lines, the answer or the biggest problem first, exactly one next step, and a risk line that says whether it is still open (<code>Risk (open):</code>) or already fixed (<code>Risk (fixed):</code>). They also carry good working and git habits: check before saying it is done, make the smallest change that works, never save onto the main branch or overwrite shared history. You take only the ones you want.</p></div>
+    </div>
+  </section>
 </main>
 
 <footer class="foot"><div class="wrap">
   <span>orion · <a href="https://github.com/nachogl1/orion">source on GitHub</a> · <a href="https://github.com/nachogl1/orion/blob/main/LICENSE">MIT licence</a></span>
-  <span>Built for <a href="https://claude.com/claude-code">Claude Code</a>.</span>
+  <span>Built for <a href="https://claude.com/claude-code">Claude Code</a> · Made by Ignacio Gonzalez</span>
 </div></footer>
 
 

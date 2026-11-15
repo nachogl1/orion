@@ -467,6 +467,29 @@ guide_names_every_skill() {
 }
 check "the guide names every skill" guide_names_every_skill
 check "the guide loads no script or stylesheet from elsewhere" eval '[ -f "$GUIDE" ] && ! grep -qiE "<script[^>]*src=|<link[^>]*stylesheet|@import|src=.?https?:|url\(.?https?:|fetch\(" "$GUIDE"'
+# The guide and the README explain three choices: why harvest and QA run apart from each pull request, what the
+# status line offers and what the personal rules offer.
+guide_and_readme_explain_the_choices() {
+    local f; for f in "$GUIDE" "$REPO/README.md"; do
+        grep -qF 'one long batch session' "$f" && grep -qF 'about 30 minutes on every pull request' "$f" \
+            && grep -qF 'unstaged' "$f" && grep -qF 'Risk (open):' "$f" \
+            || { echo "  $(basename "$f") does not explain the batch harvest, the status line and the personal rules"; return 1; }
+    done
+}
+check "the guide and the README explain why harvest and QA run apart, the status line and the personal rules" guide_and_readme_explain_the_choices
+# The guide's footer credits the owner; Distribution safety allows that name there and nowhere else, so the name is
+# read from the footer, never written in this file.
+guide_footer_credits_the_owner_alone() {
+    local footer name
+    footer="$(awk '/<footer class="foot">/{on=1} on{print} /<\/footer>/{exit}' "$GUIDE")"
+    name="$(printf '%s' "$footer" | sed -n 's/.*Made by \([^<]*\)<.*/\1/p' | head -1)"
+    [ -n "$name" ] || { echo "  the guide's footer has no 'Made by' credit"; return 1; }
+    [ "$(grep -rlF --exclude-dir=.git "$name" "$REPO" | grep -cv '/docs/guide/index.html$')" = 0 ] \
+        || { echo "  the owner's name appears outside the guide's footer"; return 1; }
+    [ "$(grep -cF "$name" "$GUIDE")" = 1 ] || { echo "  the owner's name appears more than once on the guide"; return 1; }
+    grep -qF 'Made by <owner' "$REPO/CLAUDE.md" || { echo "  Distribution safety does not allow the footer credit"; return 1; }
+}
+check "the guide's footer credits the owner, the one place the name appears" guide_footer_credits_the_owner_alone
 check "the README shows the guide's graph and links the page" eval '[ -f "$REPO/docs/guide/orion-workflow.svg" ] && grep -qF "docs/guide/orion-workflow.svg" "$REPO/README.md" && grep -qF "github.io/orion" "$REPO/README.md"'
 
 echo "round trip (init / update / check / uninstall)"
