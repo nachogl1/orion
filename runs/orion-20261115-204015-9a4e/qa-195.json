@@ -1,0 +1,26 @@
+{
+  "run_id": "orion-20261115-204015-9a4e",
+  "issue": 195,
+  "title": "Issue map: the details card shows who opened each issue, as in Maestro",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 233,
+  "merged_at": "2026-11-15T21:09:19Z",
+  "seam": "skills/issue-map/",
+  "story": "Clicking an issue on the issue map now shows who opened it on the card's grey line, between the GitHub state and the assignees, on the full map and on faded boxes outside a search. A missing, empty or deleted author shows unknown.",
+  "checks": [
+    {
+      "key": "skills/issue-map/card-opened-by",
+      "criterion": "The card's grey line shows opened by <login> right after the GitHub state, and opened by unknown when there is no author.",
+      "steps": "In a test repository, open one issue from a normal account. Run python .claude/skills/issue-map/scripts/issue_map.py --open, then click that issue's box.",
+      "expected": "Level N · GitHub state: OPEN · opened by <your login> · nobody assigned"
+    },
+    {
+      "key": "skills/issue-map/card-opened-by-outside",
+      "criterion": "A faded box outside a search also names who opened it.",
+      "steps": "Make issue A wait on issue B under ### Blocked by, and label only A qa-demo. Run the generator with --search \"label:qa-demo\" --open, then click B's faded box.",
+      "expected": "· opened by <B's author login> · on its grey line"
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "7c74af2d0761732e07b8f9dc5cceb65254203380"
+}

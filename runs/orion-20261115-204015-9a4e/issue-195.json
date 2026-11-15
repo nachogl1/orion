@@ -1,0 +1,36 @@
+{
+  "run_id": "orion-20261115-204015-9a4e",
+  "issue": 195,
+  "title": "Issue map: the details card shows who opened each issue, as in Maestro",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T20:40:15Z",
+  "finished_at": "2026-11-15T21:09:40Z",
+  "outcome": "merged",
+  "pr": 233,
+  "summary": "issue_map.py requests each issue's author in the main and outside-box queries; the card's grey line shows 'opened by <login>' after the GitHub state, or 'unknown' for a missing, empty or ghost author; login HTML-escaped. Version 37.",
+  "agents": [
+    {
+      "name": "dev-195",
+      "model": "opus",
+      "tokens_total": 181233
+    },
+    {
+      "name": "review-195",
+      "model": "opus",
+      "tokens_total": 131296
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1470,
+    "review_seconds": 200,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}
