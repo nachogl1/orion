@@ -261,12 +261,15 @@ assignee check above passes for it, and the eligibility tests on the assignee, t
 branch are skipped; every other test still holds (`agent-ready`, every blocker closed). Skip step 1, then steps 2-4 as
 above, the comment reading `resumed by run <run id>`. **Two of your own terminals never resume one story:** before
 step 2, a live entry for the issue in the in-flight file from another run id stops the resume (pick nothing in its
-place, and say which run holds it). After step 3, the re-read counts only `claimed by run …` and `resumed by run …`
+place). The message names the run that holds it and says the entry goes stale 4 hours after its `startedAt`
+(`references/in-flight.md`); once that terminal is closed, the person may remove the entry from
+`<wt root>/in-flight.json` and name the issue again. After step 3, the re-read counts only `claimed by run …` and `resumed by run …`
 comments posted after this run's `startedAt` (the stopped run's old claim comment never counts); when another run id
-has one, the lower comment id wins and the other run backs off as above. Phase 3 reuses what the stopped run left: the worktree when it
-still exists, else `git -C <main checkout> worktree add <wt root>/<N>-<slug> feat/<N>-<slug>` on the existing branch
-(when only the remote one is left, `git -C <main checkout> fetch origin feat/<N>-<slug>:feat/<N>-<slug>` first), and
-an open pull request stays the pull request. Another person's assignee is never resumed.
+has one, the lower comment id wins and the other run backs off as above. Phase 3 reuses what the stopped run left:
+the worktree when it still exists, else `git -C <main checkout> worktree add <wt root>/<N>-<slug> feat/<N>-<slug>` on
+the existing branch (when only the remote one is left, `git -C <main checkout> fetch origin
+feat/<N>-<slug>:feat/<N>-<slug>` first), else, when no branch is left at all (an `INHERITED RED` stop with no
+commit), phase 3's own command (`worktree add --no-track … -b feat/<N>-<slug> origin/main`); an open pull request stays the pull request. Another person's assignee is never resumed.
 
 ## Phase 2 — Q&A (the first touchpoint)
 
