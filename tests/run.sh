@@ -288,6 +288,66 @@ wayfinder_guide_box_offers_adrs() {
 }
 check "the guide's /wayfinder box offers ADRs only" wayfinder_guide_box_offers_adrs
 
+echo "reconcile"
+RC="$REPO/skills/reconcile/SKILL.md"
+# One section of reconcile's SKILL.md: from the "## <title>" heading to the next "## " heading.
+rc_section() { awk -v h="## $1" 'index($0, h) == 1 {on=1; print; next} on && /^## /{exit} on{print}' "$RC"; }
+# The pending ADRs are product truth beside the PRD: phase 0 reads them by their status line, and a story an ADR
+# asks for is no longer "a story the PRD does not ask for".
+reconcile_reads_pending_adrs() {
+    rc_section 'Phase 0' | grep -F 'docs/ADRs/' | grep -qF '**Status: pending**' || { echo "  phase 0 does not read the pending ADRs by their status line"; return 1; }
+    rc_section 'Phase 0' | grep -qF 'any status line other than' || { echo "  phase 0 does not read an ADR with another status line as pending"; return 1; }
+    rc_section 'The four lenses' | grep -qF 'a story a pending ADR asks for is **not** a story the PRD does not ask for' \
+        || { echo "  a story a pending ADR asks for is still reported as unasked-for"; return 1; }
+    grep -qF 'docs/ADRs/' "$REPO/skills/reconcile/VERIFY.md" || { echo "  VERIFY.md does not cover the ADRs it reads"; return 1; }
+}
+check "reconcile reads the pending ADRs beside the PRD" reconcile_reads_pending_adrs
+# Both new findings sit in the lens list, each with its plain-words explanation: a pending ADR not yet folded, and a
+# later-tier story that is free while an earlier tier is still open (the tier chain of new-issue.md).
+reconcile_lists_both_new_findings() {
+    local l
+    l="$(rc_section 'The four lenses')"
+    printf '%s' "$l" | grep -qF '**every pending ADR not yet folded into the PRD**' \
+        && printf '%s' "$l" | grep -qF '**A decision waiting to be folded into the PRD**' \
+        || { echo "  the lens list has no pending-ADR finding with its explanation"; return 1; }
+    printf '%s' "$l" | grep -qF '**a later-tier story that is free while a story of an earlier tier is still open**' \
+        && printf '%s' "$l" | grep -qF '**A later-tier story that can be started too early**' \
+        && printf '%s' "$l" | grep -qF 'final stories of the tier before it' \
+        || { echo "  the lens list has no free later-tier finding with its explanation and the tier chain"; return 1; }
+    [ "$(printf '%s' "$l" | grep -cF '*In plain words:*')" -ge 2 ] || { echo "  a new finding has no plain-words explanation"; return 1; }
+}
+check "reconcile lists the pending-ADR and the free later-tier findings, in plain words" reconcile_lists_both_new_findings
+# Folding a pending ADR changes its status line in the same pull request, the docs(prd) one.
+reconcile_fold_changes_the_status_line() {
+    local p3
+    p3="$(rc_section 'Phase 3')"
+    printf '%s' "$p3" | grep -qF '**Fold into the PRD**' && printf '%s' "$p3" | grep -qF '**Status: folded into the PRD on <yyyy-mm-dd>**' \
+        && printf '%s' "$p3" | grep -qF 'same pull request' || { echo "  phase 3 does not fold an ADR and change its status line in the same pull request"; return 1; }
+    printf '%s' "$p3" | grep -qF 'the PRD changed or an ADR was folded' \
+        || { echo "  a fold does not go in the docs(prd) pull request"; return 1; }
+    printf '%s' "$p3" | grep -qF 'Any other status line an older ADR carries is **replaced**'         || { echo "  a fold does not replace an older ADR's other status line"; return 1; }
+}
+check "reconcile's fold changes the ADR's status line in the same pull request" reconcile_fold_changes_the_status_line
+# The run's bookmark-only pull request merges on green; the docs(prd) one is the person's, by the baseline's list.
+reconcile_merges_by_the_baseline_list() {
+    local section
+    quotes_baseline_who_merges "$RC" || return 1
+    section="$(who_merges_section "$RC")"
+    printf '%s' "$section" | grep -F 'chore(reconcile)' | grep -qF 'on green' \
+        && printf '%s' "$section" | grep -F 'docs(prd): reconcile' | grep -qF '**a person**' \
+        || { echo "  Who merges does not place both kinds of pull request the skill opens"; return 1; }
+    ! grep -qiE 'no merge autonomy|a pull request a human merges' "$RC" || { echo "  reconcile still hands every pull request to a person"; return 1; }
+}
+check "every pull request reconcile opens merges by the baseline's Who merges list" reconcile_merges_by_the_baseline_list
+reconcile_guide_box_names_the_findings() {
+    local box
+    box="$(awk '/^  reconcile:\{/{on=1} on{print} on&&/^  [a-z]+:\{/&&!/reconcile:/{exit}' "$REPO/docs/guide/index.html")"
+    printf '%s' "$box" | grep -qF 'pending ADR' && printf '%s' "$box" | grep -qF 'later-tier story' \
+        && printf '%s' "$box" | grep -qF 'merges itself on green' \
+        || { echo "  the guide's /reconcile box does not name the pending ADRs, the later-tier story and its merges"; return 1; }
+}
+check "the guide's /reconcile box names the pending ADRs, the later-tier finding and its merges" reconcile_guide_box_names_the_findings
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
