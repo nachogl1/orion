@@ -153,6 +153,19 @@ PY
 }
 check "in-flight.md shows every field the Control Tower mod reads, in its shape" in_flight_shows_what_control_tower_reads
 
+echo "planning interview"
+# /prd-to-tickets and /wayfinder follow one shared interview file beside new-issue.md; neither skill holds its rules itself.
+planning_interview_is_shared() {
+    local file="$REPO/skills/dev-next/references/planning-interview.md" s
+    [ -f "$file" ] || { echo "  missing: skills/dev-next/references/planning-interview.md"; return 1; }
+    for s in prd-to-tickets wayfinder; do
+        grep -qF '.claude/skills/dev-next/references/planning-interview.md' "$REPO/skills/$s/SKILL.md" || { echo "  $s does not load it"; return 1; }
+        grep -qF '.claude/skills/dev-next/references/planning-interview.md' "$REPO/skills/$s/VERIFY.md" || { echo "  $s's VERIFY.md does not check it"; return 1; }
+        ! grep -qF 'Stop when a round produces no new question' "$REPO/skills/$s/SKILL.md" || { echo "  $s still holds the interview rules"; return 1; }
+    done
+}
+check "prd-to-tickets and wayfinder both follow the one shared planning interview" planning_interview_is_shared
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
