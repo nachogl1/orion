@@ -1,0 +1,40 @@
+{
+  "run_id": "orion-20261115-115457-d978",
+  "issue": 180,
+  "title": "harvest-qa: merge its own log pull request on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T11:54:58Z",
+  "finished_at": "2026-11-15T12:08:49Z",
+  "outcome": "merged",
+  "pr": 214,
+  "summary": "/harvest-qa's closing phase merges its log pull request on green with dev-next's merge steps (never on red or pending), its summary says whether it merged, and a Who-merges section quotes the baseline. Version 31.",
+  "agents": [
+    {
+      "name": "dev-180",
+      "model": "opus",
+      "tokens_total": 129597
+    },
+    {
+      "name": "review-180",
+      "model": "opus",
+      "tokens_total": 131226
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 560,
+    "review_seconds": 180,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [
+    "The dev's Windows-part 'before' suite count was taken while edits were in progress (it read 79, main is 77); only CI's main run was a clean before-measure."
+  ],
+  "lessons_learned": [
+    "Take the before-suite run on a clean worktree before the first edit; the Windows part reads the working folder."
+  ],
+  "deferred": []
+}

@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261115-115457-d978",
+  "issue": 180,
+  "title": "harvest-qa: merge its own log pull request on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 214,
+  "merged_at": "2026-11-15T12:08:30Z",
+  "seam": "skills/harvest-qa/",
+  "story": "/harvest-qa's log pull request, which only adds its log and a changelog line, now merges itself once its checks pass instead of waiting for a person; if checks are red or pending it names the pull request and does not merge.",
+  "checks": [],
+  "no_qa_reason": "Skill instructions only; suite checks guard the quoted merge rule.",
+  "merge_commit": "e28e6bdd73122ced05965024c7da911fd60b762f"
+}
