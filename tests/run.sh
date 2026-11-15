@@ -118,6 +118,41 @@ dev_next_creates_every_baseline_label() {
 }
 check "dev-next's preflight creates every label the baseline lists" dev_next_creates_every_baseline_label
 
+echo "dev-next sub-agents and the in-flight file"
+# Every spawn in dev-next (and the roles dev-quick hands to it) names its sub-agent with the issue number, never a bare role-N:
+# a reviewer or ready-check is always a new agent, so it may never appear as a bare role-N; a dev only on a spawn line or roles row.
+dev_next_spawns_name_the_issue() {
+    local files hits
+    files=("$REPO"/skills/dev-next/SKILL.md "$REPO"/skills/dev-next/references/*.md "$REPO"/skills/dev-quick/SKILL.md)
+    hits="$( { grep -nHiE 'spawn|^\| `(ready-check|dev|review)-' "${files[@]}" | grep -E '`(ready-check|dev|review)-N([`-]|$)'
+              grep -nHE '`(ready-check|review)-N([`-]|$)' "${files[@]}"; } | sort -u)"
+    [ -z "$hits" ] || { printf '  bare role-N: %s\n' "$hits"; return 1; }
+    grep -qE '^Spawn `dev-<N>`' "$REPO/skills/dev-next/references/dev-agent.md" \
+        && grep -qE 'Spawn `review-<N>-r<round>`' "$REPO/skills/dev-next/references/review-agent.md"
+}
+check "every dev-next spawn names its sub-agent with the issue number" dev_next_spawns_name_the_issue
+# The Control Tower mod reads the in-flight file: in-flight.md's example shows every field its reader names, in its shape.
+in_flight_shows_what_control_tower_reads() {
+    local reader="$REPO/mods/control-tower/hooks/register.tsx" doc="$REPO/skills/dev-next/references/in-flight.md" fields f
+    fields="$(awk '/^type InFlight(Entry)? = \{/{on=1} on{print} on&&/\}$/{on=0}' "$reader" | sed 's/^type [A-Za-z]* = //' \
+        | grep -oE '[A-Za-z]+\??:' | tr -d '?:' | sort -u)"
+    [ -n "$fields" ] || return 1
+    for f in $fields; do grep -qF "\"$f\":" "$doc" || { echo "  in-flight.md does not show: $f"; return 1; }; done
+    "$PY" - "$doc" <<'PY'
+import json, re, sys
+example = json.loads(re.search(r"```json\n(.*?)\n```", open(sys.argv[1], encoding="utf-8").read(), re.S).group(1))
+entries = example["issues"]
+assert any("terminal" in e and "step" in e and e.get("agents") for e in entries), "no entry shows terminal, step and agents"
+for e in entries:
+    assert isinstance(e.get("terminal", ""), str) and isinstance(e.get("step", ""), str)
+    agents = e.get("agents", [])
+    assert isinstance(agents, list), "agents is not a list"
+    for a in agents:
+        assert set(a) == {"name", "status"} and all(isinstance(v, str) for v in a.values()), a
+PY
+}
+check "in-flight.md shows every field the Control Tower mod reads, in its shape" in_flight_shows_what_control_tower_reads
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.

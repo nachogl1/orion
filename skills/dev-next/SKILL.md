@@ -79,9 +79,9 @@ changes how many run side by side, never the destination.
 | Role | Model | Effort | Job |
 |---|---|---|---|
 | orchestrator | opus | the user's own | this session. Talks to GitHub, spawns the others. **Never writes application code.** |
-| `ready-check-N` | sonnet | low | reads one issue, returns `READY` or its questions, one line each with a recommended answer, nothing else |
-| `dev-N` | opus | high | one worktree, one branch, one pull request. Most of the tokens. |
-| `review-N` | opus | xhigh | fresh context, reads the CI suite result (runs the suite itself only when there is no CI), posts the verdict |
+| `ready-check-<N>` | sonnet | low | reads one issue, returns `READY` or its questions, one line each with a recommended answer, nothing else |
+| `dev-<N>` | opus | high | one worktree, one branch, one pull request. Most of the tokens. |
+| `review-<N>-r<round>` | opus | xhigh | fresh context, reads the CI suite result (runs the suite itself only when there is no CI), posts the verdict |
 
 **Every brief** asks for a bounded result (the report shape its reference file gives, never an essay) and says: never
 `git stash`, never switch branches in any checkout, never `git add -A` — commit only the files you touched (the
@@ -92,10 +92,18 @@ Mechanical work runs on the cheap model at low effort; only the dev and review r
 orchestrator runs at whatever effort the user's own session is set to (`/effort` or their settings); this skill never
 changes it.
 
-Name every sub-agent `role-N` (`dev-<N>`, `review-<N>-r2`, `ready-check-<N>`) — the audit finds them by that prefix;
-the Agent tool rejects `:` and `#` in names on some machines. **Keep the agent id each spawn returns** and resume with
+Name every sub-agent after its role and **the number of the issue it works on**, never a counter: `ready-check-<N>`,
+`dev-<N>`, `review-<N>-r<round>` (`review-<N>-r1` for the first round); a replacement spawn for the same role and issue
+takes the same name. The name goes into the Agent tool's `description` (and its `name`, where the tool has one), which
+is what the agent list and the Control Tower pane show, and into the issue's in-flight entry (below). The audit finds
+them by that prefix; the Agent tool rejects `:` and `#` in names on some machines. **Keep the agent id each spawn returns** and resume with
 SendMessage to that id: a finished agent is often not reachable by its name. **No cap on how many are alive at once**: every
 picked issue gets its own agents from the start; a rate-limit error (HTTP 429) is a reason to retry that spawn, never to queue.
+
+**Report progress in the in-flight file.** This run's entries carry `terminal` (this terminal's name), `step` (what the
+run is doing now) and `agents` (each sub-agent's name and status), in the shape and at the moments
+`references/in-flight.md`, *Progress fields*, gives: written at every phase change and every spawn, resume or report.
+They are what other terminals and the Control Tower pane show; a terminal name that cannot be found is left out.
 
 Team members may be on different Claude plans, and a plan that lacks a model fails instantly on HTTP 429 with no
 fallback. There is no separate probe: the first real spawn on a model is the probe, and an HTTP 429 on it retries that
@@ -208,8 +216,9 @@ project's `CLAUDE.md`.
 9. Create the in-flight file if it is missing (`references/in-flight.md`) and read it. This is the whole
    coordination mechanism with the **other terminals on this machine** — note which issues are already in flight
    and whether someone is mid-merge. It never limits how many you take. **Before ranking**, write this run's own entry
-   with `"issue": null` (run id, `startedAt`), wait 5 s and re-read: sibling terminals started together then see each
-   other before any of them has claimed (`references/in-flight.md`, *Run entries*).
+   with `"issue": null` (run id, `startedAt`, and `terminal` and `step` per `references/in-flight.md`, *Progress
+   fields*), wait 5 s and re-read: sibling terminals started together then see each other before any of them has
+   claimed (`references/in-flight.md`, *Run entries*).
 
 ## Phase 1 — Pick and claim
 
@@ -274,7 +283,7 @@ commit), phase 3's own command (`worktree add --no-track … -b feat/<N>-<slug> 
 ## Phase 2 — Q&A (the first touchpoint)
 
 - Issue labelled `agent-ready` before this run started → **ask nothing at all**. Go to phase 3.
-- Issue labelled `agent-ready` in this run's preflight (step 8) → spawn `ready-check-N` with the issue body. It returns
+- Issue labelled `agent-ready` in this run's preflight (step 8) → spawn `ready-check-<N>` with the issue body. It returns
   `READY`, or **every** question it has — no cap on the count, one line each with a recommended answer, no prose. It also checks two things a fresh label hides: **every acceptance
   criterion against the project's standing rules** (its `CLAUDE.md`: no build or run of a repository the team does not
   own, the skip-count baseline, no production, customer or personal data), and **every assumption in the body against
@@ -303,7 +312,7 @@ If the project's `CLAUDE.md` derives a per-issue resource from the issue number 
 now and write it where `CLAUDE.md` says (usually the worktree's `.env`), **replacing** any line already there for the
 same setting — never append to a copy of `.env.example`, which may carry an empty one that wins.
 
-Spawn `dev-N` with the brief in `references/dev-agent.md`. Give it: the issue, the worktree path, any per-issue
+Spawn `dev-<N>` with the brief in `references/dev-agent.md`. Give it: the issue, the worktree path, any per-issue
 resource, the exact runtime paths from phase 0 step 1, and the gate commands. **You do not write application code.**
 
 With more than one issue picked, run this phase for **all of them at the same time** — a worktree, a branch and a
@@ -327,7 +336,7 @@ failure; the run never waits for them.
 
 ## Phase 4 — Review
 
-Spawn a **brand-new** `review-N` per `references/review-agent.md`. It gets only the issue, the pull request, the worktree,
+Spawn a **brand-new** `review-<N>-r<round>` per `references/review-agent.md`. It gets only the issue, the pull request, the worktree,
 the runtime paths and the commands — **no prior context, and never the agent that wrote the code**. A fresh one for every
 round: a reviewer that has already argued for its own findings is no longer fresh eyes.
 
@@ -344,9 +353,9 @@ request already changes** → fixed in this pull request. Critical → a GitHub 
 "to be safe"; a backlog nobody drains is worse than no backlog. The reviewer's tags are in `references/review-agent.md`.
 
 - `CHANGES REQUESTED` → send the must-fix list, plus every `Fix now:` line, back to the **same** `dev-N`
-  (SendMessage to the agent id kept at spawn, so it keeps its context; if it is no longer reachable, spawn a new `dev-N`
+  (SendMessage to the agent id kept at spawn, so it keeps its context; if it is no longer reachable, spawn a new `dev-<N>`
   on the same worktree and branch with the findings). It fixes them in the same branch, re-greens the gate, pushes, and
-  reports. Then a **new** `review-N` reviews the whole pull request again — that is one round.
+  reports. Then a **new** `review-<N>-r<round>` (the next round's number) reviews the whole pull request again — that is one round.
 - `APPROVED` with `Fix now:` lines → same loop: `dev-N` fixes them in this pull request, then a fresh review confirms.
   Small and safe is fixed in the same session, never deferred — **once**. After the first `APPROVED`, the confirming
   review is the last: a new `Fix now:` it raises becomes a `Defer:` line, never another round (otherwise every fresh

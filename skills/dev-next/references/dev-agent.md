@@ -1,6 +1,6 @@
-# The `dev-N` sub-agent — phase 3
+# The `dev-<N>` sub-agent — phase 3
 
-Spawn on **opus** at **high** effort, else the fallback order in `SKILL.md` *Roles*. Give it the brief below with the placeholders filled in.
+Spawn `dev-<N>` (the issue's number, `SKILL.md` *Roles*) on **opus** at **high** effort, else the fallback order in `SKILL.md` *Roles*. Give it the brief below with the placeholders filled in.
 
 ---
 
