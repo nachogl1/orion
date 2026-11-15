@@ -296,6 +296,7 @@ rc_section() { awk -v h="## $1" 'index($0, h) == 1 {on=1; print; next} on && /^#
 # asks for is no longer "a story the PRD does not ask for".
 reconcile_reads_pending_adrs() {
     rc_section 'Phase 0' | grep -F 'docs/ADRs/' | grep -qF '**Status: pending**' || { echo "  phase 0 does not read the pending ADRs by their status line"; return 1; }
+    rc_section 'Phase 0' | grep -qF 'any status line other than' || { echo "  phase 0 does not read an ADR with another status line as pending"; return 1; }
     rc_section 'The four lenses' | grep -qF 'a story a pending ADR asks for is **not** a story the PRD does not ask for' \
         || { echo "  a story a pending ADR asks for is still reported as unasked-for"; return 1; }
     grep -qF 'docs/ADRs/' "$REPO/skills/reconcile/VERIFY.md" || { echo "  VERIFY.md does not cover the ADRs it reads"; return 1; }
@@ -324,6 +325,7 @@ reconcile_fold_changes_the_status_line() {
         && printf '%s' "$p3" | grep -qF 'same pull request' || { echo "  phase 3 does not fold an ADR and change its status line in the same pull request"; return 1; }
     printf '%s' "$p3" | grep -qF 'the PRD changed or an ADR was folded' \
         || { echo "  a fold does not go in the docs(prd) pull request"; return 1; }
+    printf '%s' "$p3" | grep -qF 'Any other status line an older ADR carries is **replaced**'         || { echo "  a fold does not replace an older ADR's other status line"; return 1; }
 }
 check "reconcile's fold changes the ADR's status line in the same pull request" reconcile_fold_changes_the_status_line
 # The run's bookmark-only pull request merges on green; the docs(prd) one is the person's, by the baseline's list.

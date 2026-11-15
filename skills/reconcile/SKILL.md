@@ -83,8 +83,9 @@ Two findings in that list need a word more, in the plain words the person hears:
   anyone who reads only the PRD misses that decision, and the pile grows with every map that ends this way. An ADR is
   pending when its status line, right under its title, reads `**Status: pending**`; one that reads
   `**Status: folded into the PRD on <yyyy-mm-dd>**` is already in the PRD and is never reported. An ADR with no status
-  line (written before status lines existed) is read as pending. The fix is **Fold into the PRD** (phase 1 step 6),
-  usually rated "fix some day".
+  line, or with any other one (written before status lines existed: `Status: Accepted`,
+  `**Status: approved by the owner on <date>.**`, …), is read as pending. The fix is **Fold into the PRD** (phase 1
+  step 6), usually rated "fix some day".
 - **A later-tier story that can be started too early** (third lens). *In plain words:* the PRD builds the product in
   tiers, the first usable version first (`tier:mvp`), then the extras (`tier:stretch`, then `tier:stretch-2`), and
   every story of a later tier must wait for the final stories of the tier before it (the stories of that tier no other
@@ -148,7 +149,8 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
    <reconciled_at>..origin/main -- docs/PRDs/` for what changed since the bookmark and `git diff
    <reconciled_at>..origin/main -- <file>` per changed file.
    **The pending ADRs beside them:** every `docs/ADRs/*.md` on `origin/main` (`git ls-tree -r --name-only origin/main
-   -- docs/ADRs/`), its status line read first. `**Status: pending**`, or no status line at all → read in full: it is
+   -- docs/ADRs/`), its status line read first. `**Status: pending**`, no status line, or any status line other than
+   the folded one below (an older ADR's `Status: Accepted`, say) → read in full as pending: it is
    product truth beside the PRD, and where it changes what the PRD says, the ADR is the later decision and wins (note
    the PRD sections it names, for the fold). `**Status: folded into the PRD on <yyyy-mm-dd>**` → already in the PRD,
    not read again. Only ADRs on `main` count: one in an open pull request is not yet approved.
@@ -210,8 +212,10 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
      interview, a renamed thing. Goes in this run's `docs(prd)` pull request.
    - **Fold into the PRD** — the only answer for a pending ADR besides leaving it: the ADR's decision is written into
      the PRD sections it names, and **the ADR's status line changes in the same pull request**, from
-     `**Status: pending**` (or no status line) to `**Status: folded into the PRD on <yyyy-mm-dd>**` (the day of the
-     run). When the PRD already says it, only the status line changes. Goes in this run's `docs(prd)` pull request.
+     `**Status: pending**` (or no status line, or any other status line) to
+     `**Status: folded into the PRD on <yyyy-mm-dd>**` (the day of the run), which replaces the old line and never
+     sits beside it. When the PRD already says it, only the status line changes. Goes in this run's `docs(prd)` pull
+     request.
    - **File a story** — the PRD asks for something no story covers, written to `new-issue.md` (names the PRD section
      under `### References`; the tier the PRD gives that section; `needs-human` unless nothing is left to ask), native
      sub-issue of the matching epic, both blocker forms. Several uncovered items in one PRD area are **one** story
@@ -280,8 +284,9 @@ the person's to merge.
 3. **Fold into the PRD** → `reconcile-pr-<slug>`, in the same worktree and the same pull request as step 2: writes
    the ADR's decision into the PRD sections it names, in the words the person agreed (nothing when the PRD already
    says it), and in the same commit changes the ADR's status line, right under its title, from `**Status: pending**`
-   to `**Status: folded into the PRD on <yyyy-mm-dd>**` (added under the title when the ADR had none). Nothing else
-   in the ADR changes: it stays as the record of why. A fold and its status line never land in separate pull
+   to `**Status: folded into the PRD on <yyyy-mm-dd>**`. Any other status line an older ADR carries is **replaced**
+   by the folded line, never kept beside it, so the ADR has exactly one status line; one with none gets the folded
+   line added under its title. Nothing else in the ADR changes: it stays as the record of why. A fold and its status line never land in separate pull
    requests, so the PRD and the ADR never disagree on `main`.
 4. **File a story** → exactly as `new-issue.md` says: every heading, `story` plus one readiness label and the tier
    the PRD gives that section (created first when missing, `new-issue.md` step 2), native sub-issue of its epic (the
