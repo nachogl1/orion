@@ -12,7 +12,8 @@ never committed, and carries a banner saying who built it and when. Rebuild it w
     python .claude/skills/issue-map/scripts/issue_map.py --repo owner/name      # another repository's issues
 
 Needs Python 3.9+ and `gh` signed in. No third-party packages. One run is one issue list plus one GraphQL call
-per 25 issues for the native links (and, with --search, one per 25 blockers the search left out).
+per 25 issues for the native links (and, with --search, one per 25 blockers the search left out, plus one per 25
+blockers those name only in their body section).
 
 Mechanic (the same rules as the work-tracking section of BASE_CLAUDE.md):
 - Nodes: every issue, open and closed, of any label. Epics (label `epic`) sit in their own far-left column,
@@ -23,8 +24,8 @@ Mechanic (the same rules as the work-tracking section of BASE_CLAUDE.md):
   dropped and listed as a data problem; so is an open issue whose body section and native relation disagree.
 - Level: 0 when an issue has no link, else 1 + the highest level among its blockers. Closed blockers
   count; labels never change a level. The columns are the levels.
-- With --search, a blocker the search left out is still loaded and drawn as a faded box (its own links are not
-  loaded), so an issue waiting on it never looks free. With neither option, the map is built exactly as before.
+- With --search, a blocker the search left out is still loaded and drawn as a faded box, so an issue waiting on
+  it never looks free; its own blockers are loaded with their state (not drawn), so it never looks free either. With neither option, the map is built exactly as before.
 """
 
 from __future__ import annotations
@@ -93,8 +94,9 @@ PROBLEMS_NOTE = ('Some "blocked by" links could not be drawn, or two sources dis
 LIMIT_WARNING = f"⚠ Showing the first {MAP_ISSUE_LIMIT} issues, links beyond it are dropped."
 OUTSIDE_ENCODING = "A faded, dashed box is outside the search: a matching issue waits on it."
 OUTSIDE_NOTE = ("the search did not match it; it is on the map because a matching issue waits on it. Its own "
-                "blockers are not loaded, so its progress here only knows whether it is closed or assigned.")
-REPO_PATTERN = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")  # owner/name, nothing that could break the query
+                "blockers are listed below and decide its progress, but are not drawn.")
+# owner/name: an owner never starts with a hyphen, a name is never "." or ".."; nothing that could break the query
+REPO_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]*/(?!\.\.?$)[A-Za-z0-9_.][A-Za-z0-9_.-]*")
 
 
 def find_root() -> Path:
@@ -147,9 +149,10 @@ def ensure_excluded() -> None:
 
 LINK_FIELDS = ("number parent { number } blockedBy(first: 100) { nodes { number } } "
                "subIssues(first: 100) { nodes { number } }")
-# The fields `gh issue list --json` gives, for the blockers a search left out.
+# The fields `gh issue list --json` gives, for the blockers a search left out, plus their own blockers' state.
+BRIEF_FIELDS = "number title state"
 ISSUE_FIELDS = ("number title state url body labels(first: 100) { nodes { name color } } "
-                "assignees(first: 100) { nodes { login } }")
+                f"assignees(first: 100) {{ nodes {{ login }} }} blockedBy(first: 100) {{ nodes {{ {BRIEF_FIELDS} }} }}")
 
 
 def nodes_of(conn: dict | None) -> list[dict]:
@@ -187,18 +190,35 @@ def load_links(owner: str, name: str, numbers: list[int]) -> dict[int, dict]:
             for issue in query_issues(owner, name, numbers, LINK_FIELDS)}
 
 
+def brief_of(issue: dict) -> dict:
+    """Number, title and state, as the card lists a blocker; a missing state counts as open, so nothing looks free."""
+    return {"n": issue["number"], "title": issue.get("title") or "", "state": (issue.get("state") or "OPEN").upper()}
+
+
 def load_outside(owner: str, name: str, issues: list[dict], links: dict[int, dict]) -> list[dict]:
     """The blockers the loaded issues name but the search left out, shaped like `gh issue list` rows and marked
-    outside. A number that is no issue of the repository (a pull request, a typo) is simply not found."""
+    outside, each with its own blockers (number, title, state) from both sources, so its progress is true. A number
+    that is no issue of the repository (a pull request, a typo) is simply not found, as on the full map."""
     loaded = {i["number"] for i in issues}
     named = {b for i in issues
              for b in set(links.get(i["number"], {}).get("blocked_by", [])) | body_blockers(i.get("body"))}
+    found = query_issues(owner, name, sorted(named - loaded), ISSUE_FIELDS)
+    known = {i["number"]: brief_of(i) for i in issues + found}
+    known.update({b["number"]: brief_of(b) for x in found for b in nodes_of(x.get("blockedBy")) if "number" in b})
+    unknown = {b for x in found for b in body_blockers(x.get("body"))} - known.keys()
+    known.update({b["number"]: brief_of(b) for b in query_issues(owner, name, sorted(unknown), BRIEF_FIELDS)})
+
+    def own_blockers(x: dict) -> list[dict]:
+        native = {b["number"] for b in nodes_of(x.get("blockedBy")) if "number" in b}
+        return [known[b] for b in sorted(native | body_blockers(x.get("body"))) if b in known]
+
     return [{"number": x["number"], "title": x.get("title") or "", "state": x.get("state") or "OPEN",
              "url": x.get("url") or "", "body": x.get("body") or "", "outside": True,
+             "own_blockers": own_blockers(x),
              "labels": [{"name": lab["name"], "color": lab.get("color", "")}
                         for lab in nodes_of(x.get("labels")) if "name" in lab],
              "assignees": [{"login": a["login"]} for a in nodes_of(x.get("assignees")) if "login" in a]}
-            for x in query_issues(owner, name, sorted(named - loaded), ISSUE_FIELDS)]
+            for x in found]
 
 
 def body_blockers(body: str | None) -> set[int]:
@@ -318,15 +338,18 @@ def build_map(issues: list[dict], links: dict[int, dict]) -> dict:
     for lv in range(max(level.values(), default=-1) + 1):
         columns.append((f"Level {lv}", ordered([n for n in nodes if level[n] == lv])))
 
+    def brief(n: int) -> dict:
+        return {"n": n, "title": by[n]["title"], "state": by[n]["state"].upper()}
+
+    def blockers(n: int) -> list[dict]:  # a left-out blocker brings its own, which are not on the map
+        return by[n]["own_blockers"] if n in outside else [brief(b) for b in up.get(n, [])]
+
     def status(n: int) -> str:
         if not is_open(n):
             return "closed"
-        if any(is_open(b) for b in up.get(n, [])):
+        if any(b["state"] == "OPEN" for b in blockers(n)):
             return "blocked"
         return "inprog" if by[n]["assignees"] else "ready"
-
-    def brief(n: int) -> dict:
-        return {"n": n, "title": by[n]["title"], "state": by[n]["state"].upper()}
 
     meta: dict[int, dict] = {}
     for name, members in columns:
@@ -338,7 +361,7 @@ def build_map(issues: list[dict], links: dict[int, dict]) -> dict:
                        "labels": labels[n], "body": description_text(by[n].get("body") or ""),
                        "assignees": [a["login"] for a in by[n]["assignees"]], "parent": parent.get(n),
                        "stories": [brief(k) for k in kids.get(n, [])],
-                       "blockers": [brief(b) for b in up.get(n, [])], "waiting": down.get(n, [])}
+                       "blockers": blockers(n), "waiting": down.get(n, [])}
     colours = {lab["name"]: lab.get("color", "") for i in issues for lab in i["labels"]}
     return {"columns": columns, "meta": meta, "up": up, "edges": [(s, t, is_open(s)) for s, t in sorted(edges)],
             "epic_edges": [(e, k) for e in epics for k in kids[e]], "problems": problems,
@@ -760,7 +783,7 @@ h+='<div class="row"><b>Labels:</b>'+(m.labels.length?m.labels.map(l=>'<span cla
 h+='<div class="row"><b>Description</b><div class="desc">'+(m.body?esc(m.body):'<i>empty</i>')+'</div></div>';
 if(m.kind==='epic'){h+='<div class="row"><b>Stories:</b> '+(m.stories.length?'':'none linked as sub-issues')+'</div>';if(m.stories.length)h+=list(m.stories,b=>b.state==='CLOSED'?'c':'')}
 else{if(m.parent!==null&&META[m.parent])h+='<div class="row"><b>Epic</b> #'+m.parent+' '+esc(META[m.parent].title)+'</div>';
-h+='<div class="row"><b>Blocked by:</b> '+(m.outside?'not loaded, outside the search':m.blockers.length?'':'nothing')+'</div>';if(m.blockers.length)h+=list(m.blockers,b=>b.state==='OPEN'?'o':'c');
+h+='<div class="row"><b>Blocked by:</b> '+(m.blockers.length?'':'nothing')+'</div>';if(m.blockers.length)h+=list(m.blockers,b=>b.state==='OPEN'?'o':'c');
 h+='<div class="row"><b>Waiting on it:</b> '+(m.waiting.length?m.waiting.map(w=>'#'+w).join(', '):'nothing')+'</div>'}
 return h+'<div class="acts"><button type="button" class="tb" data-open>Open on GitHub</button><span class="m">Click the box again to clear \\u00b7 double-click opens it on GitHub \\u00b7 drag the title to move this card</span></div>'}
 function place(ev){if(tipSpot){tip.style.left=tipSpot.left+'px';tip.style.top=tipSpot.top+'px';return}
