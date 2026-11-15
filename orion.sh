@@ -1044,6 +1044,12 @@ cmd_update() {
     { [ -d "$dir/statusline" ] && [ -d "$dir/global" ]; } || force=1
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then
         say "orion is already at $(short "$current") - nothing to do (pass --force to re-copy anyway)"
+        # installed before its release was tagged: only the version on line 5 is behind
+        if [ -n "$SRC_VERSION" ] && [ "$SRC_VERSION" != "$(version_number "$dir/VERSION")" ]; then
+            awk -v v="$SRC_VERSION" 'NR < 5 { print } END { for (i = NR + 1; i < 5; i++) print ""; print v }' "$dir/VERSION" > "$dir/VERSION.new" \
+                && mv -f "$dir/VERSION.new" "$dir/VERSION"
+            say "  ~    .claude/orion/VERSION records orion $SRC_VERSION, the newest release on that commit"
+        fi
         settings_raise_hook_timeout "$PROJECT/.claude/settings.json"
         return
     fi
@@ -1118,7 +1124,8 @@ check_update_ctx() {  # force
     # A release raises the version number, so a merge that changes nothing a project receives is not offered. Release
     # tags mark the default branch only; without a number on both sides any new commit counts, as before numbers.
     if [ -n "$LATEST_NUM" ] && [ -n "$installed" ] && [ "$ref" = "$ORION_DEFAULT_REF" ]; then
-        version_gt "$LATEST_NUM" "$installed" && newer=1
+        # the installed commit is the newest even when its release was tagged after the install: nothing to offer
+        version_gt "$LATEST_NUM" "$installed" && [ "$LATEST_SHA" != "$current" ] && newer=1
         latest="$(version_label "$LATEST_SHA" "$LATEST_NUM")"
     else
         [ "$LATEST_SHA" != "$current" ] && newer=1
