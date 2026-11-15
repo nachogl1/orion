@@ -1,0 +1,32 @@
+{
+  "run_id": "orion-20261115-120900-ecaa",
+  "issue": 181,
+  "title": "orion init: show an agent-autonomy notice and ask to continue, with --yes to skip",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 215,
+  "merged_at": "2026-11-15T12:37:41Z",
+  "seam": "orion.sh (init), orion.ps1, tests/run.sh",
+  "story": "orion init used to install straight away. Now it first says that orion's agents claim issues, file tickets and merge their own pull requests on green, and asks to continue. --yes skips the question, and a shell with no terminal must pass it, the same rule uninstall follows.",
+  "checks": [
+    {
+      "key": "orion.sh/init-autonomy-notice-interactive",
+      "criterion": "The notice and question appear on an interactive init.",
+      "steps": "In a terminal, make an empty folder, then run bash orion.sh init --project <folder> --no-statusline --update-mode ask and answer n.",
+      "expected": "The notice listing that agents claim issues, file tickets and merge their own pull requests, then 'Install orion in <folder> on these terms? [y/N]', then 'aborted', and the folder is still empty."
+    },
+    {
+      "key": "orion.sh/init-autonomy-notice-yes",
+      "criterion": "--yes installs with no question.",
+      "steps": "Run the same command with --yes on a new empty folder.",
+      "expected": "The notice and no question; .claude/orion/VERSION and CLAUDE.md exist."
+    },
+    {
+      "key": "orion.sh/init-autonomy-notice-no-terminal",
+      "criterion": "With no terminal and no --yes, init refuses.",
+      "steps": "Run the first command with </dev/null added and its output captured to a file.",
+      "expected": "'refusing to init without --yes in a non-interactive shell', exit code 1, and nothing written."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "476053b32233a21886b9b1d57c18b55cc489a4aa"
+}

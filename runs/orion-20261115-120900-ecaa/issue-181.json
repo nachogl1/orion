@@ -1,0 +1,43 @@
+{
+  "run_id": "orion-20261115-120900-ecaa",
+  "issue": 181,
+  "title": "orion init: show an agent-autonomy notice and ask to continue, with --yes to skip",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T12:09:00Z",
+  "finished_at": "2026-11-15T12:38:03Z",
+  "outcome": "merged",
+  "pr": 215,
+  "summary": "orion init prints what orion's agents do on their own and asks to continue; --yes skips the question; with no terminal and no --yes it refuses (exit 1) before writing anything and tells an assistant to show the notice first. Every caller passes --yes; README and guide install text updated; help prints the whole header. Version 32.",
+  "agents": [
+    {
+      "name": "dev-181",
+      "model": "opus",
+      "tokens_total": 154821
+    },
+    {
+      "name": "review-181",
+      "model": "opus",
+      "tokens_total": 149467
+    },
+    {
+      "name": "review-181-r2",
+      "model": "opus",
+      "tokens_total": 118372
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1150,
+    "review_seconds": 480,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [
+    "A change to a command's interactive behaviour must update its documented install routes (README, guide) in the same PR; the first review caught the assistant-run route refusing."
+  ],
+  "deferred": []
+}
