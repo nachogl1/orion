@@ -804,6 +804,9 @@ check "two whole numbers still compare as numbers" eval 'FAKE_LS_SHA=11111111111
 printf 'x\n' > "$VSRC/next.txt"
 "$REAL_GIT" -C "$VSRC" -c core.autocrlf=false add next.txt && "$REAL_GIT" -C "$VSRC" commit -qm next && "$REAL_GIT" -C "$VSRC" tag v2.4.0
 check "and its next update writes the three-part version of the newest release" eval 'env PATH="$FAKEPATH" bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.4.0 ]'
+check "installed right before its release was tagged, on the commit main still points at: no offer" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" FAKE_LS_TAGS="2.4.0 2.4.1" run_check --force && [ ! -s "$SB/hook" ]'
+"$REAL_GIT" -C "$VSRC" tag v2.4.1
+check "and update on that commit records the release's version without copying again" eval 'env PATH="$FAKEPATH" bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "already at" "$SB/out" && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.4.1 ]'
 
 echo "release versions (the release job sizes one version tag from the Conventional Commit types since the last release)"
 RV="$REPO/.github/scripts/release-version.sh"
