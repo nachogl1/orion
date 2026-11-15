@@ -1,0 +1,20 @@
+{
+  "run_id": "orion-20261115-182311-5886",
+  "issue": 183,
+  "title": "Write-up skill: a one-page Executive Summary before the table of contents",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 217,
+  "merged_at": "2026-11-15T18:50:39Z",
+  "seam": "skills/generate-project-writeup/",
+  "story": "The project write-up used to go straight from the cover to the contents and then the cost tables, so leaders met numbers before knowing what was built. It now puts a one-page Executive Summary first: what was built and why, the cost-and-time headline, and Table 1's three totals. The skill checks the finished file and reports the first pages in order.",
+  "checks": [
+    {
+      "key": "skills/generate-project-writeup/executive-summary-order",
+      "criterion": "The report's first pages are the cover, then a one-page Executive Summary, then the contents, and the summary's table matches Table 1.",
+      "steps": "In a throw-away repository, run /generate-project-writeup with made-up answers (contributors, dates, day rate 650, traditional team 3 for 8 months). Open the .docx it puts in Downloads.",
+      "expected": "Page 1 is the cover; page 2 is Executive Summary with what was built and why, the cost-and-time headline pointing to the Financial Summary, and a three-row table; page 3 is the contents. The table's cells equal Table 1's, and the chat report names the pages in that order."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "e5ac7dc41464597424290d83ba5902b6086432bb"
+}

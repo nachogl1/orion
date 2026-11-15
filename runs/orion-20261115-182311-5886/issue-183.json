@@ -1,0 +1,41 @@
+{
+  "run_id": "orion-20261115-182311-5886",
+  "issue": 183,
+  "title": "Write-up skill: a one-page Executive Summary before the table of contents",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T18:23:11Z",
+  "finished_at": "2026-11-15T18:50:59Z",
+  "outcome": "merged",
+  "pr": 217,
+  "summary": "generate-project-writeup puts a one-page Executive Summary between the cover and the contents (what was built and why, the cost-and-time headline, Table 1's three rows copied exactly), and its final check verifies the page order and compares the summary table with Table 1 found after the contents. Version 34.",
+  "agents": [
+    {
+      "name": "dev-183",
+      "model": "opus",
+      "tokens_total": 175752
+    },
+    {
+      "name": "review-183",
+      "model": "opus",
+      "tokens_total": 136712
+    },
+    {
+      "name": "review-183-r2",
+      "model": "opus",
+      "tokens_total": 109885
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1240,
+    "review_seconds": 330,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}
