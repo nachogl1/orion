@@ -1,0 +1,41 @@
+{
+  "run_id": "orion-20261115-113134-b84e",
+  "issue": 179,
+  "title": "harvest: rate notes high, medium or low and ask one short question per group",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T11:31:34Z",
+  "finished_at": "2026-11-15T11:54:48Z",
+  "outcome": "merged",
+  "pr": 213,
+  "summary": "/harvest rates every note high, medium or low by fixed tests (raise one level with a reason, never lower), asks one three-line question per group in order high, medium, task count, then one closing question for low groups, and merges its own PR on green unless it touches PRD, ADR, prototype or CLAUDE.md. Version 30.",
+  "agents": [
+    {
+      "name": "dev-179",
+      "model": "opus",
+      "tokens_total": 178987
+    },
+    {
+      "name": "review-179",
+      "model": "opus",
+      "tokens_total": 142385
+    },
+    {
+      "name": "review-179-r2",
+      "model": "opus",
+      "tokens_total": 111709
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 890,
+    "review_seconds": 400,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}

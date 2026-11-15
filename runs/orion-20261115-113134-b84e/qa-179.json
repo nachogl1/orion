@@ -1,0 +1,20 @@
+{
+  "run_id": "orion-20261115-113134-b84e",
+  "issue": 179,
+  "title": "harvest: rate notes high, medium or low and ask one short question per group",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 213,
+  "merged_at": "2026-11-15T11:54:29Z",
+  "seam": "skills/harvest/",
+  "story": "/harvest used to walk the person through three waves with seven lines per item. It now rates notes high, medium or low and asks one short question per group, most important first, with all notes from low groups in one last question. Its pull request merges itself on green unless it touches the PRD, an ADR, the prototype or CLAUDE.md.",
+  "checks": [
+    {
+      "key": "skills/harvest/rated-questions",
+      "criterion": "/harvest asks high groups first, then medium, then how many tasks in all, then all low notes in one question.",
+      "steps": "In a throw-away project with orion installed, push an audit/<login> branch holding one made-up report with six notes: one a user would see, one three runs hit, two that hit once, two cosmetic. Then run /harvest.",
+      "expected": "Each group asked in three lines, high before medium, the task-count question after the medium groups, and a last question offering throw them all away / keep them all for later / go through them one by one."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "a5a22510c2a39af0af8db5a97551b05b6f5b724c"
+}
