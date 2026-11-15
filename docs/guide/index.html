@@ -499,12 +499,12 @@ const NODES = {
     sub:"Goes through the notes every run left behind, with you, one group at a time.",
     what:[
       "Reads every new run report and takes off the list anything an open task already covers or a merged story already fixed.",
-      "Groups notes about the same part of the project, so they become one task, not many.",
-      "Explains each group as if you had never seen the project: its kind, how much it matters, a recommended destination.",
-      "Decides in three waves: fix now, throw away or keep, then tasks.",
-      "Ships the new tickets, any rule edits and the moved bookmark in one pull request."
+      "Rates every note high, medium or low by fixed tests, and groups notes about the same part of the project, so they become one task, not many.",
+      "Asks one short question per group, high first, then medium, in three plain lines: the problem, how much it matters, the suggestion. The long explanation only if you ask.",
+      "Then asks how many tasks in all, and puts every low note in one last question: throw them all away, keep them all, or go through them one by one.",
+      "Ships the new tickets, any rule edits and the moved bookmark in one pull request, and merges itself on green unless it touches the PRD, an ADR, the prototype or CLAUDE.md, which you merge."
     ],
-    you:["Decide every group: fix now, new task, add to an existing task, or throw away."],
+    you:["Decide every group: fix now, new task, add to an existing task, throw away, or not this time."],
     out:["As few new tasks as possible, back in the backlog.","Rule improvements the runs taught."],
     rules:["Nothing is filed or dropped without your word.","Run by a person, never by another skill."]},
 
