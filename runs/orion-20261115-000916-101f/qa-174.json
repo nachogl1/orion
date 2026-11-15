@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261115-000916-101f",
+  "issue": 174,
+  "title": "dev-next: sub-agent names carry the issue number, and the in-flight entry reports its terminal, step and sub-agents",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 208,
+  "merged_at": "2026-11-15T00:49:00Z",
+  "seam": "skills/dev-next/SKILL.md, skills/dev-next/references/in-flight.md",
+  "story": "Every sub-agent /dev-next starts is now named after its issue, and each review round carries its round number. A run writes its terminal name, current step and sub-agents into its in-flight entry, which the Control Tower pane shows; without a terminal name the pane keeps saying not reported yet.",
+  "checks": [],
+  "no_qa_reason": "Skill instructions only; the pane reads fields only a live run writes.",
+  "merge_commit": "a1d783aac12dedff410557fb0d065da45f2a4684"
+}

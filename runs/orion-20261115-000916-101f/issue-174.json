@@ -1,0 +1,41 @@
+{
+  "run_id": "orion-20261115-000916-101f",
+  "issue": 174,
+  "title": "dev-next: sub-agent names carry the issue number, and the in-flight entry reports its terminal, step and sub-agents",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T00:09:16Z",
+  "finished_at": "2026-11-15T00:50:00Z",
+  "outcome": "merged",
+  "pr": 208,
+  "summary": "Every sub-agent dev-next spawns is named after its issue (review rounds as review-<N>-r<round>), and in-flight.md documents the optional terminal, step and agents fields the Control Tower mod reads. Version 25.",
+  "agents": [
+    {
+      "name": "dev-174",
+      "model": "opus",
+      "tokens_total": 177937
+    },
+    {
+      "name": "review-174",
+      "model": "opus",
+      "tokens_total": 120855
+    },
+    {
+      "name": "review-174-r2",
+      "model": "opus",
+      "tokens_total": 106881
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1011,
+    "review_seconds": 290,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}
