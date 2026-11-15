@@ -143,11 +143,47 @@ worktree_count() {  # project-dir
 
 version_sha() { sed -n '1p' "$1" 2>/dev/null || true; }
 
-# orion's version number: ORION_VERSION in the source, line 5 of the project's VERSION. Empty when the source or the
-# install predates it, or when the value is not a whole number.
 whole_number() { case "$1" in ""|*[!0-9]*) ;; *) printf '%s' "$1" ;; esac; }
-version_number() { whole_number "$(sed -n '5p' "$1" 2>/dev/null | tr -d '\r')"; }
-source_number() { whole_number "$(tr -d ' \t\r\n' < "$1/ORION_VERSION" 2>/dev/null || true)"; }
+
+# orion's version: major.minor.patch (2.0.0 on), held in the release tags v<version> and on line 5 of a project's
+# VERSION. A whole number from before three-part versions (16, v2) still reads as a version: older than any
+# three-part one, and two of them compare as numbers. A personal rule's note may end in "+" ("changed after"): newer
+# than its version, older than any later one. Sets VKEY to "<kind> <major> <minor> <patch> <plus>", kind 0 for no
+# version, 1 for a whole number, 2 for three parts; no subshell, as the hook compares many.
+version_key() {  # version
+    local v="${1#v}" plus=0 rest
+    case "$v" in *+) plus=1; v="${v%+}" ;; esac
+    case "$v" in
+        ""|*[!0-9.]*|.*|*.|*..*|*.*.*.*) VKEY=(0 0 0 0 0) ;;
+        *.*.*) rest="${v#*.}"; VKEY=(2 $((10#${v%%.*})) $((10#${rest%.*})) $((10#${rest#*.})) "$plus") ;;
+        *.*) VKEY=(0 0 0 0 0) ;;
+        *) VKEY=(1 $((10#$v)) 0 0 "$plus") ;;
+    esac
+}
+version_gt() {  # a b -> 0 when version a is newer than version b (any version is newer than no version)
+    local a i
+    version_key "$1"; a=("${VKEY[@]}"); version_key "$2"
+    for i in 0 1 2 3 4; do
+        [ "${a[i]}" -gt "${VKEY[i]}" ] && return 0
+        [ "${a[i]}" -lt "${VKEY[i]}" ] && return 1
+    done
+    return 1
+}
+# The version a release or an install carries (no "+"), without a leading v; nothing when it is none.
+version_of() { version_key "$1"; [ "${VKEY[0]}" = 0 ] || [ "${VKEY[4]}" = 1 ] || printf '%s' "${1#v}"; }
+# A personal rule's version (a "+" allowed); nothing when it is none.
+rule_version_of() { version_key "$1"; [ "${VKEY[0]}" = 0 ] || printf '%s' "${1#v}"; }
+version_number() { version_of "$(sed -n '5p' "$1" 2>/dev/null | tr -d '\r')"; }
+# The highest release among "<sha> refs/tags/v<version>" lines on stdin (the shape ls-remote and for-each-ref print).
+highest_release() {
+    local sha ref v top=""
+    while read -r sha ref; do
+        case "$ref" in refs/tags/v*) v="${ref#refs/tags/}" ;; *) continue ;; esac
+        version_key "$v"; [ "${VKEY[0]}" != 0 ] && [ "${VKEY[4]}" = 0 ] || continue
+        if [ -z "$top" ] || version_gt "$v" "$top"; then top="$v"; fi
+    done
+    printf '%s' "${top#v}"
+}
 version_label() {  # sha number -> "orion <number>", or the short sha when there is no number
     if [ -n "$2" ]; then printf 'orion %s' "$2"; else short "$1"; fi
 }
@@ -240,6 +276,9 @@ trap cleanup EXIT
 trap 'exit 143' TERM   # a timed-out run still cleans up: exiting on the signal runs the EXIT trap
 trap 'exit 130' INT
 
+# SRC_VERSION is the source's version: in a checkout, the highest release tag its commit contains; fetched, the
+# highest release tag of the source, read before the clone, so a release tagged in between is never claimed for
+# older files. Empty when the source has no release tag.
 fetch_source() {  # source ref
     local here
     here="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" 2>/dev/null && pwd || true )"
@@ -247,11 +286,13 @@ fetch_source() {  # source ref
         SRC_DIR="$here"
         SRC_SHA="$(git -C "$here" rev-parse HEAD 2>/dev/null || printf 'local')"
         SRC_TIME="$(git -C "$here" log -1 --format=%ct 2>/dev/null || printf '0')"
+        SRC_VERSION="$(git -C "$here" for-each-ref --merged HEAD --format='%(objectname) %(refname)' 'refs/tags/v*' 2>/dev/null | highest_release || true)"
         return
     fi
     have git || die "git is required to fetch orion"
     TMP_DIR="$(mktemp -d)"
     say "fetching orion ($2) from $1 ..."
+    latest_remote "$1" "$2"; SRC_VERSION="$LATEST_NUM"
     # ORION_FETCH_SECONDS (set by the session-start hook) time-limits the network fetch only, never the copy
     # that follows: a copy cut short half-way would leave the project with a half-updated orion.
     if [ -n "${ORION_FETCH_SECONDS:-}" ]; then
@@ -286,13 +327,14 @@ latest_key() {  # installed-number ref
     if [ -n "$LATEST_NUM" ] && [ -n "$1" ] && [ "$2" = "$ORION_DEFAULT_REF" ]; then printf 'v%s' "$LATEST_NUM"; else printf '%s' "$LATEST_SHA"; fi
 }
 
-# One call for both: LATEST_SHA, the ref's commit, and LATEST_NUM, the highest release tag (v<N>, pushed by the
-# release workflow each time ORION_VERSION rises). Either is empty when the source has none.
+# One call for both: LATEST_SHA, the ref's commit, and LATEST_NUM, the highest release tag (v<major.minor.patch>,
+# pushed by the release workflow after each release; the old v<N> tags count as older). Either is empty when the
+# source has none.
 latest_remote() {  # source ref
     local out=""
     out=$(limited 8 git ls-remote "$1" "refs/heads/$2" 'refs/tags/v*' 2>/dev/null || true)
     LATEST_SHA="$(printf '%s\n' "$out" | awk -v r="refs/heads/$2" '$2 == r { print $1; exit }')"
-    LATEST_NUM="$(printf '%s\n' "$out" | awk '$2 ~ /^refs\/tags\/v[0-9]+$/ { n = substr($2, 12) + 0; if (!f || n > m) m = n; f = 1 } END { if (f) print m }')"
+    LATEST_NUM="$(printf '%s\n' "$out" | highest_release)"
 }
 
 # --------------------------------------------------------------------------
@@ -584,7 +626,7 @@ apply_core() {  # source ref update-mode
     rm -rf "$dir/global"; cp -R "$SRC_DIR/baselines/global" "$dir/global"
     # line 4, the source's commit time, is for information only; line 5, orion's version number, tells the
     # update check whether a release is newer, and the computer's status line whether this project's copy is
-    printf '%s\n%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" "$(source_number "$SRC_DIR")" > "$dir/VERSION"
+    printf '%s\n%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" "$SRC_VERSION" > "$dir/VERSION"
     { printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest"
       ( cd "$SRC_DIR/baselines" && find statusline global -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
@@ -592,7 +634,7 @@ apply_core() {  # source ref update-mode
             "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" "$WORKTREE_LIMIT_DEFAULT" > "$dir/config.json"
         say "  +    .claude/orion/config.json (yours: updateMode $mode, edit to ask | auto | off; branchLimit $BRANCH_LIMIT_DEFAULT and worktreeLimit $WORKTREE_LIMIT_DEFAULT, a number or off)"
     fi
-    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/, global/} @ $(version_label "$SRC_SHA" "$(source_number "$SRC_DIR")") ($(short "$SRC_SHA"))"
+    say "  ~    .claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, statusline/, global/} @ $(version_label "$SRC_SHA" "$SRC_VERSION") ($(short "$SRC_SHA"))"
 }
 
 # The project's own CLAUDE.md: created once with the project-specific slots the
@@ -736,12 +778,12 @@ sl_mark() {  # stamp src [statusline-dir]
     printf '%s\n%s\n' "$1" "$(tree_sum "$2" | cksum)" > "${3:-$(sl_home)}/$SL_STAMP"
 }
 
-sl_number() { case "$1" in ""|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac; }
+sl_number() { local v; v="$(version_of "$1")"; printf '%s' "${v:-0}"; }
 # A commit time on line 1 counts as version 0, so newer status lines are offered again. The bound is not this
 # project's own version number: a real, newer one stamped by another project on this computer must still win.
 sl_stamp() {
     local n; n="$(sl_number "$(sed -n '1p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r')")"
-    [ "$n" -lt "$SL_OLD_STAMP_MIN" ] || n=0
+    case "$n" in *.*) ;; *) [ "$n" -lt "$SL_OLD_STAMP_MIN" ] || n=0 ;; esac
     printf '%s' "$n"
 }
 sl_seen() { sed -n '2p' "$(sl_home)/$SL_STAMP" 2>/dev/null | tr -d '\r'; }
@@ -756,7 +798,7 @@ statusline_sync() {
     { [ -f "$dest/$SL_STAMP" ] && [ -d "$src" ]; } || return 0
     t="$(project_stamp)"
     # never step back: another project on this computer may carry an older orion
-    [ "$t" -gt "$(sl_stamp)" ] || return 0
+    version_gt "$t" "$(sl_stamp)" || return 0
     if [ "$(tree_sum "$dest")" = "$(tree_sum "$src")" ]; then
         # already the same files: only the bookkeeping moves forward
         sl_seed "$src" "$t"
@@ -822,7 +864,7 @@ install_statusline() {  # force
     if [ -f "$dest/statusline.sh" ] && [ "$1" != "1" ]; then
         say "  =    statusline (already installed - yours to edit; newer orion versions are merged in on your word)"
     else
-        sl_seed "$src" "$(sl_number "$(source_number "$SRC_DIR")")"
+        sl_seed "$src" "$(sl_number "$SRC_VERSION")"
         say "  +    statusline -> ~/.claude/statusline"
     fi
     settings_set_statusline "$HOME/.claude/settings.json" "bash \"$dest/statusline.sh\""
@@ -1076,7 +1118,7 @@ check_update_ctx() {  # force
     # A release raises the version number, so a merge that changes nothing a project receives is not offered. Release
     # tags mark the default branch only; without a number on both sides any new commit counts, as before numbers.
     if [ -n "$LATEST_NUM" ] && [ -n "$installed" ] && [ "$ref" = "$ORION_DEFAULT_REF" ]; then
-        [ "$LATEST_NUM" -gt "$installed" ] && newer=1
+        version_gt "$LATEST_NUM" "$installed" && newer=1
         latest="$(version_label "$LATEST_SHA" "$LATEST_NUM")"
     else
         [ "$LATEST_SHA" != "$current" ] && newer=1
@@ -1151,20 +1193,26 @@ check_statusline_ctx() {
 global_copy() { printf '%s' "$PROJECT/.claude/orion/global/GLOBAL_CLAUDE.md"; }
 personal_rules() { printf '%s' "$HOME/.claude/CLAUDE.md"; }
 
-# The version number on the person's ORION GLOBAL heading line (# ORION GLOBAL — v<N>), or nothing when there is no section.
+# The version on the person's ORION GLOBAL heading line (# ORION GLOBAL — v<version>), or nothing when there is no
+# section (a heading in any other form counts as none).
 global_stamp() {
     local f; f="$(personal_rules)"
     [ -f "$f" ] || return 0
-    tr -d '\r' < "$f" | sed -n 's/^# ORION GLOBAL.* v\([0-9][0-9]*\)[[:space:]]*$/\1/p' | head -n1
+    rule_version_of "$(tr -d '\r' < "$f" | sed -n 's/^# ORION GLOBAL.* v\([0-9][0-9.]*+\{0,1\}\)[[:space:]]*$/\1/p' | head -n1)"
 }
 
-# "<count> <highest>": how many clauses of the project's GLOBAL_CLAUDE.md carry a version marker higher than that
-# number (all of them without one), and the highest version marker in the file.
+# "<count> <highest>": how many clauses of the project's GLOBAL_CLAUDE.md carry a version note newer than that
+# version (all of them without one), and the newest version note in the file (0 when there is none).
 global_newer() {
-    local f; f="$(global_copy)"
+    local f t v n=0 top=""; f="$(global_copy)"
     [ -f "$f" ] || { printf '0 0'; return 0; }
-    tr -d '\r' < "$f" | sed -n 's/.* <!-- orion:v\([0-9][0-9]*\) -->$/\1/p' \
-        | awk -v t="$(global_stamp)" 't == "" || $0 + 0 > t + 0 { n++ } $0 + 0 > m + 0 { m = $0 + 0 } END { print n+0, m+0 }'
+    t="$(global_stamp)"
+    while IFS= read -r v; do
+        version_key "$v"; [ "${VKEY[0]}" != 0 ] || continue
+        if [ -z "$t" ] || version_gt "$v" "$t"; then n=$((n + 1)); fi
+        if [ -z "$top" ] || version_gt "$v" "$top"; then top="$v"; fi
+    done <<< "$(tr -d '\r' < "$f" | sed -n 's/.* <!-- orion:v\([0-9][0-9.]*+\{0,1\}\) -->$/\1/p')"
+    printf '%s %s' "$n" "${top:-0}"
 }
 
 # Local only: offer the personal rules discussion while a clause is newer than the person's section, never under
@@ -1184,20 +1232,20 @@ check_global_ctx() {  # force now
     dir="${XDG_CACHE_HOME:-$HOME/.cache}/orion"
     # stderr goes first in every read and write: a missing or unwritable record is no error for the hook
     read -r offered ours <<< "$(tr -d '\r' 2>/dev/null < "$dir/global-offered-version" || true)"
-    offered="$(whole_number "${offered:-}")"; ours="$(whole_number "${ours:-}")"
+    offered="$(rule_version_of "${offered:-}")"; ours="$(whole_number "${ours:-}")"
     last="$(whole_number "$(tr -d ' \t\r\n' 2>/dev/null < "$dir/global-offered" || true)")"
     if [ "$1" != "1" ]; then
-        if [ "${top:-0}" -le "${offered:-0}" ]; then
+        if ! version_gt "${top:-0}" "${offered:-0}"; then
             [ "$last" = "$GLOBAL_OFFER_PIN" ] || global_offer_record "$dir" "$offered" "$2"
             return 0
         fi
         if [ -n "$last" ] && [ "$last" != "$ours" ] && [ "$last" -le "$2" ] 2>/dev/null \
-            && [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && [ "${top:-0}" -le "$LAST_DAILY_OFFER_VERSION" ]; then
+            && [ $(($2 - last)) -lt "$CHECK_INTERVAL_SECONDS" ] && ! version_gt "${top:-0}" "$LAST_DAILY_OFFER_VERSION"; then
             global_offer_record "$dir" "$top" "$2"
             return 0
         fi
     fi
-    [ "${top:-0}" -gt "${offered:-0}" ] || top="${offered:-0}"   # --force offers again and never lowers the record
+    version_gt "${top:-0}" "${offered:-0}" || top="${offered:-0}"   # --force offers again and never lowers the record
     global_offer_record "$dir" "$top" "$2"
     printf '%s' "orion recommends personal rules for the user's own rules file (~/.claude/CLAUDE.md), and $n of them are not in its ORION GLOBAL section yet. Ask the user with the AskUserQuestion tool whether to go through them now (options: 'Go through them now' recommended, 'Not now'). If yes, follow the steps at the top of .claude/orion/global/GLOBAL_CLAUDE.md exactly as written: the user's file changes only inside its ORION GLOBAL section and only on their word. If no, continue with their request: it is offered again only when orion adds or changes one of these rules, and the user can ask to go through orion's personal rules any time."
 }
@@ -1341,7 +1389,7 @@ cmd_statusline() {
     [ -d "$PROJECT/.claude/orion/statusline" ] || die "this project carries no orion status line (run: orion.sh update)"
     case "$action" in merge|skip) ;; *) die "usage: orion.sh statusline merge|skip" ;; esac
     # never step back: a project with an older orion has nothing newer to merge or skip
-    if [ "$(project_stamp)" -le "$(sl_stamp)" ]; then
+    if ! version_gt "$(project_stamp)" "$(sl_stamp)"; then
         say "status line: nothing to $action - the copy on this computer already follows this project's orion version or a newer one"
         return
     fi
