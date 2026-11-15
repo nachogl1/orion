@@ -489,9 +489,9 @@ const NODES = {
       "Starts the product from one fresh worktree of main, on the base port no story can hold.",
       "Runs one QA agent per area, strictly one after another, each driving the product like a user.",
       "A failure counts only when reproduced twice. Each confirmed one is shown to you with its importance and any open issue that covers it.",
-      "Ships its log and bookmark in a pull request."
+      "Ships its log and bookmark in a pull request, and merges itself on green: it touches nothing a person merges."
     ],
-    you:["Start it when /dev-next says \"QA due\".","Choose, for each failure, whether it becomes a bug issue or is dropped.","Merge its log pull request."],
+    you:["Start it when /dev-next says \"QA due\".","Choose, for each failure, whether it becomes a bug issue or is dropped."],
     out:["The bug issues you chose, back in the backlog.","A log on main: what was tested, when, on which commit, with what result."],
     rules:["Run by a person, never by another skill."]},
 
