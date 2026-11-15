@@ -94,6 +94,8 @@ screens someone has already seen, with screen ids that already exist. Before any
 2. **Does the prototype on `main` hold every one of them?** Look under `docs/ux/prototypes/` (and `docs/ux/` for
    older projects) on `origin/main` for a folder whose `README.md` or headings name the PRD's screens, and match the
    PRD's screens against it one by one. A prototype that sits only on an open pull request is not on `main` yet.
+   **An open prototype pull request for this PRD** (`gh pr list --state open --head feat/ux-prototype-<slug>`, or the
+   project's own branch pattern) → name its link, say it waits for the person's merge, and stop: no second draft.
    Every screen found → say which file leads, in one line, and go to phase 2; every front-end story in phase 3 names
    its screen id in that file under `### References`.
 3. **A screen is missing (no prototype at all, or one that lacks a screen the PRD names) → tell the person, before

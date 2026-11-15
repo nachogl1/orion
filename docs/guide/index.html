@@ -399,7 +399,7 @@ const NODES = {
       "Epic to story is a native GitHub sub-issue, never a text list.",
       "A story is blocked until every blocker is closed, whether listed under Blocked by or set as GitHub's native relation.",
       "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug, owner-merges (a person merges its pull request), and wayfinder:* for planning tickets.",
-      "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). Nothing orders work by it."
+      "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). The PRD tiers chain by blocks, so a later tier waits for the one before; nothing ranks work by the label itself."
     ],
     you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
     out:["The queue /dev-next picks from. /issue-map draws it as a graph."],
