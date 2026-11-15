@@ -1,0 +1,32 @@
+{
+  "run_id": "orion-20261115-210949-8dab",
+  "issue": 196,
+  "title": "Issue map: a click outside an issue's details card closes it, as in Maestro",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 234,
+  "merged_at": "2026-11-15T21:42:38Z",
+  "seam": "skills/issue-map/",
+  "story": "On the issue map page you used to clear an issue's card by clicking its box again or pressing Esc. Now any click outside the card clears it, while filters, zoom and other controls still do their own job. The hint says Click outside to close.",
+  "checks": [
+    {
+      "key": "skills/issue-map/click-outside-closes-card",
+      "criterion": "A click outside an open card closes it and the clicked control still works.",
+      "steps": "Build the map, click a box, then click an empty spot; click a box again then Zoom in; click a box again then a filter button.",
+      "expected": "The card closes and the chain fades each time; the zoom goes to 125%; the filter menu opens."
+    },
+    {
+      "key": "skills/issue-map/card-stays-open",
+      "criterion": "Clicks inside the card, a title drag and a pan keep it open.",
+      "steps": "Click a box, click its description, drag its title, then pan the map.",
+      "expected": "The card stays up and the chain stays lit."
+    },
+    {
+      "key": "skills/issue-map/switch-card",
+      "criterion": "Another box switches the card, and the same box again closes it.",
+      "steps": "Click one box, then another, then that one again.",
+      "expected": "The card shows the second issue, then closes."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "643fa754c039224d5df932432c724eec7c595edd"
+}

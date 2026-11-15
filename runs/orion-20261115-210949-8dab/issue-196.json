@@ -1,0 +1,38 @@
+{
+  "run_id": "orion-20261115-210949-8dab",
+  "issue": 196,
+  "title": "Issue map: a click outside an issue's details card closes it, as in Maestro",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T21:09:49Z",
+  "finished_at": "2026-11-15T21:42:59Z",
+  "outcome": "merged",
+  "pr": 234,
+  "summary": "The issue map page closes an open card and clears the chain on any click outside it while the clicked control still works; clicks, drags and pans started in the card keep it; another box switches; hint text says click outside to close. Version 38.",
+  "agents": [
+    {
+      "name": "dev-196",
+      "model": "opus",
+      "tokens_total": 172070
+    },
+    {
+      "name": "review-196",
+      "model": "opus",
+      "tokens_total": 148189
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1220,
+    "review_seconds": 670,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [
+    "The issue-map page has no in-repo browser test harness, so click behaviour is proven only by out-of-repo browser scripts; the suite check reads page text only."
+  ],
+  "lessons_learned": [],
+  "deferred": []
+}
