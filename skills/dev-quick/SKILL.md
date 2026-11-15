@@ -232,7 +232,7 @@ that argument. This session is now `/dev-next`'s orchestrator and follows that f
   A stop there (a `TBD` gate command, a red install on `main`) is reported in one line; the issue stays filed and
   `agent-ready`, and the person runs `/dev-next #<N>` later.
 - Its phase 2 asks nothing: the issue was `agent-ready` before that run started, and its decisions are on the issue.
-- Claim, worktree on `feat/<N>-<slug>`, `dev-N`, fresh `review-N` per round, the merge slot, merge on green CI,
+- Claim, worktree on `feat/<N>-<slug>`, `dev-<N>`, fresh `review-<N>-r<round>` per round, the merge slot, merge on green CI,
   close, clean-up, the audit report on `audit/<login>`, the harvest count and the close-out — **all of it is
   `/dev-next`'s, unchanged.** This skill adds no step, skips no step, and never does one of them by hand.
 

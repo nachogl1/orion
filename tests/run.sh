@@ -119,11 +119,13 @@ dev_next_creates_every_baseline_label() {
 check "dev-next's preflight creates every label the baseline lists" dev_next_creates_every_baseline_label
 
 echo "dev-next sub-agents and the in-flight file"
-# Every spawn in dev-next (and the roles dev-quick hands to it) names its sub-agent with the issue number, never a bare role-N.
+# Every spawn in dev-next (and the roles dev-quick hands to it) names its sub-agent with the issue number, never a bare role-N:
+# a reviewer or ready-check is always a new agent, so it may never appear as a bare role-N; a dev only on a spawn line or roles row.
 dev_next_spawns_name_the_issue() {
     local files hits
     files=("$REPO"/skills/dev-next/SKILL.md "$REPO"/skills/dev-next/references/*.md "$REPO"/skills/dev-quick/SKILL.md)
-    hits="$(grep -nHiE 'spawn|^\| `(ready-check|dev|review)-' "${files[@]}" | grep -E '`(ready-check|dev|review)-N([`-]|$)')"
+    hits="$( { grep -nHiE 'spawn|^\| `(ready-check|dev|review)-' "${files[@]}" | grep -E '`(ready-check|dev|review)-N([`-]|$)'
+              grep -nHE '`(ready-check|review)-N([`-]|$)' "${files[@]}"; } | sort -u)"
     [ -z "$hits" ] || { printf '  bare role-N: %s\n' "$hits"; return 1; }
     grep -qE '^Spawn `dev-<N>`' "$REPO/skills/dev-next/references/dev-agent.md" \
         && grep -qE 'Spawn `review-<N>-r<round>`' "$REPO/skills/dev-next/references/review-agent.md"

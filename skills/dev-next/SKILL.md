@@ -355,7 +355,7 @@ request already changes** → fixed in this pull request. Critical → a GitHub 
 - `CHANGES REQUESTED` → send the must-fix list, plus every `Fix now:` line, back to the **same** `dev-N`
   (SendMessage to the agent id kept at spawn, so it keeps its context; if it is no longer reachable, spawn a new `dev-<N>`
   on the same worktree and branch with the findings). It fixes them in the same branch, re-greens the gate, pushes, and
-  reports. Then a **new** `review-N` reviews the whole pull request again — that is one round.
+  reports. Then a **new** `review-<N>-r<round>` (the next round's number) reviews the whole pull request again — that is one round.
 - `APPROVED` with `Fix now:` lines → same loop: `dev-N` fixes them in this pull request, then a fresh review confirms.
   Small and safe is fixed in the same session, never deferred — **once**. After the first `APPROVED`, the confirming
   review is the last: a new `Fix now:` it raises becomes a `Defer:` line, never another round (otherwise every fresh
