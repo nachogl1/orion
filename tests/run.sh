@@ -821,8 +821,6 @@ rel_commit orion.sh "fix: a script fix"
 check "the first release is v2.0.0 whatever the types, plus one whole-number tag for orion.sh copies from before" eval '[ "$(next_tags)" = "v2.0.0 v39" ]'
 tag_release
 check "nothing new since the release: nothing to tag" eval '[ -z "$(next_tags)" ]'
-rel_commit docs/guide.md "feat(guide): a new page"
-check "a merge outside skills/, baselines/ and orion.sh tags nothing, even a feat" eval '[ -z "$(next_tags)" ]'
 rel_commit skills/a/SKILL.md "fix(a): a typo (#12)"
 check "fix: the last part" eval '[ "$(next_tags)" = v2.0.1 ]'
 tag_release
@@ -834,6 +832,8 @@ rel_commit orion.sh "fix: one"; rel_commit skills/a/SKILL.md "feat(a): two"; rel
 "$REAL_GIT" -C "$RR" checkout -q main && "$REAL_GIT" -C "$RR" merge -q --no-ff --no-edit -m "Merge the develop branch" develop
 check "a release carrying a fix and a feat, merged with a merge commit: one tag, the middle part" eval '[ "$(next_tags)" = v2.2.0 ]'
 tag_release
+rel_commit docs/guide.md "feat(guide): a new page"
+check "a merge outside skills/, baselines/ and orion.sh tags nothing, even a feat" eval '[ -z "$(next_tags)" ]'
 rel_commit skills/a/SKILL.md "fix(a): three"; rel_commit skills/a/SKILL.md "feat(a)!: a breaking change"
 check "feat!: the first part" eval '[ "$(next_tags)" = v3.0.0 ]'
 title_ok() { bash "$RV" title "$1" >/dev/null 2>&1; }
