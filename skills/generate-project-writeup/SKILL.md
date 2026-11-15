@@ -406,7 +406,8 @@ python "<skill-dir>/assets/build_docx.py" "<data.json>" \
   rows = lambda t: [[text(c) for c in re.findall(r"<w:tc>.*?</w:tc>", r, re.S)]
                     for r in re.findall(r"<w:tr>.*?</w:tr>", t, re.S)]
   tables = [(m.start(), rows(m.group(0))) for m in re.finditer(r"<w:tbl>.*?</w:tbl>", body, re.S)]
-  cover, summary, toc, t1 = (body.find(s) for s in ('w:type="page"', ">Executive Summary<", r"TOC \o", ">Table 1"))
+  cover, summary, toc = (body.find(s) for s in ('w:type="page"', ">Executive Summary<", r"TOC \o"))
+  t1 = body.find(">Table 1", toc) if toc >= 0 else -1  # the real Table 1 sits after the contents
   assert 0 <= cover < summary < toc, "the Executive Summary is not between the cover and the contents"
   mine = [r for at, r in tables if summary < at < toc]
   table1 = [r for at, r in tables if at > t1 >= 0][:1]
