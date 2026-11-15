@@ -1,0 +1,47 @@
+{
+  "run_id": "orion-20261115-123812-c145",
+  "issue": 182,
+  "title": "Issue map: a search option, a repository option, and faded outside blockers",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T12:38:12Z",
+  "finished_at": "2026-11-15T18:23:01Z",
+  "outcome": "merged",
+  "pr": 216,
+  "summary": "issue_map.py takes --search <GitHub query> and --repo owner/name; a blocker the search leaves out is drawn faded and dashed, loads its own blockers with state, and is never shown ready while one is open; unknown arguments are refused; default run unchanged. Version 33.",
+  "agents": [
+    {
+      "name": "dev-182",
+      "model": "opus",
+      "tokens_total": 233372
+    },
+    {
+      "name": "review-182",
+      "model": "opus",
+      "tokens_total": 166198
+    },
+    {
+      "name": "review-182-r2",
+      "model": "opus",
+      "tokens_total": 140906
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1460,
+    "review_seconds": 1600,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [
+    "review-182 round 1 took about five hours of wall time (18.8M ms reported), most of it waiting; the cause was not visible to the orchestrator."
+  ],
+  "lessons_learned": [
+    "An outside or partial node in a dependency graph must load its own blocker states, or it can look free while blocked."
+  ],
+  "deferred": [
+    "issue map: an outside blocker that names a number which is not an issue shows ready, as on the full map, with no data problem listed. Severity low."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "run_id": "orion-20261115-123812-c145",
+  "issue": 182,
+  "title": "Issue map: a search option, a repository option, and faded outside blockers",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 216,
+  "merged_at": "2026-11-15T18:22:37Z",
+  "seam": "skills/issue-map/",
+  "story": "The issue map can now show only the issues a GitHub search matches, or another repository's issues. A blocker the search leaves out stays on the map as a faded, dashed box, and shows blocked when its own blockers are open, so a story waiting on it never looks free. Without either option the map looks and behaves as before.",
+  "checks": [
+    {
+      "key": "skills/issue-map/search-option",
+      "criterion": "A search limits the map, and a blocker the search left out is drawn faded.",
+      "steps": "In a made-up repository, issue A is open and blocked by open issue B, and only A carries label bug. Run python .claude/skills/issue-map/scripts/issue_map.py --search \"label:bug\" --open.",
+      "expected": "A shows the blocked padlock; B is a faded, dashed box whose card says Outside the search; the banner names label:bug; the printed line ends in + 1 outside the search."
+    },
+    {
+      "key": "skills/issue-map/repo-option",
+      "criterion": "--repo owner/name maps that repository.",
+      "steps": "Run the generator with --repo <some-owner>/<some-repo> --open, then again with --repo nope.",
+      "expected": "The first page's title and banner name that repository. The second run is refused with --repo takes owner/name and nothing is rebuilt."
+    },
+    {
+      "key": "skills/issue-map/default-unchanged",
+      "criterion": "With neither option, the map is built as today.",
+      "steps": "Run the generator with no option.",
+      "expected": "Every issue, no faded boxes, and the same counts line as before."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "1228a31c3e39bf5a49b1931711730ff7546062b8"
+}
