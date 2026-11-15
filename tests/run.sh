@@ -991,6 +991,7 @@ clauses() {  # file
         { print "BAD " $0 }'
 }
 check "GLOBAL_CLAUDE.md has clauses, each carrying a valid version marker" eval '[ -n "$(clauses "$GLOBAL")" ] && ! clauses "$GLOBAL" | grep -q "^BAD "'
+check "the clause that labels every line has a risk line say open or fixed in its label" eval 'grep -F "**Label every line with what it is**" "$GLOBAL" | grep -F "Risk (open):" | grep -qF "Risk (fixed):"'
 check "no clause carries a version above ORION_VERSION (it would be offered again every day)" eval '[ -z "$(clauses "$GLOBAL" | awk -v v="$(tr -d " \t\r\n" < "$REPO/ORION_VERSION")" '"'"'$1 + 0 > v + 0'"'"')" ]'
 # A clause changed or added against origin/main must carry a version higher than every clause there, or a person who
 # went through the old file would never be offered it. CI fetches origin/main before the suite.
@@ -1030,7 +1031,11 @@ cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "the offer no longer says it comes back tomorrow" eval '! grep -q tomorrow "$SB/hook"'
 # An older orion.sh on the same computer keeps writing a Unix time to global-offered when it offers (once a day);
 # this one keeps the highest version offered in global-offered-version and pins that time in the future once it
-# offered, so an older orion.sh never offers again.
+# offered, so an older orion.sh never offers again. Where a scenario has the older orion.sh carry every clause on
+# offer, the project copy's markers are capped at the last once-a-day release (17) for it alone; a clause above it is
+# offered even then, which is checked below.
+sed -E 's/<!-- orion:v[0-9]+ -->$/<!-- orion:v17 -->/' "$SB/global-copy" > "$SB/global-older"
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 OFFERED="$XDG_CACHE_HOME/orion/global-offered"; OFFERED_V="$XDG_CACHE_HOME/orion/global-offered-version"
 rm -f "$OFFERED_V"; printf '%s' "$(( $(date +%s) - 86401 ))" > "$OFFERED"
 check "no version offered yet and the older orion's time stamp a day old: one last offer" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
@@ -1047,7 +1052,7 @@ check "and pinned the time stamp, so that older orion.sh does not offer again th
 rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"; FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check
 printf -- '- a newer rule <!-- orion:v%s -->\n' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "a pinned time stamp never hides a clause with a higher version" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
-cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 printf -- '- a rule no once-a-day orion.sh carries <!-- orion:v18 -->\n' >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
 check "an older orion.sh offered today, but a rule above any it carries is still offered, once" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
@@ -1055,6 +1060,7 @@ cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 # orion 18 wrote the same real time to both files when it offered: this one pins it on its next check
 NOW18="$(date +%s)"; printf '%s %s\n' "$NEWEST" "$NOW18" > "$OFFERED_V"; printf '%s' "$NOW18" > "$OFFERED"
 check "a record left by orion 18: silent, and the time stamp is pinned so an older orion.sh stays quiet" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && ! older_offers "$LATER"'
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 mixed_offers() {  # first-opener (older|newer): six sessions on one day alternating; prints how many offered
     local n=0 i who="$1"
     rm -f "$OFFERED" "$OFFERED_V"
@@ -1079,6 +1085,7 @@ mixed_days() {  # first-opener (older|newer): both open a session each day for f
 }
 check "an older orion.sh and this one on five days, the older opening first each day: one offer in all" eval '[ "$(mixed_days older)" = 1 ]'
 check "the same with this one first each day: one offer in all" eval '[ "$(mixed_days newer)" = 1 ]'
+cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 section 1
 check "a clause above the section's version number is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 section "$NEWEST"
