@@ -1,0 +1,1 @@
+/harvest rates every note high, medium or low, asks one three-line question per group with the low notes last in one question, and merges its own pull request on green unless it touches the PRD, an ADR, the prototype or CLAUDE.md.

@@ -348,6 +348,58 @@ reconcile_guide_box_names_the_findings() {
 }
 check "the guide's /reconcile box names the pending ADRs, the later-tier finding and its merges" reconcile_guide_box_names_the_findings
 
+echo "harvest"
+HV="$REPO/skills/harvest/SKILL.md"
+# One section of harvest's SKILL.md: from the "## <title>" heading to the next "## " heading.
+hv_section() { awk -v h="## $1" 'index($0, h) == 1 {on=1; print; next} on && /^## /{exit} on{print}' "$HV"; }
+# Every note is rated by the fixed tests; the agent may only lift one level; the report's severity is a hint only.
+harvest_rates_by_fixed_tests() {
+    local p1
+    p1="$(hv_section 'Phase 1' | tr -s ' \n' ' ')"
+    printf '%s' "$p1" | grep -qF 'a user would see it, or it broke or blocked a run, or three or more runs hit it' \
+        && printf '%s' "$p1" | grep -qF 'it hit once, and an open story or a later user will meet it' \
+        || { echo "  phase 1 does not rate high and medium by the fixed tests"; return 1; }
+    printf '%s' "$p1" | grep -qF 'lift an item one level' && printf '%s' "$p1" | grep -qF 'severity is a hint only' \
+        || { echo "  phase 1 does not allow a one-level lift and treat the report's severity as a hint"; return 1; }
+    printf '%s' "$p1" | grep -qF "highest item's" || { echo "  a group does not take its highest item's rating"; return 1; }
+}
+check "harvest rates every note high, medium or low by fixed tests" harvest_rates_by_fixed_tests
+# Each group is asked in three lines (the long explanation only on request): high groups, then medium, then how many
+# tasks in all, then every low note in one closing question with three options. The waves are gone.
+harvest_asks_by_importance() {
+    local p2 hi tasks low o
+    hv_section 'How to explain each item' | grep -qF '**The question: three lines.**' \
+        && hv_section 'How to explain each item' | grep -qF '**The long explanation, only when the person asks**' \
+        || { echo "  the explanation is not three lines with the long one on request"; return 1; }
+    p2="$(hv_section 'Phase 2')"
+    hi="$(printf '%s\n' "$p2" | grep -nF '**The high groups, then the medium groups' | cut -d: -f1)"
+    tasks="$(printf '%s\n' "$p2" | grep -nF '**Then how many tasks in all**' | cut -d: -f1)"
+    low="$(printf '%s\n' "$p2" | grep -nF '**Then every low note, in one question.**' | cut -d: -f1)"
+    [ -n "$hi" ] && [ -n "$tasks" ] && [ -n "$low" ] && [ "$hi" -lt "$tasks" ] && [ "$tasks" -lt "$low" ] \
+        || { echo "  phase 2 does not ask high and medium groups, then the task count, then the low notes"; return 1; }
+    for o in 'fix it now' 'make it a task' 'add it to an existing task' 'throw it away' 'not this time' \
+             'throw them all away' 'keep them all for later' 'go through them one by one'; do
+        printf '%s' "$p2" | grep -qF "**$o**" || { echo "  phase 2 does not offer: $o"; return 1; }
+    done
+    ! grep -qiE 'wave [123]|three waves' "$HV" || { echo "  harvest still decides in waves"; return 1; }
+}
+check "harvest asks one three-line question per group, most important first, and the low notes last" harvest_asks_by_importance
+# The harvest pull request merges on green unless it touches the baseline's list; nothing says a human merges it all.
+harvest_merges_by_the_baseline_list() {
+    quotes_baseline_who_merges "$HV" || return 1
+    ! grep -qiE 'no merge autonomy' "$HV" || { echo "  harvest still hands every pull request to a person"; return 1; }
+    hv_section 'Phase 3' | grep -qF '**Merge it as *Who merges* says.**' || { echo "  phase 3 does not merge as Who merges says"; return 1; }
+}
+check "the pull request harvest opens merges by the baseline's Who merges list" harvest_merges_by_the_baseline_list
+harvest_guide_box_asks_by_importance() {
+    local box
+    box="$(awk '/^  harvest:\{/{on=1} on{print} on&&/^  [a-z]+:\{/&&!/harvest:/{exit}' "$REPO/docs/guide/index.html")"
+    printf '%s' "$box" | grep -qF 'high, medium or low' && printf '%s' "$box" | grep -qF 'merges itself on green' \
+        && ! printf '%s' "$box" | grep -qF 'three waves' \
+        || { echo "  the guide's /harvest box does not rate high, medium or low, ask by importance and merge on green"; return 1; }
+}
+check "the guide's /harvest box rates notes and names its merges" harvest_guide_box_asks_by_importance
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
