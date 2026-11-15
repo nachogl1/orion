@@ -36,7 +36,9 @@ to be filed:
     `## Decisions (agent-ready)` of every story it shapes and is one of the lines of its phase 6 PRD question (the
     PRD's build-decisions section). No ADR, no story for it, no blocker on it.
   - `/wayfinder` → the map has not taken it yet, so the interview does not settle it: it becomes a grilling ticket on
-    the map (Mode B step 5), and nothing is filed until that ticket is settled.
+    the map (Mode B step 5), and nothing is filed until that ticket is settled. Before the session stops, each answer
+    the interview has given so far goes as one line under the map's *Settled*, so the next session reads it as
+    decided and does not ask it again.
 - **Work the PRD gives no tier** (`/prd-to-tickets` only; a `/wayfinder` story always takes `tier:wayfinder`) → one
   question per epic: which tier its stories take (`mvp` recommended, the PRD's other tiers as the other options). The
   answer is a PRD fact, so it is one of the lines of phase 6's PRD question.
