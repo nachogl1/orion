@@ -212,7 +212,8 @@ easy — three short lines do the work, the recommendation is ready to accept, a
    open task covers the area; the one left out the human types under "Other".
 4. **Then how many tasks in all**, right after the medium groups: one question with the recommended merge of the
    groups made a task that share an area into one ticket. Skipped when no group was made a task.
-5. **Then every low note, in one question.** One line per note — its kind, the problem in plain words, why it
+5. **Then every low note, in one question.** A low note here is one in a group rated low; a low item inside a high
+   or medium group was decided with that group. One line per note — its kind, the problem in plain words, why it
    probably never matters — and three options: **throw them all away** (Recommended), **keep them all for later**,
    **go through them one by one**. Kept for later → each note is carried (step 7), so the next harvest offers it
    again, and it still counts towards the ten notes that make `/dev-next` say `Harvest due`. One by one → each low
