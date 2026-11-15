@@ -1,0 +1,36 @@
+{
+  "run_id": "orion-20261115-194347-b7ca",
+  "issue": 185,
+  "title": "Status line: add an unstaged counter to the git group",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T19:43:47Z",
+  "finished_at": "2026-11-15T20:21:45Z",
+  "outcome": "merged",
+  "pr": 228,
+  "summary": "statusline.sh's git group shows unstaged:N (cyan) right after modified:N, derived from the existing git status call (no extra git run, fewer process starts); merge conflicts count as unstaged; every existing counter unchanged across 30 states. Version 36.",
+  "agents": [
+    {
+      "name": "dev-185",
+      "model": "opus",
+      "tokens_total": 143934
+    },
+    {
+      "name": "review-185",
+      "model": "opus",
+      "tokens_total": 145009
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1240,
+    "review_seconds": 930,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}

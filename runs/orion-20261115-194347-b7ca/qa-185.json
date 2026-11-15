@@ -1,0 +1,20 @@
+{
+  "run_id": "orion-20261115-194347-b7ca",
+  "issue": 185,
+  "title": "Status line: add an unstaged counter to the git group",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 228,
+  "merged_at": "2026-11-15T20:21:20Z",
+  "seam": "baselines/statusline/",
+  "story": "The status line now tells changes still waiting for git add apart from changes already staged: an unstaged:N word right after modified:N, which still counts both kinds. A file staged and then edited again counts in both.",
+  "checks": [
+    {
+      "key": "baselines/statusline/unstaged-counter",
+      "criterion": "A repository with one staged and one unstaged change shows unstaged:1, and the modified count is the same as before.",
+      "steps": "In a new folder run git init and commit one.txt and two.txt. Add a line to one.txt and git add it; add a line to two.txt without adding it. Open Claude Code there with orion's status line installed.",
+      "expected": "The git group reads stashed:0 untracked:0 modified:2 unstaged:1 unpushed:0, with unstaged in cyan."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "599ac4fc73a215f8df147b910db0acf24b7734f7"
+}
