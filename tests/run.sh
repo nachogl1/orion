@@ -1031,7 +1031,11 @@ cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "the offer no longer says it comes back tomorrow" eval '! grep -q tomorrow "$SB/hook"'
 # An older orion.sh on the same computer keeps writing a Unix time to global-offered when it offers (once a day);
 # this one keeps the highest version offered in global-offered-version and pins that time in the future once it
-# offered, so an older orion.sh never offers again.
+# offered, so an older orion.sh never offers again. In these scenarios the older orion.sh carries every clause on
+# offer, so the project copy's markers are capped at the last once-a-day release (17); a clause above it is offered
+# even then, which is checked below.
+sed -E 's/<!-- orion:v[0-9]+ -->$/<!-- orion:v17 -->/' "$SB/global-copy" > "$SB/global-older"
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 OFFERED="$XDG_CACHE_HOME/orion/global-offered"; OFFERED_V="$XDG_CACHE_HOME/orion/global-offered-version"
 rm -f "$OFFERED_V"; printf '%s' "$(( $(date +%s) - 86401 ))" > "$OFFERED"
 check "no version offered yet and the older orion's time stamp a day old: one last offer" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook"'
@@ -1048,11 +1052,11 @@ check "and pinned the time stamp, so that older orion.sh does not offer again th
 rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"; FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check
 printf -- '- a newer rule <!-- orion:v%s -->\n' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "a pinned time stamp never hides a clause with a higher version" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
-cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 printf -- '- a rule no once-a-day orion.sh carries <!-- orion:v18 -->\n' >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
 check "an older orion.sh offered today, but a rule above any it carries is still offered, once" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
-cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 # orion 18 wrote the same real time to both files when it offered: this one pins it on its next check
 NOW18="$(date +%s)"; printf '%s %s\n' "$NEWEST" "$NOW18" > "$OFFERED_V"; printf '%s' "$NOW18" > "$OFFERED"
 check "a record left by orion 18: silent, and the time stamp is pinned so an older orion.sh stays quiet" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && ! older_offers "$LATER"'
