@@ -1,0 +1,43 @@
+{
+  "run_id": "orion-20261115-110346-11cc",
+  "issue": 178,
+  "title": "reconcile: read and fold pending ADRs, flag a free later-tier story, and merge its own pull requests",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T11:03:46Z",
+  "finished_at": "2026-11-15T11:31:25Z",
+  "outcome": "merged",
+  "pr": 212,
+  "summary": "/reconcile reads ADRs not yet folded into the PRD (any status line but folded counts as pending), adds two findings (an ADR waiting to be folded; a later-tier story nothing blocks while an earlier tier is open), folds an ADR by replacing its status line in the same docs(prd) PR, and merges a bookmark-only PR on green. Version 29.",
+  "agents": [
+    {
+      "name": "dev-178",
+      "model": "opus",
+      "tokens_total": 202199
+    },
+    {
+      "name": "review-178",
+      "model": "opus",
+      "tokens_total": 138035
+    },
+    {
+      "name": "review-178-r2",
+      "model": "opus",
+      "tokens_total": 123771
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1090,
+    "review_seconds": 470,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    "skills/reconcile/SKILL.md phase 0 and fold: the 'any other status line is pending' catch-all also takes ADRs marked Superseded, Rejected or Deprecated, and nothing handles a pending ADR that a later ADR replaces (wayfinder's ADRS dedupe writes that pair); a dead decision can be read as product truth and offered for folding. Needs one status rule shared by /reconcile, /prd-to-tickets and /wayfinder. Severity medium."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261115-110346-11cc",
+  "issue": 178,
+  "title": "reconcile: read and fold pending ADRs, flag a free later-tier story, and merge its own pull requests",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 212,
+  "merged_at": "2026-11-15T11:31:05Z",
+  "seam": "skills/reconcile/",
+  "story": "/reconcile now reads the decision records waiting to go into the PRD, so a story one of them asks for no longer shows as unasked-for. It reports a decision record not yet folded in and a later-tier story that nothing blocks, offers to fold a record into the PRD (changing its status line in the same pull request a person merges), and merges a bookmark-only pull request on green.",
+  "checks": [],
+  "no_qa_reason": "Skill instructions only; suite checks guard the new findings, the status-line wording and the merge rule.",
+  "merge_commit": "f934c2e6f04ada4a6236175e268099068680d29b"
+}
