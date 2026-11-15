@@ -341,15 +341,16 @@ const NODES = {
   wayfinder:{phase:"A", actor:"both", touch:"always", kicker:"2 · Plan", title:"/wayfinder", cmd:"/wayfinder <your idea>\n/wayfinder <map issue number or link>",
     sub:"Turns a big, foggy idea into a map of decision tickets, then settles them one per session.",
     what:[
-      "Asks the destination first, with two answers only: PRD (the decisions a PRD needs) or TICKETS (the stories filed, ready to build).",
+      "Asks the destination first: PRD (the decisions a PRD needs) or TICKETS (the stories filed, ready to build). Once a PRD exists, a third answer, ADRs only (each decision written as a decision record waiting to be folded into the PRD), recommended when the map changes no scope, vocabulary or acceptance bar.",
       "Surveys every open question, wide before deep, and checks the open issues for duplicates.",
       "Creates one map issue (Destination, Notes, Settled, Fog, Out of scope) and a decision ticket for every question it can already ask precisely; every ticket blocks the map, so the map closes last.",
       "Each ticket has one kind: research (the agent reads and cites), prototype (something rough to react to), grilling (a conversation with you) or task (hands-on work needed first).",
       "Next sessions: picks the next free ticket, settles it, records the answer on the map, and turns fog into new tickets as it clears.",
-      "TICKETS map, before filing: interviews you on every question the stories still leave open, the same interview as /prd-to-tickets."
+      "TICKETS map, before filing: interviews you on every question the stories still leave open, the same interview as /prd-to-tickets.",
+      "Its own pull requests merge on green, except one that touches the PRD, an ADR, the UX prototype or CLAUDE.md: you merge those."
     ],
-    you:["Answer the grilling questions and react to the prototypes.","Answer the interview before a TICKETS map's stories are filed.","Start one session per ticket: research tickets run alongside."],
-    out:["A map issue on GitHub with every decision recorded under Settled.","PRD map: decisions ready for you to write into a PRD. TICKETS map: an epic and its stories, ready for /dev-next."],
+    you:["Answer the grilling questions and react to the prototypes.","Answer the interview before a TICKETS map's stories are filed.","Start one session per ticket: research tickets run alongside.","Merge the pull request of ADRs or PRD edits yourself: merging is your approval."],
+    out:["A map issue on GitHub with every decision recorded under Settled.","PRD map: decisions ready for you to write into a PRD; then /prd-to-tickets drafts any missing prototype screens, and cuts once you have merged them.","ADRs only: one pull request of pending ADRs for you to merge; /prd-to-tickets reads them beside the PRD.","TICKETS map: an epic and its stories, ready for /dev-next."],
     rules:["It decides, it does not build.","Every blocker is set twice: GitHub's native link and a Blocked by section in the body.","If the path is already clear and fits one session, it says a map would only add overhead and stops."],
     tip:"Run the first session as a long conversation. The better the destination, the fewer tickets you need."},
 

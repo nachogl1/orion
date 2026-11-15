@@ -198,18 +198,21 @@ prd_split_stops_at_missing_screens() {
 }
 check "prd-to-tickets stops after opening the prototype pull request when a screen is missing" prd_split_stops_at_missing_screens
 check "prd-to-tickets reads the pending ADRs beside the PRD" eval 'ptt_phase 0 | grep -F "docs/ADRs/" | grep -qF "pending"'
-# Every pull request the split opens merges on green or is named as one a person merges, by the baseline's own list:
+# A skill's "## Who merges" section: from its heading to the next "## " heading.
+who_merges_section() { awk '/^## Who merges/{on=1; next} on&&/^## /{exit} on{print}' "$1"; }
+# Every pull request a skill opens merges on green or is named as one a person merges, by the baseline's own list:
 # the skill's "Who merges" section quotes the baseline's rule word for word (a […] marks a cut) and names every path,
 # label and skill it names.
-prd_split_merges_by_the_baseline_list() {
-    local rule section t
+quotes_baseline_who_merges() {
+    local skill="$1" name rule section t
+    name="$(basename "$(dirname "$skill")")"
     rule="$(awk '/^- \*\*Who merges\.\*\*/{on=1; print; next} on&&/^- /{exit} on{print}' "$REPO/baselines/BASE_CLAUDE.md")"
-    section="$(awk '/^## Who merges/{on=1; next} on&&/^## /{exit} on{print}' "$PTT")"
-    [ -n "$rule" ] && [ -n "$section" ] || { echo "  no Who merges rule in the baseline, or no Who merges section in prd-to-tickets"; return 1; }
+    section="$(who_merges_section "$skill")"
+    [ -n "$rule" ] && [ -n "$section" ] || { echo "  no Who merges rule in the baseline, or no Who merges section in $name"; return 1; }
     for t in $(printf '%s' "$rule" | grep -oE '`[^`]+`' | tr -d '`' | sort -u); do
-        case "$section" in *"\`$t\`"*) ;; *) echo "  prd-to-tickets' Who merges does not name: $t"; return 1 ;; esac
+        case "$section" in *"\`$t\`"*) ;; *) echo "  $name's Who merges does not name: $t"; return 1 ;; esac
     done
-    "$PY" - "$REPO/baselines/BASE_CLAUDE.md" "$PTT" <<'PY' || return 1
+    "$PY" - "$REPO/baselines/BASE_CLAUDE.md" "$skill" <<'PY'
 import re, sys
 flat = lambda t: " ".join(t.split())
 base = open(sys.argv[1], encoding="utf-8").read()
@@ -223,10 +226,67 @@ for piece in quote.split("[…]"):
     if flat(piece) not in rule:
         sys.exit("  the quote differs from the baseline here: " + flat(piece)[:80])
 PY
+}
+prd_split_merges_by_the_baseline_list() {
+    local section
+    quotes_baseline_who_merges "$PTT" || return 1
+    section="$(who_merges_section "$PTT")"
     printf '%s' "$section" | grep -qF 'ux-prototype-<slug>' && printf '%s' "$section" | grep -qF 'prd-update-<slug>' \
         || { echo "  Who merges does not place both pull requests the skill opens"; return 1; }
 }
 check "every pull request prd-to-tickets opens merges by the baseline's Who merges list" prd_split_merges_by_the_baseline_list
+
+echo "wayfinder"
+WF="$REPO/skills/wayfinder/SKILL.md"
+# One section of wayfinder's SKILL.md: from the "## <title>" heading to the next "## " heading.
+wf_section() { awk -v h="## $1" 'index($0, h) == 1 {on=1; print; next} on && /^## /{exit} on{print}' "$WF"; }
+# The destination question offers two endings with no PRD and three once one exists: ADRs only, recommended when the
+# map changes no scope, vocabulary or acceptance bar. The description, the words list and the map template follow.
+wayfinder_offers_adrs_once_a_prd_exists() {
+    local a
+    a="$(wf_section 'Mode A')"
+    printf '%s' "$a" | grep -qF 'two options' && printf '%s' "$a" | grep -qF 'three options' \
+        || { echo "  Mode A does not offer two options with no PRD and three with one"; return 1; }
+    printf '%s' "$a" | grep -qF '**ADRS**' && printf '%s' "$a" | grep -qF 'scope, vocabulary or acceptance bar' \
+        || { echo "  Mode A does not offer ADRs only with its recommendation rule"; return 1; }
+    ! grep -qF 'exactly two options' "$WF" || { echo "  wayfinder still offers exactly two destinations"; return 1; }
+    grep -qF '**<PRD | ADRS | TICKETS>**' "$WF" || { echo "  the map template does not name ADRS"; return 1; }
+    wf_section 'Words this skill uses' | grep -qF '**ADRS**' || { echo "  the words list does not define ADRS"; return 1; }
+    grep -m1 '^description:' "$WF" | grep -qF 'ADRS' || { echo "  the description does not name ADRS"; return 1; }
+}
+check "wayfinder offers an ADRs-only destination only once a PRD exists" wayfinder_offers_adrs_once_a_prd_exists
+# An ADRs-only map ends with each decision written as a pending ADR, in one pull request a person merges, and never
+# asks the PRD question.
+wayfinder_adrs_ending() {
+    local s
+    s="$(wf_section 'Writing the ADRs')"
+    printf '%s' "$s" | grep -qF 'docs/ADRs/' && printf '%s' "$s" | grep -qF '**Status: pending**' \
+        || { echo "  no ending writes each decision as a pending ADR under docs/ADRs/"; return 1; }
+    printf '%s' "$s" | grep -qF 'one pull request' || { echo "  the ADRs do not ship in one pull request"; return 1; }
+    wf_section 'The PRD question' | grep -qF 'An ADRS map never asks it' || { echo "  an ADRS map still asks the PRD question"; return 1; }
+}
+check "an ADRs-only map writes pending ADRs and skips the PRD question" wayfinder_adrs_ending
+# A PRD map's ending names the order: the person writes the PRD, then /prd-to-tickets drafts any missing prototype
+# screens (a pull request a person merges) before it cuts. A TICKETS map keeps its own prototype story (no PRD to gate).
+wayfinder_prd_ending_names_the_order() {
+    local s
+    s="$(wf_section 'Ending a PRD map')"
+    printf '%s' "$s" | grep -qF '/prd-to-tickets' && printf '%s' "$s" | grep -qF 'missing screens' \
+        || { echo "  a PRD map's ending does not name the prototype step before the cut"; return 1; }
+}
+check "a PRD map's ending names the order: the PRD, then the missing prototype screens, then the cut" wayfinder_prd_ending_names_the_order
+# Every pull request wayfinder opens merges by the baseline's list; nothing says a human merges them all.
+wayfinder_merges_by_the_baseline_list() {
+    quotes_baseline_who_merges "$WF" || return 1
+    ! grep -qiE 'a pull request a \*\*human\*\* merges|never auto-merge|merged by a human\)' "$WF" \
+        || { echo "  wayfinder still hands every pull request to a person"; return 1; }
+}
+check "every pull request wayfinder opens merges by the baseline's Who merges list" wayfinder_merges_by_the_baseline_list
+wayfinder_guide_box_offers_adrs() {
+    awk '/^  wayfinder:\{/{on=1} on{print} on&&/^  [a-z]+:\{/&&!/wayfinder:/{exit}' "$REPO/docs/guide/index.html" \
+        | grep -qF 'ADRs only' || { echo "  the guide's /wayfinder box does not offer ADRs only"; return 1; }
+}
+check "the guide's /wayfinder box offers ADRs only" wayfinder_guide_box_offers_adrs
 
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
