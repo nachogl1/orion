@@ -369,14 +369,15 @@ const NODES = {
   tickets:{phase:"A", actor:"both", touch:"always", kicker:"4 · Split", title:"/prd-to-tickets", cmd:"/prd-to-tickets",
     sub:"Cuts the PRD into epics and stories built so several agents can work side by side.",
     what:[
-      "Checks for a UX prototype first and offers to draft one in parallel if the PRD has screens and none exists.",
-      "Reads the PRD and the open backlog: existing open issues become blockers, never duplicates.",
+      "Checks the UX prototype on main first: when the PRD names screens it lacks, offers to draft the missing screens, opens that pull request and stops. Run it again once you have merged it, so stories are cut only from screens you have seen.",
+      "Reads the PRD with its pending ADRs, and the open backlog: existing open issues become blockers, never duplicates.",
       "Cuts the work shallow: one scaffold story, then the contract stories (shared types, schemas, config), then everything fans out.",
+      "Builds the tiers in order: every stretch story is blocked by the last MVP stories, and so on down the PRD's tiers.",
       "Interviews you on every question the PRD leaves open, recommended answer first, until a round brings nothing new.",
       "A fresh plan-check agent tests the cut against the rules; you get one look: file it, change it, or stop.",
       "Files epics then stories, links them as native sub-issues with both blocker forms, and reads every link back."
     ],
-    you:["Answer the interview (accepting the recommended answers is fine).","Give the plan its one look before anything is filed."],
+    you:["Merge the prototype pull request when it opens one, then run it again.","Answer the interview (accepting the recommended answers is fine).","Give the plan its one look before anything is filed.","Merge the PRD pull request if you asked for one: a pull request touching the PRD, an ADR, the prototype or CLAUDE.md is yours to merge; any other it opens merges itself on green."],
     out:["Epics and stories on GitHub Issues, each owning one folder (### Seam).","Every story labelled agent-ready, or needs-human with the reason as its last comment.","Every story labelled with the tier the PRD gives it (tier:mvp, tier:stretch, ...); epics carry none."],
     rules:["Agents build stories only, never an epic.","Nothing is filed agent-ready with a question left.","\"I don't know, ask someone\" makes that story needs-human: nothing is guessed on anyone's behalf.","Work in a repository the team does not own is outside-change and always stops at a pull request for its own reviewer."]},
 
@@ -398,7 +399,7 @@ const NODES = {
       "Epic to story is a native GitHub sub-issue, never a text list.",
       "A story is blocked until every blocker is closed, whether listed under Blocked by or set as GitHub's native relation.",
       "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug, owner-merges (a person merges its pull request), and wayfinder:* for planning tickets.",
-      "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). Nothing orders work by it."
+      "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). The PRD tiers chain by blocks, so a later tier waits for the one before; nothing ranks work by the label itself."
     ],
     you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
     out:["The queue /dev-next picks from. /issue-map draws it as a graph."],

@@ -1,0 +1,1 @@
+/prd-to-tickets now builds the tiers in order through real blocks, cuts only once the UX prototype on main has every screen (drafting the missing ones and stopping otherwise), reads the pending ADRs beside the PRD, and says which of its pull requests a person merges.
