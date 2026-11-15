@@ -1,0 +1,43 @@
+{
+  "run_id": "orion-20261115-101604-b235",
+  "issue": 176,
+  "title": "prd-to-tickets: tiers chain by blocks, the UX prototype gates the cut, pending ADRs are read, and its own pull requests merge on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T10:16:04Z",
+  "finished_at": "2026-11-15T10:44:28Z",
+  "outcome": "merged",
+  "pr": 210,
+  "summary": "prd-to-tickets blocks every later-tier story on the final stories of the tier before (both forms, read back), stops after opening a prototype PR for missing screens (and stops again on rerun while it is open), reads pending ADRs beside the PRD, and quotes the baseline Who-merges rule. Version 27.",
+  "agents": [
+    {
+      "name": "dev-176",
+      "model": "opus",
+      "tokens_total": 197059
+    },
+    {
+      "name": "review-176",
+      "model": "opus",
+      "tokens_total": 133725
+    },
+    {
+      "name": "review-176-r2",
+      "model": "opus",
+      "tokens_total": 119081
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1180,
+    "review_seconds": 420,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    "wayfinder still files a 'UX prototype for <screen>' story when a screen is missing; check it against the UX-gate decision (likely covered by the wayfinder prototype-order story, issue #177)."
+  ]
+}

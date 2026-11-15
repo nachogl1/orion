@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261115-101604-b235",
+  "issue": 176,
+  "title": "prd-to-tickets: tiers chain by blocks, the UX prototype gates the cut, pending ADRs are read, and its own pull requests merge on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 210,
+  "merged_at": "2026-11-15T10:44:06Z",
+  "seam": "skills/prd-to-tickets/, skills/dev-next/references/new-issue.md (tier section)",
+  "story": "When a PRD is cut into tickets, stories of a later tier now wait for the last stories of the tier before. A PRD with screens the prototype lacks gets a pull request drafting only those screens and the split stops until it merges. Pending decision records beside the PRD are read, and the skill merges its own other pull requests on green.",
+  "checks": [],
+  "no_qa_reason": "Skill instructions only; suite checks guard the tier chain, the UX gate and the quoted merge rule.",
+  "merge_commit": "6cc492a439c89634561d41dc0542ff8dd8904add"
+}
