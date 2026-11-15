@@ -1147,9 +1147,25 @@ done
 "$REAL_GIT" -C "$SB/draw-detached" checkout -q --detach; : > "$SB/draw-detached/new.txt"
 DETACHED_ID="$("$REAL_GIT" -C "$SB/draw-detached" rev-parse --short HEAD)"
 check "the git segment names the commit on a detached HEAD, the branch on a branch, and is absent outside git" first_lines_are \
-    "$SB/draw-detached" "ctx: --  |  [detached:$DETACHED_ID]  | stashed:0 untracked:1 modified:0 unpushed:0" \
-    "$SB/draw-branch"   'ctx: --  |  [main]  | stashed:0 untracked:0 modified:0 unpushed:0' \
+    "$SB/draw-detached" "ctx: --  |  [detached:$DETACHED_ID]  | stashed:0 untracked:1 modified:0 unstaged:0 unpushed:0" \
+    "$SB/draw-branch"   'ctx: --  |  [main]  | stashed:0 untracked:0 modified:0 unstaged:0 unpushed:0' \
     "$SB/draw-outside"  'ctx: --'
+# One folder per working-tree state: modified counts staged and unstaged changes, unstaged only the ones not staged yet.
+for d in draw-staged draw-unstaged draw-both draw-mixed; do
+    "$REAL_GIT" -C "$SB" init -q -b main "$d"
+    for f in a b moved gone dropped twice; do printf 'one\n' > "$SB/$d/$f.txt"; done
+    "$REAL_GIT" -C "$SB/$d" -c core.autocrlf=false add . && "$REAL_GIT" -C "$SB/$d" commit -q -m first
+done
+( cd "$SB/draw-staged" && printf 'two\n' >> a.txt && "$REAL_GIT" -c core.autocrlf=false add a.txt )
+( cd "$SB/draw-unstaged" && printf 'two\n' >> a.txt )
+( cd "$SB/draw-both" && printf 'two\n' >> a.txt && "$REAL_GIT" -c core.autocrlf=false add a.txt && printf 'two\n' >> b.txt )
+( cd "$SB/draw-mixed" && "$REAL_GIT" mv moved.txt renamed.txt && rm gone.txt && "$REAL_GIT" rm -q dropped.txt \
+    && printf 'two\n' >> twice.txt && "$REAL_GIT" -c core.autocrlf=false add twice.txt && printf 'three\n' >> twice.txt )
+check "modified counts staged and unstaged changes; unstaged counts the unstaged ones, a file staged then edited again in both" first_lines_are \
+    "$SB/draw-staged"   'ctx: --  |  [main]  | stashed:0 untracked:0 modified:1 unstaged:0 unpushed:0' \
+    "$SB/draw-unstaged" 'ctx: --  |  [main]  | stashed:0 untracked:0 modified:1 unstaged:1 unpushed:0' \
+    "$SB/draw-both"     'ctx: --  |  [main]  | stashed:0 untracked:0 modified:2 unstaged:1 unpushed:0' \
+    "$SB/draw-mixed"    'ctx: --  |  [main]  | stashed:0 untracked:0 modified:4 unstaged:2 unpushed:0'
 
 echo "status line (the project carries orion's copy; the computer's copy takes the newest only on the person's word)"
 # A computer of its own (HOME) and a source repository of its own, whose ORION_VERSION each commit sets by hand.
