@@ -56,11 +56,11 @@ curl -fsSL https://raw.githubusercontent.com/nachogl1/orion/main/orion.sh | bash
 irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1 | iex
 ```
 
-That is all. The command fetches the latest orion, puts it into your project and tells you what it added.
+The command fetches the latest orion and first tells you what its agents then do on their own: claim issues, file tickets and merge their own pull requests once the checks are green. Say yes and it puts orion into your project and tells you what it added; say no and nothing is installed. For an unattended install (a script, or no terminal to answer in), add `--yes` to say yes up front.
 
 Before you save (commit) those files, open Claude Code in the project and type `/orion-verify` (the first session asks for it anyway). It checks that everything fits together: your project's instructions file, the rules it now imports, the skills (orion's and any you already had) and the settings. It repairs what is mechanical by itself, asks before changing anything that is yours (filling in the build and test commands it finds in your project, moving a folder the rules expect somewhere else, letting orion's files past your `.gitignore`), and tells you what is left. Then commit the files so your teammates get them too. It offers the check again whenever orion's rules change, after an update or after you pull one a teammate made, and once on a computer where the project is new (a fresh clone); every worktree of one clone counts as the same project. It also looks for clashes with your own personal rules file. You can repeat the check any time by typing `/orion-verify`.
 
-Prefer to let the assistant do it? Open Claude Code in your project and say *"set up orion in this project"*.
+Prefer to let the assistant do it? Open Claude Code in your project and say *"set up orion in this project"*. It shows you the same notice first and installs (with `--yes`) only once you agree.
 
 The status bar is not installed by default, because it is a personal setting rather than part of the project. If you want it, add `--statusline` to the end of the Mac/Linux command above, or answer *yes* when the installer asks.
 

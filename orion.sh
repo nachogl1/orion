@@ -876,7 +876,7 @@ cmd_init() {
     say "orion init -> $PROJECT"
     autonomy_notice
     if [ "$yes" != "1" ]; then
-        is_tty || die "refusing to init without --yes in a non-interactive shell"
+        is_tty || die "refusing to init without --yes in a non-interactive shell (an assistant running this: show the person the notice above, then run again with --yes once they agree)"
         ask "Install orion in $PROJECT on these terms? [y/N] "
         [[ "$resp" =~ ^[Yy]$ ]] || { say "aborted"; return; }
     fi

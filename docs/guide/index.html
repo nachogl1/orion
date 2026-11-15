@@ -237,7 +237,7 @@ aside.drawer.on{transform:none}
       </li>
       <li class="step">
         <h3>Run one line in your project folder</h3>
-        <p>Open a terminal in the project folder and paste the line for your system. It fetches the latest orion, puts it into the project and tells you what it added.</p>
+        <p>Open a terminal in the project folder and paste the line for your system. It fetches the latest orion and first tells you what its agents then do on their own: claim issues, file tickets and merge their own pull requests once the checks are green. Say yes and it puts orion into the project and tells you what it added; say no and nothing is installed.</p>
         <div class="term">
           <div class="tabs" role="tablist" aria-label="Your system">
             <button role="tab" id="tab-sh" aria-controls="cmd-sh" aria-selected="true">Mac, Linux or Git Bash</button>
@@ -250,6 +250,7 @@ aside.drawer.on{transform:none}
         <ul class="plain small">
           <li>Want the optional status bar? Add <code>--statusline</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks.</li>
           <li>Want updates applied without being asked? Choose <i>auto</i> when the installer asks, or add <code>--update-mode auto</code>.</li>
+          <li>Installing with no terminal to answer in (a script)? Add <code>--yes</code> to say yes to the notice up front.</li>
         </ul>
       </li>
       <li class="step">
@@ -262,7 +263,7 @@ aside.drawer.on{transform:none}
       </li>
     </ol>
 
-    <div class="alt">Prefer to let the assistant do it? Open Claude Code in your project and say <b>"set up orion in this project"</b>.</div>
+    <div class="alt">Prefer to let the assistant do it? Open Claude Code in your project and say <b>"set up orion in this project"</b>. It shows you the same notice first and installs (with <code>--yes</code>) only once you agree.</div>
     <div class="caution"><b>Use it with care.</b> orion tells an AI assistant how to work in your project, and the assistant will run commands and edit files on your machine. Review what you install, keep your work saved, and use it at your own risk. It is under constant improvement and is provided as-is.</div>
   </section>
 
