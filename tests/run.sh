@@ -400,6 +400,24 @@ harvest_guide_box_asks_by_importance() {
 }
 check "the guide's /harvest box rates notes and names its merges" harvest_guide_box_asks_by_importance
 
+echo "harvest-qa"
+HQ="$REPO/skills/harvest-qa/SKILL.md"
+# The log pull request merges on green by the baseline's list; nothing says a human merges it.
+harvest_qa_merges_by_the_baseline_list() {
+    quotes_baseline_who_merges "$HQ" || return 1
+    ! grep -qiE 'a human merges it|never merges on its own' "$HQ" || { echo "  harvest-qa still hands its log pull request to a person"; return 1; }
+    awk '/^## Phase 3/{on=1; next} on&&/^## /{exit} on{print}' "$HQ" | grep -qF '**Merge it as *Who merges* says.**' \
+        || { echo "  phase 3 does not merge as Who merges says"; return 1; }
+}
+check "the log pull request harvest-qa opens merges by the baseline's Who merges list" harvest_qa_merges_by_the_baseline_list
+harvest_qa_guide_box_merges_on_green() {
+    local box
+    box="$(awk '/^  harvestqa:\{/{on=1} on{print} on&&/^  [a-z]+:\{/&&!/harvestqa:/{exit}' "$REPO/docs/guide/index.html")"
+    printf '%s' "$box" | grep -qF 'merges itself on green' && ! printf '%s' "$box" | grep -qF 'Merge its log pull request' \
+        || { echo "  the guide's /harvest-qa box does not say its log pull request merges itself on green"; return 1; }
+}
+check "the guide's /harvest-qa box says its log pull request merges on green" harvest_qa_guide_box_merges_on_green
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
