@@ -595,12 +595,12 @@ echo "issue map (the generator against fixture issues: a fake gh, no network)"
 # blocked by the epic, by an issue that does not exist and by itself; #6 and #7 block each other.
 MAPREPO="$SB/maprepo"; mkdir -p "$MAPREPO" "$SB/ghbin"; "$REAL_GIT" init -q "$MAPREPO"
 cat > "$SB/issues.json" <<'EOF'
-[{"number":1,"title":"Epic one","state":"OPEN","labels":[{"name":"epic","color":"8250df"}],"assignees":[],"body":"","url":"https://example.invalid/1"},
- {"number":2,"title":"Lay the base","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"},{"name":"story","color":"cccccc"}],"assignees":[{"login":"dev-1"}],"body":"### Blocked by\n(none)\n","url":"https://example.invalid/2"},
- {"number":3,"title":"Build on it","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[{"login":"dev-2"}],"body":"### Blocked by\n#2 — Lay the base\n","url":"https://example.invalid/3"},
- {"number":4,"title":"Decide the next step","state":"OPEN","labels":[{"name":"needs-human","color":"d93f0b"}],"assignees":[],"body":"### Blocked by\n#3 — Build on it\n","url":"https://example.invalid/4"},
- {"number":5,"title":"Odd links","state":"OPEN","labels":[],"assignees":[],"body":"### Blocked by\n#1\n#5\n#99\n","url":"https://example.invalid/5"},
- {"number":6,"title":"Loop a","state":"OPEN","labels":[],"assignees":[],"body":"","url":"https://example.invalid/6"},
+[{"number":1,"title":"Epic one","state":"OPEN","labels":[{"name":"epic","color":"8250df"}],"assignees":[],"author":{"login":"lead-1"},"body":"","url":"https://example.invalid/1"},
+ {"number":2,"title":"Lay the base","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"},{"name":"story","color":"cccccc"}],"assignees":[{"login":"dev-1"}],"author":{"login":"lead-1"},"body":"### Blocked by\n(none)\n","url":"https://example.invalid/2"},
+ {"number":3,"title":"Build on it","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[{"login":"dev-2"}],"author":{"login":" dev-2 "},"body":"### Blocked by\n#2 — Lay the base\n","url":"https://example.invalid/3"},
+ {"number":4,"title":"Decide the next step","state":"OPEN","labels":[{"name":"needs-human","color":"d93f0b"}],"assignees":[],"author":{"login":""},"body":"### Blocked by\n#3 — Build on it\n","url":"https://example.invalid/4"},
+ {"number":5,"title":"Odd links","state":"OPEN","labels":[],"assignees":[],"author":{"login":"ghost"},"body":"### Blocked by\n#1\n#5\n#99\n","url":"https://example.invalid/5"},
+ {"number":6,"title":"Loop a","state":"OPEN","labels":[],"assignees":[],"author":null,"body":"","url":"https://example.invalid/6"},
  {"number":7,"title":"Loop b","state":"CLOSED","labels":[],"assignees":[],"body":"","url":"https://example.invalid/7"}]
 EOF
 cat > "$SB/links.json" <<'EOF'
@@ -618,19 +618,20 @@ EOF
 # names the epic #1 and #99, which does not exist. #8 waits on #9 and #13, left out too and unassigned: #9 waits on
 # the open #11 through GitHub's relation, #13 on the open #10 through its body section only. The second GraphQL
 # answer is the generator fetching the left-out blockers (that query asks for bodies), the third the state of #10
-# (titles but no bodies); the links query asks for neither.
+# (titles but no bodies); the links query asks for neither. Who opened each issue comes in every shape GitHub may
+# give: a login (with spaces around it on #3), an empty one, a deleted account ("ghost"), null, a number, none.
 cat > "$SB/issues-search.json" <<'EOF'
-[{"number":3,"title":"Build on it","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[{"login":"dev-2"}],"body":"### Blocked by\n#2 — Lay the base\n","url":"https://example.invalid/3"},
- {"number":4,"title":"Decide the next step","state":"OPEN","labels":[{"name":"needs-human","color":"d93f0b"}],"assignees":[],"body":"### Blocked by\n#3 — Build on it\n","url":"https://example.invalid/4"},
- {"number":5,"title":"Odd links","state":"OPEN","labels":[],"assignees":[],"body":"### Blocked by\n#1\n#5\n#99\n","url":"https://example.invalid/5"},
- {"number":8,"title":"Wait on the far ones","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[],"body":"### Blocked by\n#9\n#13\n","url":"https://example.invalid/8"}]
+[{"number":3,"title":"Build on it","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[{"login":"dev-2"}],"author":{"login":" dev-2 "},"body":"### Blocked by\n#2 — Lay the base\n","url":"https://example.invalid/3"},
+ {"number":4,"title":"Decide the next step","state":"OPEN","labels":[{"name":"needs-human","color":"d93f0b"}],"assignees":[],"author":{"login":""},"body":"### Blocked by\n#3 — Build on it\n","url":"https://example.invalid/4"},
+ {"number":5,"title":"Odd links","state":"OPEN","labels":[],"assignees":[],"author":{"login":"ghost"},"body":"### Blocked by\n#1\n#5\n#99\n","url":"https://example.invalid/5"},
+ {"number":8,"title":"Wait on the far ones","state":"OPEN","labels":[{"name":"agent-ready","color":"0e8a16"}],"assignees":[],"author":{"login":7},"body":"### Blocked by\n#9\n#13\n","url":"https://example.invalid/8"}]
 EOF
 cat > "$SB/outside.json" <<'EOF'
 {"data":{"repository":{
  "i0":{"number":1,"title":"Epic one","state":"OPEN","url":"https://example.invalid/1","body":"","labels":{"nodes":[{"name":"epic","color":"8250df"}]},"assignees":{"nodes":[]}},
- "i1":{"number":2,"title":"Lay the base","state":"OPEN","url":"https://example.invalid/2","body":"### Blocked by\n(none)\n","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"},{"name":"story","color":"cccccc"}]},"assignees":{"nodes":[{"login":"dev-1"}]},"blockedBy":{"nodes":[]}},
- "i2":{"number":9,"title":"Far one by relation","state":"OPEN","url":"https://example.invalid/9","body":"","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"}]},"assignees":{"nodes":[]},"blockedBy":{"nodes":[{"number":11,"title":"Hidden base","state":"OPEN"}]}},
- "i3":{"number":13,"title":"Far one by section","state":"OPEN","url":"https://example.invalid/13","body":"### Blocked by\n#10\n","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"}]},"assignees":{"nodes":[]},"blockedBy":{"nodes":[]}},
+ "i1":{"number":2,"title":"Lay the base","state":"OPEN","url":"https://example.invalid/2","body":"### Blocked by\n(none)\n","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"},{"name":"story","color":"cccccc"}]},"assignees":{"nodes":[{"login":"dev-1"}]},"author":{"login":"lead-1"},"blockedBy":{"nodes":[]}},
+ "i2":{"number":9,"title":"Far one by relation","state":"OPEN","url":"https://example.invalid/9","body":"","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"}]},"assignees":{"nodes":[]},"author":null,"blockedBy":{"nodes":[{"number":11,"title":"Hidden base","state":"OPEN"}]}},
+ "i3":{"number":13,"title":"Far one by section","state":"OPEN","url":"https://example.invalid/13","body":"### Blocked by\n#10\n","labels":{"nodes":[{"name":"agent-ready","color":"0e8a16"}]},"assignees":{"nodes":[]},"author":{"login":"far-dev"},"blockedBy":{"nodes":[]}},
  "i4":null}}}
 EOF
 cat > "$SB/states.json" <<'EOF'
@@ -683,6 +684,36 @@ map_offers_filters_and_problems() {
     grep -q 'id="problems"' "$MAPHTML"
 }
 check "the page offers the four filter menus and the data problems pane" map_offers_filters_and_problems
+check "the issue list asks GitHub who opened each issue" grep -q -- "^issue list .*--json [a-z,]*author" "$SB/gh.log"
+# Who opened each issue, as the details card's grey line names it: the login from the issue list (or, for a blocker
+# the search left out, from the GraphQL answer), else "unknown" for a missing, empty or non-text login or a deleted
+# account (GitHub's "ghost"). Prints what is wrong and fails on any mismatch.
+map_opened_by_is() {
+    local html="$MAPHTML"; command -v cygpath >/dev/null 2>&1 && html="$(cygpath -m "$MAPHTML")"
+    "$PY" - "$html" "$@" <<'PYEOF'
+import json, re, sys
+page = open(sys.argv[1], encoding="utf-8").read()
+meta = json.loads(re.search(r"const META=(.*?);const UP=", page, re.S).group(1))
+bad = [f"#{n}: {meta.get(n, {}).get('openedBy')!r}, want {want!r}"
+       for n, want in (pair.split("=", 1) for pair in sys.argv[2:]) if meta.get(n, {}).get("openedBy") != want]
+print("\n".join("  " + b for b in bad)) if bad else None
+sys.exit(1 if bad else 0)
+PYEOF
+}
+check "each card names who opened the issue, or unknown with no usable login or a deleted account" map_opened_by_is 1=lead-1 2=lead-1 3=dev-2 4=unknown 5=unknown 6=unknown 7=unknown
+check "the card's grey line says opened by right after the GitHub state, before the assignees" grep -qF "' \\u00b7 GitHub state: '+esc(m.state)+' \\u00b7 opened by '+esc(m.openedBy)+(m.assignees.length?' \\u00b7 assigned to '" "$MAPHTML"
+# A click anywhere outside the card unpins it as Esc does, while the clicked control still does its job (the listener
+# sits on the document, after every control's own); a box toggles the card itself, and a pan or a press that began
+# in the card is no click. The hint and the help text say so, and the old "click again to clear" wording is gone.
+map_closes_card_on_outside_click() {
+    grep -qF "let pressInTip=false;addEventListener('pointerdown',ev=>{pressInTip=tip.contains(ev.target);moved=false},true);" "$MAPHTML" \
+        && grep -qF "document.addEventListener('click',ev=>{const inTip=pressInTip||tip.contains(ev.target);pressInTip=false;if(moved){moved=false;return}" "$MAPHTML" \
+        && grep -qF "if(pinned!==null&&!inTip&&!ev.target.closest('.node')){pinned=null;clear()}});" "$MAPHTML" \
+        && grep -qF 'Click outside to close \u00b7 double-click opens it on GitHub \u00b7 drag the title to move this card' "$MAPHTML" \
+        && grep -qF 'Click an issue to see its chain and its card, click outside to close.' "$MAPHTML" \
+        && ! grep -qi 'again to clear' "$MAPHTML"
+}
+check "a click outside the details card closes it, unless it is a pan or began in the card, and the hint says so" map_closes_card_on_outside_click
 check "an assigned issue with a blocker still open shows as blocked, not in progress" grep -q 'class="node blocked k-agent" data-id="3"' "$MAPHTML"
 check "the map never shows up as a change in git" eval '[ -z "$(cd "$MAPREPO" && "$REAL_GIT" status --porcelain)" ]'
 run_map --search "label:bug"
@@ -696,6 +727,7 @@ check "a blocker the search left out is drawn as a faded box" grep -q 'class="no
 check "and the issue waiting on it still shows as blocked, never free" grep -q 'class="node blocked k-agent" data-id="3"' "$MAPHTML"
 check "a left-out blocker whose own blocker is open shows as blocked, never ready, by relation or by body section" eval 'grep -q "class=\"node blocked k-agent outside\" data-id=\"9\"" "$MAPHTML" && grep -q "class=\"node blocked k-agent outside\" data-id=\"13\"" "$MAPHTML"'
 check "a left-out blocker that is no issue, or is an epic, is still a dropped link" eval 'grep -q "#5->#1, #5->#99" "$SB/out" && grep -q "which is not on the map: link dropped" "$MAPHTML"'
+check "a blocker the search left out names who opened it too, asked for with its other fields" eval 'grep -q "^api graphql.*body.*author { login }" "$SB/gh.log" && map_opened_by_is 2=lead-1 9=unknown 13=far-dev 3=dev-2 8=unknown'
 check "the page says it holds only the issues the search matched" grep -q 'Only the issues matching the GitHub search <b>label:bug</b>' "$MAPHTML"
 run_map --repo other-owner/other.repo
 repo_map_built() {
