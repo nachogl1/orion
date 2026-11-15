@@ -29,6 +29,9 @@ looks at it, and carries a banner saying who built it and when. The source of tr
   (assigned), ready 🟢, closed = red cross.
 - Click a box to light up its whole chain (upstream and downstream) with a card (labels, description, blockers,
   what waits on it, an "Open on GitHub" button) that can be dragged by its title; double-click opens it on GitHub;
+  the card's grey line reads `<column> · GitHub state: <STATE> · opened by <login> · assigned to <logins>` (or
+  `· nobody assigned`), and says `opened by unknown` when GitHub names no author login (missing, empty, or a
+  deleted account, which GitHub reports as `ghost`), faded boxes included;
   Esc closes a menu, then the card. Four filter menus (who takes it, progress, assignee, labels, each option with
   shown/total and "only") hide issues; hidden issues leave the map and the rest close up. Dark theme, light when the
   system asks for it.

@@ -55,6 +55,8 @@ CHIP_CHAR_W, CHIP_PAD_X, CHIP_GAP, CHIP_TEXT_MAX, CHIP_MAX = 5.6, 10, 4, 10, 3
 TITLE_MAX, ASSIGNEE_MAX, DESCRIPTION_MAX = 30, 28, 600
 TIP_KEEP = 60  # pixels of a dragged issue card that stay on screen so it can be grabbed again
 EPICS_COLUMN = "Epics"
+UNKNOWN_AUTHOR = "unknown"  # the card says "opened by unknown" when GitHub names no usable author
+DELETED_ACCOUNT_LOGIN = "ghost"  # the login GitHub gives an issue whose author's account was deleted
 
 # Icon = progress, in the order the Progress filter lists them. A closed box gets a red cross drawn over it instead.
 STATUS = {
@@ -151,7 +153,7 @@ LINK_FIELDS = ("number parent { number } blockedBy(first: 100) { nodes { number 
                "subIssues(first: 100) { nodes { number } }")
 # The fields `gh issue list --json` gives, for the blockers a search left out, plus their own blockers' state.
 BRIEF_FIELDS = "number title state"
-ISSUE_FIELDS = ("number title state url body labels(first: 100) { nodes { name color } } "
+ISSUE_FIELDS = ("number title state url body author { login } labels(first: 100) { nodes { name color } } "
                 f"assignees(first: 100) {{ nodes {{ login }} }} blockedBy(first: 100) {{ nodes {{ {BRIEF_FIELDS} }} }}")
 
 
@@ -217,7 +219,8 @@ def load_outside(owner: str, name: str, issues: list[dict], links: dict[int, dic
              "own_blockers": own_blockers(x),
              "labels": [{"name": lab["name"], "color": lab.get("color", "")}
                         for lab in nodes_of(x.get("labels")) if "name" in lab],
-             "assignees": [{"login": a["login"]} for a in nodes_of(x.get("assignees")) if "login" in a]}
+             "assignees": [{"login": a["login"]} for a in nodes_of(x.get("assignees")) if "login" in a],
+             "author": x.get("author")}
             for x in found]
 
 
@@ -226,6 +229,14 @@ def body_blockers(body: str | None) -> set[int]:
     them; empty when the body has no such section."""
     m = re.search(r"### Blocked by\s*\n(.*?)(?=\n#{1,6} |\Z)", re.sub(r"\r\n?", "\n", body or ""), re.S)
     return {int(x) for x in re.findall(r"#(\d+)", m.group(1))} if m else set()
+
+
+def opened_by(author: object) -> str:
+    """Who opened the issue, as its card names it. The author is untrusted input: any odd shape, an empty login or
+    a deleted account is UNKNOWN_AUTHOR."""
+    login = author.get("login") if isinstance(author, dict) else None
+    login = login.strip() if isinstance(login, str) else ""
+    return UNKNOWN_AUTHOR if login in ("", DELETED_ACCOUNT_LOGIN) else login
 
 
 def kind_of(labels: list[str]) -> tuple[str, str | None]:
@@ -359,7 +370,8 @@ def build_map(issues: list[dict], links: dict[int, dict]) -> dict:
                        "status": status(n), "kind": kind, "kindLabel": kind_label, "column": name,
                        "outside": n in outside,
                        "labels": labels[n], "body": description_text(by[n].get("body") or ""),
-                       "assignees": [a["login"] for a in by[n]["assignees"]], "parent": parent.get(n),
+                       "assignees": [a["login"] for a in by[n]["assignees"]],
+                       "openedBy": opened_by(by[n].get("author")), "parent": parent.get(n),
                        "stories": [brief(k) for k in kids.get(n, [])],
                        "blockers": blockers(n), "waiting": down.get(n, [])}
     colours = {lab["name"]: lab.get("color", "") for i in issues for lab in i["labels"]}
@@ -596,7 +608,7 @@ def main() -> None:
     search = ["--search", args.search] if args.search else []
     try:
         issues = json.loads(gh("issue", "list", *scope, "--state", "all", "--limit", str(MAP_ISSUE_LIMIT), *search,
-                               "--json", "number,title,state,labels,assignees,body,url"))
+                               "--json", "number,title,state,labels,assignees,author,body,url"))
         repo = json.loads(gh("repo", "view", *([args.repo] if args.repo else []), "--json", "name,owner"))
         owner, name = repo["owner"]["login"], repo["name"]
         links = load_links(owner, name, sorted(i["number"] for i in issues))
@@ -778,7 +790,7 @@ let h='<div class="handle" title="Drag to move this card">'+GRIP+'<h3>#'+id+' '+
 h+='<div class="row"><b>Progress</b> <span class="st">'+ic+' '+esc(name)+'</span> <span class="m">'+esc(mean)+'</span></div>';
 h+='<div class="row"><b>Who takes it</b> <span class="st k-'+m.kind+'">'+esc(kname)+'</span> <span class="m">'+esc(kmean)+'</span></div>';
 if(m.outside)h+='<div class="row"><b>Outside the search</b> <span class="m">'+esc(OUTSIDE_NOTE)+'</span></div>';
-h+='<span class="m">'+esc(m.column)+' \\u00b7 GitHub state: '+esc(m.state)+(m.assignees.length?' \\u00b7 assigned to '+esc(m.assignees.join(', ')):' \\u00b7 nobody assigned')+'</span>';
+h+='<span class="m">'+esc(m.column)+' \\u00b7 GitHub state: '+esc(m.state)+' \\u00b7 opened by '+esc(m.openedBy)+(m.assignees.length?' \\u00b7 assigned to '+esc(m.assignees.join(', ')):' \\u00b7 nobody assigned')+'</span>';
 h+='<div class="row"><b>Labels:</b>'+(m.labels.length?m.labels.map(l=>'<span class="lbl'+(l===m.kindLabel?' k':'')+'">'+esc(l)+'</span>').join(''):' none')+'</div>';
 h+='<div class="row"><b>Description</b><div class="desc">'+(m.body?esc(m.body):'<i>empty</i>')+'</div></div>';
 if(m.kind==='epic'){h+='<div class="row"><b>Stories:</b> '+(m.stories.length?'':'none linked as sub-issues')+'</div>';if(m.stories.length)h+=list(m.stories,b=>b.state==='CLOSED'?'c':'')}
