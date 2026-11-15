@@ -991,6 +991,7 @@ clauses() {  # file
         { print "BAD " $0 }'
 }
 check "GLOBAL_CLAUDE.md has clauses, each carrying a valid version marker" eval '[ -n "$(clauses "$GLOBAL")" ] && ! clauses "$GLOBAL" | grep -q "^BAD "'
+check "the clause that labels every line has a risk line say open or fixed in its label" eval 'grep -F "**Label every line with what it is**" "$GLOBAL" | grep -F "Risk (open):" | grep -qF "Risk (fixed):"'
 check "no clause carries a version above ORION_VERSION (it would be offered again every day)" eval '[ -z "$(clauses "$GLOBAL" | awk -v v="$(tr -d " \t\r\n" < "$REPO/ORION_VERSION")" '"'"'$1 + 0 > v + 0'"'"')" ]'
 # A clause changed or added against origin/main must carry a version higher than every clause there, or a person who
 # went through the old file would never be offered it. CI fetches origin/main before the suite.
