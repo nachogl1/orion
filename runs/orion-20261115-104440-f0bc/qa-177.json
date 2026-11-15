@@ -1,0 +1,20 @@
+{
+  "run_id": "orion-20261115-104440-f0bc",
+  "issue": 177,
+  "title": "wayfinder: an ADRs-only ending after the first map, the prototype order, and its own pull requests merge on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 211,
+  "merged_at": "2026-11-15T11:03:06Z",
+  "seam": "skills/wayfinder/",
+  "story": "/wayfinder now offers a third ending, ADRs only, once a project has a PRD: each decision becomes a pending ADR in one pull request a person merges, and the PRD question is skipped. A PRD map ends by naming the order: the PRD, then /prd-to-tickets drafts any missing prototype screens, then the cut. Its other pull requests merge on green.",
+  "checks": [
+    {
+      "key": "skills/wayfinder/destination-question",
+      "criterion": "The destination question shows two options when there is no PRD, and three once one exists.",
+      "steps": "In a throw-away project with orion installed and docs/PRDs/ empty, run /wayfinder plan a made-up feature. Then add a made-up PRD under docs/PRDs/ and run it again.",
+      "expected": "First run: PRD and TICKETS only. Second run: PRD, ADRS and TICKETS, with the recommendation rule shown."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "1a74c374717d4738fd4c6c560dd8f27e64ccb47b"
+}

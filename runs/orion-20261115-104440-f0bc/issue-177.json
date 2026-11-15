@@ -1,0 +1,39 @@
+{
+  "run_id": "orion-20261115-104440-f0bc",
+  "issue": 177,
+  "title": "wayfinder: an ADRs-only ending after the first map, the prototype order, and its own pull requests merge on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T10:44:40Z",
+  "finished_at": "2026-11-15T11:03:36Z",
+  "outcome": "merged",
+  "pr": 211,
+  "summary": "wayfinder's destination question offers ADRS once a PRD exists (pending ADRs in one human-merged PR, no PRD question), a PRD map ends by naming the order PRD then prototype then cut, and a Who-merges section quotes the baseline; the suite's Who-merges check is one shared helper. Version 28.",
+  "agents": [
+    {
+      "name": "dev-177",
+      "model": "opus",
+      "tokens_total": 190159
+    },
+    {
+      "name": "review-177",
+      "model": "opus",
+      "tokens_total": 149245
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1430,
+    "review_seconds": 270,
+    "ci_seconds": 60
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    "baselines/BASE_CLAUDE.md 'Two sources of truth' lists only dev-next mechanical writes and dev-quick's fast path as exempt from 'Should we update the PRD with this too?'; an ADRS wayfinder map skips that question, so the baseline (which wins) contradicts the skill. Severity medium.",
+    "docs/guide PRD box still says to fold a decision in 'the next time you update the PRD' while the rules now give that to /reconcile. Severity low."
+  ]
+}
