@@ -1,0 +1,1 @@
+`/dev-next` keeps a stopped story assigned to its runner (still `agent-ready` after a technical failure) so it is resumed with `/dev-next #<N>`, and a story labelled `owner-merges` stops at its open pull request with green checks for its owner to try and merge.

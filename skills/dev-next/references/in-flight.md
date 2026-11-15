@@ -160,16 +160,17 @@ hold it — is what guarantees CI ran on the `main` that the branch actually lan
 | Phase 1, after the claim | Fill the issue into the issue-less entry (first claim) or add the issue entry. |
 | Phase 1, zero eligible, or the run ends having claimed nothing | Remove the issue-less entry. |
 | Phase 1, lost the claim race on the second re-read | Remove the issue entry; a run holding no other claim turns it back into its issue-less entry while it picks the next candidate. |
-| Phase 3, dev reports `INHERITED RED` | Remove the issue entry (the story is released without `needs-human`). |
+| Phase 3, dev reports `FAILED` or `INHERITED RED` → stopped, `agent-ready` kept | Remove the issue entry. |
 | Phase 5, before step 1 | Take `merging` (write, wait 5 s, re-read, confirm your run id). |
 | Phase 5, during step 2 | Refresh `merging.since` on every CI poll, re-confirming `merging.run` is yours each time; poll capped at 30 min. |
 | Phase 5, just before `gh pr merge` | Re-read; `merging.run` not yours → do not merge, re-queue. |
-| Phase 5, no checks reported → `needs-human` | Release `merging` and remove the issue entry. |
-| Phase 4, three review rounds → `needs-human` | Remove the issue entry. |
+| Phase 5, no checks reported → stopped | Release `merging` and remove the issue entry. |
+| Phase 4, three review rounds → stopped | Remove the issue entry. |
 | Phase 5, after step 4 or on red / conflict | Release `merging`. |
 | Phase 5 step 5 clean-up | Remove the issue entry. |
-| Phase 5, two red rounds → `needs-human` | Release `merging` and remove the issue entry — step 5 is never reached on this path. |
-| Any `needs-human` release | Remove the issue entry, and release `merging` if held. |
+| Phase 5, two red rounds → stopped | Release `merging` and remove the issue entry — step 5 is never reached on this path. |
+| Phase 5, an `owner-merges` story green → stopped at its pull request | Remove the issue entry; `merging` was never taken. |
+| Any stop (`SKILL.md`, the stop rule at the top), `needs-human` or not | Remove the issue entry, and release `merging` if held. The assignee stays on the issue. |
 
 ## Read-modify-write
 

@@ -107,6 +107,17 @@ check "clear-git-resources scan.sh parses" bash -n "$REPO/skills/clear-git-resou
 check "issue_map.py compiles" "$PY" -m py_compile "$REPO/skills/issue-map/scripts/issue_map.py"
 check "build_docx.py compiles" "$PY" -m py_compile "$REPO/skills/generate-project-writeup/assets/build_docx.py"
 
+echo "labels"
+# The baseline promises that /dev-next's preflight creates every label of its Labels line; the skill's Labels row must list each one.
+dev_next_creates_every_baseline_label() {
+    local labels row l
+    labels="$(awk '/^- Labels: /{on=1} on{print} on&&/plus the/{exit}' "$REPO/baselines/BASE_CLAUDE.md" | sed 's/plus the.*//' | grep -oE '`[a-z-]+`' | tr -d '`')"
+    row="$(grep -E '^\| \*\*Labels\*\* \|' "$REPO/skills/dev-next/SKILL.md")"
+    [ -n "$labels" ] && [ -n "$row" ] || return 1
+    for l in $labels; do case "$row" in *"\`$l\`"*) ;; *) echo "  dev-next does not create: $l"; return 1 ;; esac; done
+}
+check "dev-next's preflight creates every label the baseline lists" dev_next_creates_every_baseline_label
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
