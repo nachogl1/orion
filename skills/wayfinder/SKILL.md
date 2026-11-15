@@ -1,6 +1,6 @@
 ---
 name: wayfinder
-description: 'ORION - Turn an idea that is too large for a single agent session into a plan kept on GitHub Issues: one map issue that states the DESTINATION (one of two: PRD, every decision a PRD needs, which the person then writes; or TICKETS, the work filed as stories ready to build) and a set of small decision tickets hung under it, then settle those tickets one per session until every open question has an answer. Questions that can already be asked precisely become tickets; questions that cannot be asked precisely yet are written down as fog on the map and become tickets later; anything beyond the destination is recorded as out of scope. Every ticket has one kind — research (the agent reads and cites), prototype (a rough thing for the person to react to), grilling (a conversation with the person), task (hands-on work needed before a decision) — and the steps for each kind are written here, so the skill runs no other skill (it only reads dev-next''s references/new-issue.md for the issue links and the shape of a TICKETS map''s stories). It DECIDES, IT DOES NOT BUILD. GitHub Issues only, like dev-next: tickets are native sub-issues of the map, every ticket blocks the map so the map closes last, and every blocker is set as GitHub''s native relation and as a Blocked by section in the body. One ticket per session, research tickets excepted. Started by hand only: use when the user types /wayfinder; when they say "help me plan this big thing", "this is too big for one session", "chart the work", "work the map", or bring a vague idea with no clear path to the end, suggest they type /wayfinder.'
+description: 'ORION - Turn an idea that is too large for a single agent session into a plan kept on GitHub Issues: one map issue that states the DESTINATION (one of two: PRD, every decision a PRD needs, which the person then writes; or TICKETS, the work filed as stories ready to build) and a set of small decision tickets hung under it, then settle those tickets one per session until every open question has an answer. Questions that can already be asked precisely become tickets; questions that cannot be asked precisely yet are written down as fog on the map and become tickets later; anything beyond the destination is recorded as out of scope. Every ticket has one kind — research (the agent reads and cites), prototype (a rough thing for the person to react to), grilling (a conversation with the person), task (hands-on work needed before a decision) — and the steps for each kind are written here, so the skill runs no other skill (it only reads dev-next''s references/new-issue.md for the issue links and the shape of a TICKETS map''s stories, and references/planning-interview.md for the interview before they are filed). It DECIDES, IT DOES NOT BUILD. GitHub Issues only, like dev-next: tickets are native sub-issues of the map, every ticket blocks the map so the map closes last, and every blocker is set as GitHub''s native relation and as a Blocked by section in the body. One ticket per session, research tickets excepted. Started by hand only: use when the user types /wayfinder; when they say "help me plan this big thing", "this is too big for one session", "chart the work", "work the map", or bring a vague idea with no clear path to the end, suggest they type /wayfinder.'
 argument-hint: "An idea to plan, or the URL or number of an existing map"
 disable-model-invocation: true
 ---
@@ -332,16 +332,19 @@ When the last ticket of a TICKETS map closes and no fog is left, the session tha
 stops, with the person present:
 
 1. Run the dedupe deep-dive below for every story; an open issue that already covers one is linked, not repeated.
-2. File one **epic** for the map's destination: the `epic` label only (an epic never carries a tier), and a body
+2. **Interview the person before anything is filed**: load `.claude/skills/dev-next/references/planning-interview.md`
+   and follow it, with the map as the source and the epic and stories about to be filed as the cut, until it leaves
+   no question open. Every rule of the interview lives in that file, which `/prd-to-tickets` follows too.
+3. File one **epic** for the map's destination: the `epic` label only (an epic never carries a tier), and a body
    that states the destination in a line or two and links the map.
-3. File one **story** per piece of work, in the shape of `.claude/skills/dev-next/references/new-issue.md` (body
+4. File one **story** per piece of work, in the shape of `.claude/skills/dev-next/references/new-issue.md` (body
    headings, a `### Seam`, the labels and its readiness label, `tier:wayfinder`, the native sub-issue link to the
    epic, both blocker forms, every read-back). Each story's `### References` links the map and the tickets whose
    answers it rests on. A story that adds or changes a screen names its screen in the UX prototype under
    `### References`; a screen the prototype lacks first gets a `needs-human` story of its own under the epic, "UX
    prototype for <screen>", seam `docs/ux/prototypes/<slug>/`, and the front-end story is blocked on it. **No `wayfinder:*` label on the epic or any story**: `/dev-next` never takes an issue that
    carries one.
-4. Add one line under the map's **Settled** linking the epic, then close the map.
+5. Add one line under the map's **Settled** linking the epic, then close the map.
 
 A PRD map files nothing: it ends with the decisions, and the person writes the PRD.
 

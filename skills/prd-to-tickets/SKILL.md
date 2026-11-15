@@ -23,6 +23,8 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 
 - `.claude/skills/dev-next/references/new-issue.md` is installed (orion ships it; `orion update` restores it). It is
   the issue shape, the labels and the native links every ticket here follows. Missing → stop and say so.
+- `.claude/skills/dev-next/references/planning-interview.md` is installed beside it (orion ships it too). It is the
+  interview of phase 4. Missing → stop and say so.
 - GitHub Issues as the tracker, `gh` signed in to the repository `origin` points at. A `CLAUDE.md` naming another
   tracker → stop and say this skill needs GitHub Issues.
 - A PRD under `docs/PRDs/`. No PRD → stop: by the standing rule a PRD is the person's to write or provide, and this
@@ -56,7 +58,8 @@ never stashes, never switches branches, commits only the files it touched, and o
 ## Phase 0 — Preflight
 
 1. `gh auth status`, `gh repo view --json nameWithOwner,hasIssuesEnabled`. Issues disabled or a different tracker
-   named in `CLAUDE.md` → stop and say so. `.claude/skills/dev-next/references/new-issue.md` exists → else stop.
+   named in `CLAUDE.md` → stop and say so. `.claude/skills/dev-next/references/new-issue.md` and
+   `.claude/skills/dev-next/references/planning-interview.md` exist → else stop.
 2. Read the project's `CLAUDE.md` in full: the layout (application and test code paths), the worktree root, the
    boundaries (external read-only repositories and their work-item key format, sensitive data classes, boundaries an
    agent must not move), the working language, the standing decisions. A question the project has already answered
@@ -210,25 +213,9 @@ hundred tickets nobody can read.
 
 ## Phase 4 — The interview: every open question, nothing left to ask
 
-A story filed `agent-ready` with a question left becomes a guess the dev agent bakes in and the reviewer cannot judge.
-
-- **Ask every question the PRD leaves open**, grouped per story or per contract, through the clickable-options tool
-  (`AskUserQuestion`): distinct options, your recommended answer **first and marked**, so a whole batch can be
-  accepted in seconds. No cap on the number of questions. Plain language, as to a junior developer with no context.
-- **Never ask what is already decided**: the PRD's build decisions, the project's `CLAUDE.md` (worktree root, merge
-  method, data rules, language, deploy target), the standing decisions. The PRD wins on product; the rules win on
-  process; a contradiction between them is reported as a bug, not resolved by a question.
-- **Rounds.** After a batch, re-read the answers against the PRD and the cut: a question that only now arises goes
-  into the next batch. Stop when a round produces no new question.
-- **"I don't know, ask <someone>"** → that story is `needs-human`, with the open question and the person's name as
-  its last comment. Nothing is guessed on anyone's behalf. The rest of the plan is unaffected.
-- **A reversible decision the person could take now but did not** → recommend the simplest option that meets the
-  acceptance bar, say it is reversible, record the answer under that story's `## Decisions (agent-ready)`.
-- **A hard-to-reverse decision the PRD leaves open** → ask it like any other question, recommended answer first;
-  the answer goes under the `## Decisions (agent-ready)` of every story it shapes and is one of the lines of phase 6's
-  PRD question (the PRD's build-decisions section). No ADR, no story for it, no blocker on it.
-- **Work the PRD gives no tier** → one question per epic: which tier its stories take (`mvp` recommended, the PRD's
-  other tiers as the other options). The answer is a PRD fact, so it is one of the lines of phase 6's PRD question.
+**Load `.claude/skills/dev-next/references/planning-interview.md` and follow it**, with the PRD as the source and the
+plan of phase 3 as the cut, until it leaves no question open. Every rule of the interview lives in that file, which
+`/wayfinder` follows too.
 
 ## Phase 5 — A fresh check, then one look
 
@@ -299,5 +286,6 @@ File in dependency order, so every blocker exists before the issue it blocks:
 | File | Load at |
 |---|---|
 | `.claude/skills/dev-next/references/new-issue.md` | phase 3 (the shape) and phase 6 (the links and read-backs) |
+| `.claude/skills/dev-next/references/planning-interview.md` | phase 4 — the interview |
 | `references/ux-prototype.md` | phase 1 step 3 — the brief for `ux-prototype-<slug>` |
 | `.claude/skills/dev-next/references/shell-traps.md` | phase 6, and whenever a shell command behaves strangely |
