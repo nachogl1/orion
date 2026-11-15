@@ -73,8 +73,20 @@ sees it. An epic never carries one. The first line that fits decides:
 
 A tier label the repository does not have yet is created before the issue is filed: when
 `gh label list --limit 200 --json name --jq '.[].name'` does not list it, `gh label create "tier:<name>" --description
-"Tier: <name>" --force` (`--force` so a run that created it a moment earlier is no error). The tier is for readers
-only: **nothing picks or orders work by it**.
+"Tier: <name>" --force` (`--force` so a run that created it a moment earlier is no error).
+
+**The PRD tiers chain by blocks.** Every story of a later PRD tier is blocked by the **final stories of the tier before
+it** (the stories of that tier that no other story of the same tier waits for), following the PRD's tier order:
+`tier:stretch` waits for `tier:mvp`, `tier:stretch-2` for `tier:stretch`. `/prd-to-tickets` sets these blocks during
+a split. **A story added to a tier later** (by a person, `/reconcile` or any skill filing PRD work) is linked the same
+way by whoever files it, in both blocker forms (step 4), read back:
+
+- **It sits in a later tier** → it is blocked by the final stories of the tier before it.
+- **It becomes one of its tier's final stories** (no other story of its tier waits for it) → every open story of
+  the next tier gains it as a blocker, body line and native relation.
+
+Tiers outside the PRD (`tier:bug`, `tier:dev-quick`, `tier:manual`, …) are outside the chain. The blocks alone keep
+work in tier order: nothing ranks work by the label itself.
 
 Verify: `gh issue view <N> --json labels --jq '.labels[].name'` lists `story`, exactly one readiness label and exactly
 one `tier:*` label (plus `bug` when the issue reports a defect, and `owner-merges` when it was given one). A label missing here is added with `gh issue edit <N>

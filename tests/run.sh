@@ -166,6 +166,68 @@ planning_interview_is_shared() {
 }
 check "prd-to-tickets and wayfinder both follow the one shared planning interview" planning_interview_is_shared
 
+echo "prd-to-tickets"
+PTT="$REPO/skills/prd-to-tickets/SKILL.md"
+# One phase of prd-to-tickets' SKILL.md: from its "## Phase <n>" heading to the next "## " heading.
+ptt_phase() { awk -v h="## Phase $1 " 'index($0, h) == 1 {on=1; print; next} on && /^## /{exit} on{print}' "$PTT"; }
+# A split with several tiers chains them by blocks: every later-tier story waits for the final stories of the tier
+# before, and a story added to a tier later is linked the same way (new-issue.md); no line says the tier orders nothing.
+prd_split_chains_tiers() {
+    local issue="$REPO/skills/dev-next/references/new-issue.md"
+    ! grep -qF 'The tier never changes a blocker or a level' "$PTT" || { echo "  prd-to-tickets still says the tier changes no blocker"; return 1; }
+    ! grep -qF 'nothing picks or orders work by it' "$issue" || { echo "  new-issue.md still says nothing orders work by tier"; return 1; }
+    ptt_phase 3 | grep -qF 'final stories of the tier before' || { echo "  phase 3 does not block a later tier on the final stories of the tier before"; return 1; }
+    ptt_phase 6 | grep -qF 'tier block' || { echo "  phase 6 does not file and read back the tier blocks"; return 1; }
+    grep -qF 'final stories of the tier before' "$issue" && grep -qF 'added to a tier later' "$issue" \
+        || { echo "  new-issue.md has no rule for a story added to a tier later"; return 1; }
+}
+check "prd-to-tickets chains the tiers by blocks, and new-issue.md links a story added to a tier later" prd_split_chains_tiers
+# The UX prototype gates the cut: a missing screen gets a prototype pull request (with one PRD line pointing at the
+# folder) and the run stops; no "UX prototype for <PRD>" story and no block on one; the guide box says the same.
+prd_split_stops_at_missing_screens() {
+    local p1 box brief="$REPO/skills/prd-to-tickets/references/ux-prototype.md"
+    p1="$(ptt_phase 1)"
+    printf '%s' "$p1" | grep -qF 'missing screens' || { echo "  phase 1 does not draft only the missing screens"; return 1; }
+    printf '%s' "$p1" | grep -qF '**Then stop.**' || { echo "  phase 1 does not stop after the prototype pull request"; return 1; }
+    ! grep -qF 'UX prototype for <PRD name>"' "$PTT" || { echo "  prd-to-tickets still files a prototype story"; return 1; }
+    ! grep -qiE 'blocked by the prototype story|in parallel with the split' "$PTT" || { echo "  prd-to-tickets still blocks on a prototype story or drafts in parallel"; return 1; }
+    grep -qF 'missing screens' "$brief" && grep -qF 'docs/PRDs/' "$brief" || { echo "  the prototype brief neither drafts only the missing screens nor adds the PRD line"; return 1; }
+    box="$(awk '/^  tickets:\{/{on=1} on{print} on&&/^  [a-z]+:\{/&&!/tickets:/{exit}' "$REPO/docs/guide/index.html")"
+    printf '%s' "$box" | grep -qF 'missing screens' && ! printf '%s' "$box" | grep -qF 'in parallel if' \
+        || { echo "  the guide's /prd-to-tickets box does not say the split drafts the missing screens and stops"; return 1; }
+}
+check "prd-to-tickets stops after opening the prototype pull request when a screen is missing" prd_split_stops_at_missing_screens
+check "prd-to-tickets reads the pending ADRs beside the PRD" eval 'ptt_phase 0 | grep -F "docs/ADRs/" | grep -qF "pending"'
+# Every pull request the split opens merges on green or is named as one a person merges, by the baseline's own list:
+# the skill's "Who merges" section quotes the baseline's rule word for word (a […] marks a cut) and names every path,
+# label and skill it names.
+prd_split_merges_by_the_baseline_list() {
+    local rule section t
+    rule="$(awk '/^- \*\*Who merges\.\*\*/{on=1; print; next} on&&/^- /{exit} on{print}' "$REPO/baselines/BASE_CLAUDE.md")"
+    section="$(awk '/^## Who merges/{on=1; next} on&&/^## /{exit} on{print}' "$PTT")"
+    [ -n "$rule" ] && [ -n "$section" ] || { echo "  no Who merges rule in the baseline, or no Who merges section in prd-to-tickets"; return 1; }
+    for t in $(printf '%s' "$rule" | grep -oE '`[^`]+`' | tr -d '`' | sort -u); do
+        case "$section" in *"\`$t\`"*) ;; *) echo "  prd-to-tickets' Who merges does not name: $t"; return 1 ;; esac
+    done
+    "$PY" - "$REPO/baselines/BASE_CLAUDE.md" "$PTT" <<'PY' || return 1
+import re, sys
+flat = lambda t: " ".join(t.split())
+base = open(sys.argv[1], encoding="utf-8").read()
+rule = flat(re.search(r"^- \*\*Who merges\.\*\* (.*?)(?=^- )", base, re.S | re.M).group(1))
+skill = open(sys.argv[2], encoding="utf-8").read()
+section = re.search(r"^## Who merges\n(.*?)(?=^## )", skill, re.S | re.M).group(1)
+quote = flat(" ".join(l[2:] for l in section.splitlines() if l.startswith("> ")))
+if not quote:
+    sys.exit("  Who merges quotes no baseline rule")
+for piece in quote.split("[…]"):
+    if flat(piece) not in rule:
+        sys.exit("  the quote differs from the baseline here: " + flat(piece)[:80])
+PY
+    printf '%s' "$section" | grep -qF 'ux-prototype-<slug>' && printf '%s' "$section" | grep -qF 'prd-update-<slug>' \
+        || { echo "  Who merges does not place both pull requests the skill opens"; return 1; }
+}
+check "every pull request prd-to-tickets opens merges by the baseline's Who merges list" prd_split_merges_by_the_baseline_list
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
