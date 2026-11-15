@@ -75,7 +75,7 @@ FAKEPATH="$SB/bin:$PATH"
 
 N=0
 newproj() { N=$((N+1)); mkdir -p "$SB/p$N"; P="$SB/p$N"; }               # sets P
-init()    { bash "$ORION" init --project "$P" --no-statusline --update-mode "${1:-ask}" >"$SB/out" 2>&1; }
+init()    { bash "$ORION" init --project "$P" --yes --no-statusline --update-mode "${1:-ask}" >"$SB/out" 2>&1; }
 # The timeout of every orion hook in a settings file, one per line; and setting them all (to the old 20 s by default).
 hook_timeouts() { "$PY" -c 'import json, sys; d = json.load(open(sys.argv[1], encoding="utf-8-sig")); [print(x.get("timeout")) for g in d.get("hooks", {}).get("SessionStart", []) for x in g.get("hooks", []) if "/.claude/orion/orion.sh" in x.get("command", "")]' "$1" 2>/dev/null | tr -d '\r'; }
 set_old_hook_timeout() { "$PY" -c 'import json, sys; f = sys.argv[1]; d = json.load(open(f, encoding="utf-8-sig")); [x.update(timeout=json.loads(sys.argv[2])) for g in d["hooks"]["SessionStart"] for x in g["hooks"] if "/.claude/orion/orion.sh" in x.get("command", "")]; open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2))' "$1" "${2:-20}"; }
@@ -438,6 +438,21 @@ check "check answers nothing or one JSON line" hook_out_ok "$SB/hook"
 check "uninstall --yes" eval 'bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1'
 check "nothing orion owns is left" eval '[ ! -e "$P/.claude/orion" ] && [ ! -e "$P/.claude/skills" ] && ! grep -qi orion "$P/CLAUDE.md" "$P/.claude/settings.json"'
 
+echo "init's agent-autonomy notice (--yes, and a shell with no terminal)"
+# Whoever installs orion is told up front that its agents claim issues, file tickets and merge their own work.
+NOTICE='merge their own pull requests'
+newproj
+check "init --yes shows the notice and asks nothing" eval 'init ask && grep -qF "$NOTICE" "$SB/out" && ! grep -qF "[y/N]" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ]'
+newproj
+check "init without --yes in a shell with no terminal refuses, exit 1, and installs nothing" eval '! bash "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 </dev/null && grep -q "refusing to init without --yes" "$SB/out" && grep -qF "$NOTICE" "$SB/out" && [ -z "$(ls -A "$P")" ]'
+# The Windows launcher hands --yes through to orion.sh, so an unattended install from PowerShell works the same way.
+if command -v powershell.exe >/dev/null 2>&1; then
+    newproj
+    check "orion.ps1 init --yes installs with no question" eval 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO/orion.ps1" init --project "$P" --yes --no-statusline --update-mode ask >"$SB/out" 2>&1 </dev/null && grep -qF "$NOTICE" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ]'
+    newproj
+    check "orion.ps1 init without --yes and no terminal refuses and installs nothing" eval '! powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO/orion.ps1" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 </dev/null && grep -q "refusing to init without --yes" "$SB/out" && [ -z "$(ls -A "$P")" ]'
+fi
+
 # Every settings editor (jq, python, and PowerShell where it exists) on a settings file that has a
 # byte-order mark, a permission rule naming orion's script, and a hook of the project's own; and a
 # CLAUDE.md that holds nothing but orion's import line.
@@ -470,6 +485,37 @@ for tool in $tools; do
     unset ORION_JSON_TOOL
 done
 if [ "$WINDOWS_ONLY" = 1 ]; then summary; exit; fi
+
+echo "init's agent-autonomy notice at a terminal"
+# Runs orion.sh in a pseudo-terminal (a terminal made by the test), as a person typing $1 at its question; prints what
+# the terminal showed and exits with orion's code, or 124 after 60 s, so a question nobody answers never hangs the suite.
+at_terminal() {  # answer orion-arguments...
+    "$PY" -c '
+import os, pty, select, signal, sys, time
+answer, args = sys.argv[1], sys.argv[2:]
+pid, fd = pty.fork()
+if pid == 0:
+    os.execvp("bash", ["bash"] + args)
+os.write(fd, (answer + "\n").encode())
+out, deadline = b"", time.time() + 60
+while True:
+    left = deadline - time.time()
+    if left <= 0:
+        os.kill(pid, signal.SIGKILL); os.waitpid(pid, 0); sys.stdout.write(out.decode(errors="replace")); sys.exit(124)
+    if not select.select([fd], [], [], left)[0]: continue
+    try: chunk = os.read(fd, 4096)
+    except OSError: break
+    if not chunk: break
+    out += chunk
+sys.stdout.write(out.decode(errors="replace"))
+sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))
+' "$@"
+}
+newproj
+check "an interactive init shows the notice and asks to continue" eval 'at_terminal n "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1; grep -qF "$NOTICE" "$SB/out" && grep -qF "[y/N]" "$SB/out"'
+check "a no at that question installs nothing" eval '[ -z "$(ls -A "$P")" ] && grep -q "aborted" "$SB/out"'
+newproj
+check "a yes at that question installs orion" eval 'at_terminal y "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
 
 echo "a renamed skill (update swaps orion's old copy, never a project's own folder)"
 # An install from before the drift check was renamed: its managed copy still carries the old folder name.
@@ -573,7 +619,7 @@ fi
 SRC="$SB/src"; mkdir -p "$SRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$SRC/"
 "$REAL_GIT" -C "$SRC" init -q -b main && "$REAL_GIT" -C "$SRC" -c core.autocrlf=false add . && "$REAL_GIT" -C "$SRC" commit -qm src
 SRC_SHA="$("$REAL_GIT" -C "$SRC" rev-parse HEAD)"
-bash "$ORION" init --project "$P" --source "$SRC" --no-statusline >"$SB/out" 2>&1; cp "$SB/out" "$SB/out-reinit"; consume_marker
+bash "$ORION" init --project "$P" --yes --source "$SRC" --no-statusline >"$SB/out" 2>&1; cp "$SB/out" "$SB/out-reinit"; consume_marker
 check "re-init with a new --source changes config.json and says so" eval 'grep -q "source changed" "$SB/out-reinit" && bash "$ORION" status --project "$P" | grep -qF "$SRC"'
 # The first copy sleeps 11 s, longer than the 10 s fetch limit: only the fetch may be time-limited, never the copy.
 rm -f "$SB/cp-slept"
@@ -617,7 +663,7 @@ awk '/^HOOK_TIMEOUT=60$/ { print "HOOK_TIMEOUT=20"; next }
      /^settings_raise_hook_timeout\(\) \{/ { print "settings_raise_hook_timeout() { :; }"; print "settings_raise_hook_timeout_unused() {"; next }
      { print }' "$ORION" > "$OLD"
 newproj
-bash "$OLD" init --project "$P" --source "$SRC" --no-statusline --update-mode auto >"$SB/out" 2>&1; consume_marker
+bash "$OLD" init --project "$P" --yes --source "$SRC" --no-statusline --update-mode auto >"$SB/out" 2>&1; consume_marker
 check "the older script installs a 20 s hook" eval '[ "$(hook_timeouts "$P/.claude/settings.json")" = 20 ]'
 check "an update run by the older script leaves it at 20 s" eval 'bash "$OLD" update --project "$P" --force >"$SB/out" 2>&1 && [ "$(hook_timeouts "$P/.claude/settings.json")" = 20 ]'
 { printf '%s\n' 0000000000000000000000000000000000000000; sed -n '2,$p' "$P/.claude/orion/VERSION"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
@@ -668,7 +714,7 @@ check "so the line endings may change after it, still silent" eval 'lf "${RULE_F
 check "verify records the rules it checked" eval 'XDG_CACHE_HOME="$SB/cache-mate2" bash "$ORION" verify --project "$P" >/dev/null 2>&1; XDG_CACHE_HOME="$SB/cache-mate2" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
 rm -rf "$P/.claude/skills/orion-verify"
 check "without the /orion-verify skill nothing is asked" eval 'XDG_CACHE_HOME="$SB/cache-mate3" FAKE_LS_SHA="$V" run_check --force && [ ! -s "$SB/hook" ]'
-newproj; bash "$ORION" init --project "$P" --source "$SRC" --no-statusline >"$SB/out" 2>&1; consume_marker
+newproj; bash "$ORION" init --project "$P" --yes --source "$SRC" --no-statusline >"$SB/out" 2>&1; consume_marker
 printf '\n- a newer rule\n' >> "$SRC/baselines/BASE_CLAUDE.md"; "$REAL_GIT" -C "$SRC" -c core.autocrlf=false commit -qam rules
 check "an update that changes the rules says to run /orion-verify" eval 'bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "run /orion-verify" "$SB/out"'
 consume_marker
@@ -953,7 +999,7 @@ check "uninstall leaves the person's file byte for byte as it was" eval 'HOME="$
 
 echo "config, manifest and copies"
 newproj
-bash "$ORION" init --project "$P" --source 'C:\some\orion' --no-statusline >"$SB/out" 2>&1
+bash "$ORION" init --project "$P" --yes --source 'C:\some\orion' --no-statusline >"$SB/out" 2>&1
 check "a Windows path as --source keeps config.json valid JSON" json_ok "$P/.claude/orion/config.json"
 check "and reads back unchanged" eval 'bash "$ORION" status --project "$P" | grep -qF "source:     C:\\some\\orion"'
 check "no __pycache__ is copied into the project" eval '[ -z "$(find "$P/.claude/skills" -name __pycache__)" ]'
@@ -1022,7 +1068,7 @@ sl_check() { HOME="$SLH" run_check "$@"; }
 sl_cmd() { HOME="$SLH" bash "$P/.claude/orion/orion.sh" statusline "$1" --project "$P" >"$SB/out" 2>&1; }
 "$REAL_GIT" -C "$SLSRC" init -q -b main; sl_commit 1
 newproj
-check "init --statusline seeds the computer's copy and its merge base" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" init --project "$P" --statusline --update-mode off >"$SB/out" 2>&1 && [ -f "$SLFILE" ] && [ -f "$SLH/.claude/statusline/.orion-base/statusline.sh" ]'
+check "init --statusline seeds the computer's copy and its merge base" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" init --project "$P" --yes --statusline --update-mode off >"$SB/out" 2>&1 && [ -f "$SLFILE" ] && [ -f "$SLH/.claude/statusline/.orion-base/statusline.sh" ]'
 consume_marker
 check "the project carries orion's status line, listed in the manifest" eval '[ -f "$P/.claude/orion/statusline/statusline.sh" ] && grep -qx "statusline/statusline.sh" "$P/.claude/orion/.orion-manifest"'
 check "VERSION records the source's version number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = "$(cat "$SLSRC/ORION_VERSION")" ]'
