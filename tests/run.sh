@@ -424,6 +424,40 @@ harvest_qa_guide_box_merges_on_green() {
 }
 check "the guide's /harvest-qa box says its log pull request merges on green" harvest_qa_guide_box_merges_on_green
 
+echo "generate-project-writeup"
+WU="$REPO/skills/generate-project-writeup/SKILL.md"
+# One step of the write-up's SKILL.md: from the "### Step <N>" heading to the next "### " heading.
+wu_step() { awk -v h="### Step $1 " 'index($0, h) == 1 {on=1; print; next} on && /^### /{exit} on{print}' "$WU"; }
+# A one-page Executive Summary sits between the cover and the table of contents, drawn with the generator's own blocks,
+# and its table repeats Table 1's rows.
+writeup_summary_before_contents() {
+    local s6 cover summary toc item b
+    s6="$(wu_step 6)"
+    cover="$(printf '%s\n' "$s6" | grep -nE '^1\. \*\*Title block\*\*' | cut -d: -f1)"
+    summary="$(printf '%s\n' "$s6" | grep -nE '^2\. \*\*Executive Summary\*\*' | cut -d: -f1)"
+    toc="$(printf '%s\n' "$s6" | grep -nE '^3\. \*\*Table of contents\*\*' | cut -d: -f1)"
+    [ -n "$cover" ] && [ -n "$summary" ] && [ -n "$toc" ] && [ "$cover" -lt "$summary" ] && [ "$summary" -lt "$toc" ] \
+        || { echo "  step 6 does not put the Executive Summary between the title block and the table of contents"; return 1; }
+    item="$(printf '%s\n' "$s6" | sed -n "${summary},$((toc - 1))p" | tr -s ' \n' ' ')"
+    for b in heading paragraph table page_break; do
+        printf '%s' "$item" | grep -qF "\`$b\`" || { echo "  the Executive Summary does not name the $b block"; return 1; }
+    done
+    printf '%s' "$item" | grep -qF 'one page' && printf '%s' "$item" | grep -qF 'same headers and rows as Table 1' \
+        || { echo "  the Executive Summary is not one page repeating Table 1's rows"; return 1; }
+}
+check "the write-up puts a one-page Executive Summary between the cover and the contents" writeup_summary_before_contents
+# Step 8 checks the rendered file for that order and that table, and the chat report names both.
+writeup_checks_its_summary() {
+    local s8
+    s8="$(wu_step 8 | tr -s ' \n' ' ')"
+    printf '%s' "$s8" | grep -qF '**Check the Executive Summary (always).**' \
+        && printf '%s' "$s8" | grep -qF 'before the table of contents' && printf '%s' "$s8" | grep -qF 'matches Table 1' \
+        || { echo "  step 8 does not check the summary's place and its table"; return 1; }
+    printf '%s' "$s8" | grep -qF 'cover, Executive Summary, contents' \
+        || { echo "  step 8's report does not name the first pages"; return 1; }
+}
+check "the write-up checks that its summary comes before the contents and matches Table 1" writeup_checks_its_summary
+
 echo "guide page (docs/guide/, published to GitHub Pages)"
 GUIDE="$REPO/docs/guide/index.html"
 # Every skill has a box on the guide (its title reads "/<name>"), so a new skill cannot ship without one.
