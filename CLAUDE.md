@@ -48,7 +48,7 @@ When creating or editing **anything** in this repo, do not introduce data that i
 
 Treat the following as sensitive and keep them OUT:
 
-- **People** — names, usernames/handles, initials, org/employee IDs.
+- **People** — names, usernames/handles, initials, org/employee IDs. **One exception:** the owner's credit in the guide page footer (`Made by <owner's name>` in `docs/guide/index.html`) is the only personal name allowed in the repository; it appears nowhere else, and the suite checks that.
 - **Organizations & products** — company names, team names, product/project names, internal codenames, customer names.
 - **Repositories & infrastructure** — private repo/org slugs, internal URLs, hostnames, service names, bucket/DB/table names, queue/topic names.
 - **Locale / region tells** — a specific human language or country set used as an example (e.g. naming the exact languages a product supports, locale-specific persona names, region codes). Say "the project's supported locales / the user's language" instead.

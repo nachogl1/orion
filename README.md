@@ -74,6 +74,12 @@ orion also recommends rules for your own personal instructions file (`~/.claude/
 
 If you would rather have updates applied without being asked each time, choose *auto* when the installer asks during install (or add `--update-mode auto` to the install command). You can change your mind later by editing `updateMode` in `.claude/orion/config.json` to `ask`, `auto` or `off`. The same file holds `branchLimit` and `worktreeLimit` (20 each by default): once the project has that many branches (local and remote together) or that many worktrees, the session start offers the `/clear-git-resources` tidy-up; set them higher, or to `off`, if you prefer not to be asked. Every session also starts by pulling the latest commits of the branch you are on, only when that can be done without a merge; if it cannot, you are told in one line.
 
+## Why it works this way
+
+- **Harvest and QA run apart from each pull request.** Each story `/dev-next` merges leaves its notes and QA checks behind; `/harvest` and `/harvest-qa` work through them later in one long batch session per harvest, instead of about 30 minutes on every pull request. That saves time and machine resources, and `/dev-next` tells you when one is due.
+- **The status bar** shows, without you asking: session time and name, how full the conversation is, the branch with its stashed, untracked, modified, unstaged and unpushed counts, session and month cost, the model and its effort level, and, on a subscription, your 5-hour and weekly usage.
+- **Your personal rules** make the assistant reply in a way you can follow (short labelled lines, problems first, one next step, a risk line marked `Risk (open):` or `Risk (fixed):`) and carry good working and git habits into every project. You take only the ones you want.
+
 ## License
 
 [MIT](LICENSE) — free to use, modify and redistribute with attribution.
