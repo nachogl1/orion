@@ -83,7 +83,7 @@ and phase 5 runs unchanged.
 |---|---|---|---|
 | this session | opus | the user's own | interviews, prepares, drafts, files, then invokes `/dev-next` and becomes its orchestrator |
 | `scout-quick` | sonnet | low | optional: reads the code the change touches and returns a bounded picture (phase 1) |
-| everything else | — | — | `/dev-next`'s own roles (`dev-N`, `review-N`), spawned by it, never by this skill |
+| everything else | — | — | `/dev-next`'s own roles (`dev-<N>`, `review-<N>-r<round>`, named for the issue), spawned by it, never by this skill |
 
 This session **never writes application code** — not before the hand-over, not after. If you are editing a source
 file, you have taken the dev agent's job.

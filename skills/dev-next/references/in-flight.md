@@ -13,24 +13,47 @@ worktrees, outside every checkout, never committed.
 ```json
 {
   "issues": [
-    { "issue": 41, "run": "<repo>-20250106-101500-3f2a", "startedAt": "2025-01-06T10:15:00Z" },
-    { "issue": null, "run": "<repo>-20250106-101502-7c4d", "startedAt": "2025-01-06T10:15:02Z" }
+    { "issue": 41, "run": "<repo>-20250106-101500-3f2a", "startedAt": "2025-01-06T10:15:00Z",
+      "terminal": "<terminal name>", "step": "phase 4 · review round 1",
+      "agents": [ { "name": "dev-41", "status": "done" }, { "name": "review-41-r1", "status": "running" } ] },
+    { "issue": null, "run": "<repo>-20250106-101502-7c4d", "startedAt": "2025-01-06T10:15:02Z",
+      "step": "phase 1 · picking an issue" }
   ],
   "merging": { "issue": 43, "run": "<repo>-20250106-093000-9b1c", "since": "2025-01-06T11:02:00Z" }
 }
 ```
 
 - `issues` — one entry per issue that some terminal is developing right now, plus one **issue-less entry**
-  (`"issue": null`) per run that has started but not yet claimed (*Run entries* below).
+  (`"issue": null`) per run that has started but not yet claimed (*Run entries* below). `terminal`, `step` and
+  `agents` are optional (*Progress fields* below); the second entry above has no `terminal` because its name could not
+  be found.
 - `merging` — the one issue currently between phase 5 step 1 (merge `origin/main` in) and step 4 (squash-merge landed),
   or `null`.
 
 **Every read tolerates a missing, empty or malformed file** — treat it as `{ "issues": [], "merging": null }` and
-rewrite it whole. Always write the whole file; never append.
+rewrite it whole. Always write the whole file; never append. **Keep every field you did not change, in every entry**,
+your own and other terminals', including fields you do not know: a newer or older run may write fields this file does
+not list, and a reader that does not know a field ignores it.
 
 **Several machines, several files.** Each machine has its own file, so the queue below is per machine. Merges from two
 machines in the same minute are ordered by GitHub alone (the second one lands on a `main` its CI did not see). Accepted
 for a small team; the day it bites, move the file to a shared location and record the path in the project's `CLAUDE.md`.
+
+## Progress fields
+
+Each run's entries say which terminal runs them and how far each one is, so the other terminals and the Control Tower pane (the
+optional mod that reads this file) can show it. All three are optional; a reader that does not know them ignores them.
+
+| Field | Shape | What it holds |
+|---|---|---|
+| `terminal` | string | This terminal's name: the name this session goes by in the agent list (its own entry in ListAgents, where that tool exists). **No name found → leave the field out**, never write a guess or an empty string: the pane then keeps saying "not reported yet". Found once per run and written into each of its entries. |
+| `step` | string | What the run does now for this issue, a few plain words led by the phase: `phase 1 · picking an issue`, `phase 3 · building`, `phase 4 · review round 2`, `phase 5 · waiting for CI`, `phase 5 · merging`. |
+| `agents` | list of `{ "name": string, "status": string }` | Every sub-agent this run spawned for this issue, in spawn order: `name` is its name from `SKILL.md` *Roles* (`dev-<N>`, `review-<N>-r<round>`, `ready-check-<N>`), `status` is `running` (spawned, or resumed with SendMessage), `done` (it reported) or `failed` (it reported `FAILED` or `INHERITED RED`, or its spawn failed for good). No other keys. |
+
+**When:** at every phase change (`step`), and every spawn, resume and report (`agents`, and `step` when it moves on).
+A sub-agent that is resumed keeps its one item and goes back to `running`; a replacement spawn of the same name does
+the same. An issue-less entry carries `terminal` and `step` only. These writes follow *Read-modify-write* below and
+never touch `startedAt`: an entry still goes stale 4 hours after it started.
 
 ## Run entries
 
@@ -155,7 +178,8 @@ hold it — is what guarantees CI ran on the `main` that the branch actually lan
 | Moment | Write |
 |---|---|
 | Phase 0 preflight | Create the file if missing (`{ "issues": [], "merging": null }`). |
-| Phase 0 step 9, before ranking | Add this run's issue-less entry (`"issue": null`), wait 5 s, re-read. |
+| Phase 0 step 9, before ranking | Add this run's issue-less entry (`"issue": null`, with `terminal` and `step`), wait 5 s, re-read. |
+| Every phase change, and every spawn, resume or report of a sub-agent | Update `step` and `agents` in that issue's entry (*Progress fields*). |
 | Phase 1, before the claim | Re-read it for the stagger and for visibility — never wait. |
 | Phase 1, after the claim | Fill the issue into the issue-less entry (first claim) or add the issue entry. |
 | Phase 1, zero eligible, or the run ends having claimed nothing | Remove the issue-less entry. |

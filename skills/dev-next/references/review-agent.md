@@ -1,7 +1,7 @@
-# The `review-N` sub-agent — phase 4
+# The `review-<N>-r<round>` sub-agent — phase 4
 
 **Always a brand-new agent. Never the one that wrote the code. A fresh one for every round** — a reviewer that has already
-argued for its own findings is no longer fresh eyes. Spawn on opus at **xhigh** effort, else the fallback order in `SKILL.md` *Roles*.
+argued for its own findings is no longer fresh eyes. Spawn `review-<N>-r<round>` (the issue's number and the review round, `SKILL.md` *Roles*) on opus at **xhigh** effort, else the fallback order in `SKILL.md` *Roles*.
 
 Give it only: the issue, the pull request, the worktree path, the gate commands and the exact runtime paths resolved in
 preflight (`SKILL.md` phase 0 step 1). **No prior context.** Anything it runs locally uses those runtime paths, and
