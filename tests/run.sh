@@ -839,6 +839,9 @@ rel_commit docs/guide.md "feat(guide): a new page"
 check "a merge outside skills/, baselines/ and orion.sh tags nothing, even a feat" eval '[ -z "$(next_tags)" ]'
 rel_commit skills/a/SKILL.md "fix(a): three"; rel_commit skills/a/SKILL.md "feat(a)!: a breaking change"
 check "feat!: the first part" eval '[ "$(next_tags)" = "v3.0.0 v43" ]'
+tag_release; "$REAL_GIT" -C "$RR" checkout -q HEAD~1
+check "a re-run on an older commit the last release already contains: nothing to tag" eval '[ -z "$(next_tags)" ]'
+"$REAL_GIT" -C "$RR" checkout -q main
 title_ok() { bash "$RV" title "$1" >/dev/null 2>&1; }
 check "the title check passes every valid form" eval 'title_ok "feat: x" && title_ok "fix(scope): x" && title_ok "feat(two-words)!: x" && title_ok "docs!: x" && title_ok "chore(skills): refresh a skill (#7)"'
 check "and fails a title with no valid type" eval '! title_ok "Add a thing" && ! title_ok "feat x" && ! title_ok "feet: x" && ! title_ok "Feat: x" && ! title_ok "feat(): x" && ! title_ok "feat:x" && ! title_ok "feat: " && ! title_ok ""'

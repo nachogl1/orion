@@ -38,6 +38,8 @@ cmd_next() {
     last="$(highest_three_part)"; whole="$(highest_whole)"
     since="${last:-$whole}"
     if [ -n "$since" ] && git diff --quiet "v$since" HEAD -- $SHIPPED; then return 0; fi
+    # a re-run on an older commit that a later release already contains: that release shipped it
+    if [ -n "$since" ] && git merge-base --is-ancestor HEAD "v$since"; then return 0; fi
     if [ -z "$last" ]; then
         printf 'v%s\n' "$FIRST_VERSION"
     else
