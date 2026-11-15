@@ -5,9 +5,9 @@
   "login": "Ignacio-Gonzalez-Harris",
   "started_at": "2026-11-15T20:21:59Z",
   "finished_at": "2026-11-15T20:44:32Z",
-  "outcome": "pr-awaiting-human-merge",
+  "outcome": "merged",
   "pr": 229,
-  "summary": "Guide gains a Why it works this way section (harvest and QA run apart, the status bar, personal rules) and the footer credit the owner chose; README carries the same three bullets; CLAUDE.md Distribution safety allows only that footer credit. Green and approved; touches CLAUDE.md so a person merges. No version change.",
+  "summary": "Guide gains a Why it works this way section (harvest and QA run apart, the status bar, personal rules) and the footer credit the owner chose; README carries the same three bullets; CLAUDE.md Distribution safety allows only that footer credit. Merged on the owner's word (touches CLAUDE.md). No version change.",
   "agents": [
     {
       "name": "dev-187",

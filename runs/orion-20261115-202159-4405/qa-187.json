@@ -1,0 +1,32 @@
+{
+  "run_id": "orion-20261115-202159-4405",
+  "issue": 187,
+  "title": "Guide page and README: why harvest and QA run apart, what the status line and personal rules offer, and an owner credit",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 229,
+  "merged_at": "2026-11-15T21:51:36Z",
+  "seam": "docs/guide/, README.md, CLAUDE.md Distribution safety",
+  "story": "The guide page has a new section explaining why harvest and QA run later as one batch, what the optional status bar shows, and what the personal rules do; its footer credits the owner. The README carries the same three explanations briefly.",
+  "checks": [
+    {
+      "key": "docs/guide/why-section",
+      "criterion": "The guide explains the three choices.",
+      "steps": "Open docs/guide/index.html in a browser and click Why in the top menu.",
+      "expected": "Three boxes: Harvest and QA run apart, The status bar (optional), Your personal rules; the first mentions about 30 minutes on every pull request, the second names the unstaged count, the third shows Risk (open): and Risk (fixed):."
+    },
+    {
+      "key": "docs/guide/footer-credit",
+      "criterion": "The footer credits the owner and the page loads nothing from elsewhere.",
+      "steps": "Open the page with the network off and scroll to the bottom.",
+      "expected": "Built for Claude Code · Made by followed by the owner's name, and the page fully styled."
+    },
+    {
+      "key": "README/why-section",
+      "criterion": "The README carries the explanations briefly.",
+      "steps": "Open README.md on GitHub.",
+      "expected": "A Why it works this way section with three bullets just above License."
+    }
+  ],
+  "no_qa_reason": null,
+  "merge_commit": "1458688970cb69ece09b12633b6b19e3a3acd0f1"
+}
