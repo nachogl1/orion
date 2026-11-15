@@ -9,7 +9,9 @@
 #
 # Usage (run inside the project, or pass --project <dir>):
 #   orion.sh init      [--source <git url|path>] [--ref <branch>] [--update-mode ask|auto|off]
-#                      [--statusline|--no-statusline] [--force]
+#                      [--statusline|--no-statusline] [--force] [--yes]
+#                                       # shows what orion's agents do on their own and asks to go on;
+#                                       # --yes goes on without asking (needed where there is no terminal)
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
 #   orion.sh update    --skip           # decline the newest orion: the hook stays quiet until a newer one
 #   orion.sh check     [--force]        # session-start hook: pull the branch and look for a newer orion (every
@@ -73,7 +75,7 @@ say()  { printf '%s\n' "$*"; }
 warn() { printf 'orion: %s\n' "$*" >&2; }
 die()  { warn "$*"; exit 1; }
 
-usage() { sed -n '2,44p' "$0" 2>/dev/null || true; exit 0; }
+usage() { sed -n '2,/^$/p' "$0" 2>/dev/null || true; exit 0; }  # the comment block at the top
 
 # The documented install is `curl ... | bash`, so stdin is the script itself: a question is still possible
 # when the terminal can be opened directly (/dev/tty), which is what ask() reads from in that case.
@@ -833,11 +835,22 @@ install_statusline() {  # force
     fi
 }
 
+# What whoever installs orion must know first: its agents act on their own (the baseline's Who merges rule).
+autonomy_notice() {
+    say ""
+    say "orion is built for agent autonomy. Once it is installed, its agents in this project:"
+    say "  - claim open issues and build them end to end,"
+    say "  - file new tickets for what they find,"
+    say "  - merge their own pull requests once the checks are green."
+    say "A person still merges a pull request that touches the PRD, an ADR, the UX prototype or CLAUDE.md."
+    say ""
+}
+
 # --------------------------------------------------------------------------
 # commands
 # --------------------------------------------------------------------------
 cmd_init() {
-    local source="$ORION_DEFAULT_SOURCE" ref="$ORION_DEFAULT_REF" force=0 statusline="prompt" project="" resp mode=""
+    local source="$ORION_DEFAULT_SOURCE" ref="$ORION_DEFAULT_REF" force=0 statusline="prompt" project="" resp mode="" yes=0
     local source_given=0 ref_given=0 key val old n
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -846,6 +859,7 @@ cmd_init() {
             --update-mode) mode="$2"; shift 2 ;;
             --project) project="$2"; shift 2 ;;
             --force) force=1; shift ;;
+            --yes|-y) yes=1; shift ;;
             --statusline) statusline=yes; shift ;;
             --no-statusline) statusline=no; shift ;;
             -h|--help) usage ;;
@@ -860,6 +874,12 @@ cmd_init() {
     fi
     case "$mode" in ""|ask|auto|off) ;; *) die "--update-mode must be ask, auto or off (got: $mode)" ;; esac
     say "orion init -> $PROJECT"
+    autonomy_notice
+    if [ "$yes" != "1" ]; then
+        is_tty || die "refusing to init without --yes in a non-interactive shell"
+        ask "Install orion in $PROJECT on these terms? [y/N] "
+        [[ "$resp" =~ ^[Yy]$ ]] || { say "aborted"; return; }
+    fi
     # config.json is yours, but a --source or --ref given on the command line is an explicit request to change it.
     if [ -f "$cfg" ]; then
         for key in source ref; do
@@ -1401,7 +1421,7 @@ cmd_verify() {
         while IFS= read -r ref; do
             [ -n "$ref" ] || continue
             if [ ! -e "$PROJECT/$ref" ]; then
-                v_fail rules-reference "the rules rely on $ref, which is not installed (a project skill without the orion marker kept its place, or it was deleted; fix: bash .claude/orion/orion.sh init --force)"
+                v_fail rules-reference "the rules rely on $ref, which is not installed (a project skill without the orion marker kept its place, or it was deleted; fix: bash .claude/orion/orion.sh init --force --yes)"
                 n=$((n+1))
             fi
         done <<< "$( { grep -oE '\.claude/skills/[A-Za-z0-9_./-]+' "$base" | sed 's/[.]*$//'; grep -oE '`/[a-z][a-z0-9-]*' "$base" | sed 's|^`/|.claude/skills/|'; } 2>/dev/null | sort -u || true)"

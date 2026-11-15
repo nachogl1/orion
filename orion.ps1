@@ -8,7 +8,9 @@
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/nachogl1/orion/main/orion.ps1))) init --statusline
 #
 # From a clone of this repo:
-#   .\orion.ps1 init [--update-mode ask|auto|off] [--statusline] [--force]
+#   .\orion.ps1 init [--update-mode ask|auto|off] [--statusline] [--force] [--yes]
+#     (init shows what orion's agents do on their own and asks to go on; --yes, which this
+#     launcher hands to orion.sh like every other argument, goes on without asking)
 #   .\orion.ps1 update | check | verify | status | uninstall
 #
 # Pure ASCII, Windows PowerShell 5.1 compatible.
