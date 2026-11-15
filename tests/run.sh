@@ -679,6 +679,18 @@ PYEOF
 }
 check "each card names who opened the issue, or unknown with no usable login or a deleted account" map_opened_by_is 1=lead-1 2=lead-1 3=dev-2 4=unknown 5=unknown 6=unknown 7=unknown
 check "the card's grey line says opened by right after the GitHub state, before the assignees" grep -qF "' \\u00b7 GitHub state: '+esc(m.state)+' \\u00b7 opened by '+esc(m.openedBy)+(m.assignees.length?' \\u00b7 assigned to '" "$MAPHTML"
+# A click anywhere outside the card unpins it as Esc does, while the clicked control still does its job (the listener
+# sits on the document, after every control's own); a box toggles the card itself, and a pan or a press that began
+# in the card is no click. The hint and the help text say so, and the old "click again to clear" wording is gone.
+map_closes_card_on_outside_click() {
+    grep -qF "let pressInTip=false;addEventListener('pointerdown',ev=>{pressInTip=tip.contains(ev.target);moved=false},true);" "$MAPHTML" \
+        && grep -qF "document.addEventListener('click',ev=>{const inTip=pressInTip||tip.contains(ev.target);pressInTip=false;if(moved){moved=false;return}" "$MAPHTML" \
+        && grep -qF "if(pinned!==null&&!inTip&&!ev.target.closest('.node')){pinned=null;clear()}});" "$MAPHTML" \
+        && grep -qF 'Click outside to close \u00b7 double-click opens it on GitHub \u00b7 drag the title to move this card' "$MAPHTML" \
+        && grep -qF 'Click an issue to see its chain and its card, click outside to close.' "$MAPHTML" \
+        && ! grep -qi 'again to clear' "$MAPHTML"
+}
+check "a click outside the details card closes it, unless it is a pan or began in the card, and the hint says so" map_closes_card_on_outside_click
 check "an assigned issue with a blocker still open shows as blocked, not in progress" grep -q 'class="node blocked k-agent" data-id="3"' "$MAPHTML"
 check "the map never shows up as a change in git" eval '[ -z "$(cd "$MAPREPO" && "$REAL_GIT" status --porcelain)" ]'
 run_map --search "label:bug"
