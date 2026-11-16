@@ -1,0 +1,70 @@
+{
+  "run_id": "orion-20261115-221458-5c4a",
+  "issue": 190,
+  "title": "Version numbers: three parts set by the release job from the pull request's type",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-15T22:14:58Z",
+  "finished_at": "2026-11-16T00:10:44Z",
+  "outcome": "owner-merges",
+  "pr": 243,
+  "summary": "orion's version becomes three parts set by the release job from the merged pull request titles' Conventional Commit types, with a whole-number bridge tag per release for old installs, a pull request title check, and ORION_VERSION removed. The pull request touches the repository's CLAUDE.md, so a person merges it. The owner must try the change, then merge pull request #243.",
+  "agents": [
+    {
+      "name": "dev-190",
+      "model": "opus",
+      "tokens_total": 308587
+    },
+    {
+      "name": "review-190-r1",
+      "model": "opus",
+      "tokens_total": 193742
+    },
+    {
+      "name": "review-190-r2",
+      "model": "opus",
+      "tokens_total": 194719
+    },
+    {
+      "name": "review-190-r3",
+      "model": "opus",
+      "tokens_total": 184626
+    },
+    {
+      "name": "review-190-r4",
+      "model": "opus",
+      "tokens_total": 204088
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 4629,
+    "review_seconds": 2066,
+    "ci_seconds": 120
+  },
+  "rounds": {
+    "review": 4,
+    "ci": 1
+  },
+  "friction": [
+    "An early branch commit used a real pull request title and number from a downstream project as a test string; a later commit removed it, but it stays visible in the pull request's commit list on the host (distribution-safety near miss)."
+  ],
+  "lessons_learned": [
+    "Version and tag logic in orion.sh needs its edge scenarios tested up front (a decline recorded by update --skip, a tag added after install, a ref other than main, a re-run of an older release job): each of four review rounds found one more of them."
+  ],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "orion.sh",
+      "what": "On a computer with one project on the new orion.sh and another on an older one, the older script reads three-part values (the ORION GLOBAL heading, the global-offered-version record, the status line stamp) as no version, so the two projects take turns re-offering the personal rules and the older one can offer its older status line, stepping the computer's copy back.",
+      "why": "Older scripts cannot be changed after the fact; a record format they still read is a design choice beyond this story.",
+      "owner": "unowned — next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": ".github/scripts/",
+      "what": "The release job sizes each version from squash-commit subjects, but the repository's squash title setting is 'commit or pull request title' and gh pr merge --squash passes no --subject, so a single-commit pull request titled feat(x)!: y whose commit reads feat(x): y ships a breaking change as a minor release.",
+      "why": "The fix is a repository setting (the owner's) or a dev-next merge-step change, both outside this story's seam.",
+      "owner": "unowned — next harvest"
+    }
+  ]
+}
