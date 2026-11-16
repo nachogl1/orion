@@ -25,10 +25,22 @@ jobs:
         run: |
           missing=$(grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md || true)
           if [ -n "$missing" ]; then echo "missing ORION - prefix:"; echo "$missing"; exit 1; fi
-      - name: Fetch main (the suite compares GLOBAL_CLAUDE.md's clause dates and ORION_VERSION with origin/main)
-        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+      - name: Fetch main and the release tags (the suite checks GLOBAL_CLAUDE.md's changed clauses against both)
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main '+refs/tags/v*:refs/tags/v*'
       - name: Full suite (tests/run.sh)
         run: bash tests/run.sh
+
+  # The release job sizes each version from these titles (squash merges make each one a commit subject on main).
+  # The title is read from this run's event, so a renamed pull request is checked again on its next push.
+  title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The pull request title carries a Conventional Commit type
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: bash .github/scripts/release-version.sh title "$TITLE"
 
   windows:
     runs-on: windows-latest

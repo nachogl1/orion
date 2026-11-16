@@ -2,7 +2,8 @@
 # tests/run.sh - the full suite of the orion repo: syntax checks, then orion.sh driven end to end against
 # throw-away projects. Everything runs in a sandbox (its own HOME, cache and temp folder), never touches
 # the network (a fake `git` answers the update check) and leaves nothing behind. One check reads the local
-# origin/main ref to compare GLOBAL_CLAUDE.md's clause version markers with main's: run `git fetch origin main` first (CI does).
+# origin/main ref and release tags to check GLOBAL_CLAUDE.md's changed clauses: run `git fetch origin main` first (CI
+# fetches both).
 #
 # usage: bash tests/run.sh             prints one line per check, exits 1 when any check fails
 #        bash tests/run.sh --windows   only the part that differs on Windows (syntax and guide checks, round trip, every settings
@@ -95,7 +96,7 @@ nothing_left_in_tmp() { [ -z "$(ls -A "$SB/tmp" 2>/dev/null)" ]; }
 # A personal rules file whose ORION GLOBAL section has seen every clause, so the personal rules offer stays quiet
 # in the checks that expect silence; the personal rules section below uses a HOME of its own.
 seen_all_personal_rules() {  # home
-    mkdir -p "$1/.claude"; printf '# ORION GLOBAL — v999999\n<!-- /ORION GLOBAL -->\n' > "$1/.claude/CLAUDE.md"
+    mkdir -p "$1/.claude"; printf '# ORION GLOBAL — v999999.0.0\n<!-- /ORION GLOBAL -->\n' > "$1/.claude/CLAUDE.md"
 }
 seen_all_personal_rules "$HOME"
 
@@ -778,31 +779,77 @@ check "working auto-update: every file of every skill was copied" eval '[ "$(cd 
 check "working auto-update: the project is now at the source commit" eval '[ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
 check "working auto-update: no temporary clone left behind" nothing_left_in_tmp
 
-echo "version number (an update is offered only when a release raised it)"
-NUM="$(tr -d ' \t\r\n' < "$REPO/ORION_VERSION")"
-newproj; init ask; consume_marker
-check "ORION_VERSION is a whole number" eval 'case "$NUM" in ""|*[!0-9]*) false ;; esac'
-check "init records orion's version number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = "$NUM" ]'
-check "status shows it" eval 'bash "$ORION" status --project "$P" | grep -q "version:    orion $NUM,"'
-check "a newer commit without a higher release number: silent" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && [ ! -s "$SB/hook" ]'
-check "a higher release number: the update is offered by number, in one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM $((NUM+1))" run_check --force && grep -q "newer orion.*orion $((NUM+1))" "$SB/hook" && hook_out_ok "$SB/hook"'
+echo "version number (three parts, from the release tags; an update is offered only when a release raised it)"
+# A source of its own whose commit carries an old whole-number tag and a three-part one: the three-part one wins.
+VSRC="$SB/vsrc"; mkdir -p "$VSRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$VSRC/"
+"$REAL_GIT" -C "$VSRC" init -q -b main && "$REAL_GIT" -C "$VSRC" -c core.autocrlf=false add . && "$REAL_GIT" -C "$VSRC" commit -qm vsrc
+"$REAL_GIT" -C "$VSRC" tag v38 && "$REAL_GIT" -C "$VSRC" tag v2.3.4
+newproj; bash "$VSRC/orion.sh" init --project "$P" --yes --source "$VSRC" --no-statusline --update-mode ask >"$SB/out" 2>&1; consume_marker
+check "init records the highest release tag on the source's commit, three parts above an old whole number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.3.4 ]'
+check "status shows it" eval 'bash "$ORION" status --project "$P" | grep -q "version:    orion 2.3.4,"'
+check "a newer commit without a higher release: silent" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="38 39 2.3.4" run_check --force && [ ! -s "$SB/hook" ]'
+check "a higher release, compared part by part: the update is offered by version, in one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="2.3.4 2.10.0 2.9.0" run_check --force && grep -q "newer orion.*(orion 2.3.4 -> orion 2.10.0)" "$SB/hook" && hook_out_ok "$SB/hook"'
 mv "$P/.claude/orion/global" "$SB/global-aside"
-check "the newest release installed and a baseline folder missing: no update offer, one JSON line or none" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "the newest release installed and a baseline folder missing: no update offer, one JSON line or none" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="2.3.4" run_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 check "the same commit and a baseline folder missing: no update offer" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" run_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 mv "$SB/global-aside" "$P/.claude/orion/global"
 set_cfg ref '"other"'
-check "a ref other than main goes by commit, not by release number" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="$NUM" run_check --force && grep -q "newer orion" "$SB/hook"'
-# A pull request that changes what projects receive must raise the number, or no project is offered it.
-# CI fetches origin/main before the suite.
-number_raised_with_shipped_files() {
-    local main_num
-    "$REAL_GIT" -C "$REPO" rev-parse -q --verify origin/main >/dev/null || { echo "    origin/main not found: fetch it first"; return 1; }
-    "$REAL_GIT" -C "$REPO" diff --quiet origin/main -- skills baselines orion.sh && return 0
-    main_num="$("$REAL_GIT" -C "$REPO" show origin/main:ORION_VERSION 2>/dev/null | tr -d ' \t\r\n')"
-    [ -n "$main_num" ] || return 0   # main has no number yet: this change brings the first one
-    [ "$NUM" -gt "$main_num" ] 2>/dev/null || { echo "    files projects receive changed, but ORION_VERSION ($NUM) is not above main's ($main_num)"; return 1; }
+check "a ref other than main goes by commit, not by release" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="2.3.4" run_check --force && grep -q "newer orion" "$SB/hook"'
+set_cfg ref '"main"'
+# An install from before three-part versions: a whole number on line 5.
+set_installed_version() { { sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '%s\n' "$1"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"; }
+set_installed_version 38
+check "an old whole number installed: a three-part release is offered" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="38 39 2.0.0" run_check --force && grep -q "newer orion.*(orion 38 -> orion 2.0.0)" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "two whole numbers still compare as numbers" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="9 38" run_check --force && [ ! -s "$SB/hook" ] && FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_LS_TAGS="38 39" run_check --force && grep -q "(orion 38 -> orion 39)" "$SB/hook"'
+printf 'x\n' > "$VSRC/next.txt"
+"$REAL_GIT" -C "$VSRC" -c core.autocrlf=false add next.txt && "$REAL_GIT" -C "$VSRC" commit -qm next && "$REAL_GIT" -C "$VSRC" tag v2.4.0
+check "and its next update writes the three-part version of the newest release" eval 'env PATH="$FAKEPATH" bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.4.0 ]'
+check "installed right before its release was tagged, on the commit main still points at: no offer" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" FAKE_LS_TAGS="2.4.0 2.4.1" run_check --force && [ ! -s "$SB/hook" ]'
+"$REAL_GIT" -C "$VSRC" tag v2.4.1
+check "and update on that commit records the release's version without copying again" eval 'env PATH="$FAKEPATH" bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "already at" "$SB/out" && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.4.1 ]'
+# A ref other than main gets the version of the files it fetched: release tags mark main, so a branch at the first
+# release is that release, even though main has newer ones.
+"$REAL_GIT" -C "$VSRC" branch old "$("$REAL_GIT" -C "$VSRC" rev-list --max-parents=0 HEAD)"; set_cfg ref '"old"'
+check "update from a ref other than main records the release on the fetched commit, not the newest on main" eval 'env PATH="$FAKEPATH" bash "$P/.claude/orion/orion.sh" update --project "$P" --force >"$SB/out" 2>&1 && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.3.4 ] && bash "$ORION" status --project "$P" | grep -q "version:    orion 2.3.4,"'
+set_cfg ref '"main"'
+
+echo "release versions (the release job sizes one version tag from the Conventional Commit types since the last release)"
+RV="$REPO/.github/scripts/release-version.sh"
+RR="$SB/release"; mkdir -p "$RR"; "$REAL_GIT" -C "$RR" init -q -b main
+rel_commit() {  # file subject: a squash-merged pull request that changes <file>
+    mkdir -p "$(dirname "$RR/$1")"; printf '%s\n' "$2" >> "$RR/$1"
+    "$REAL_GIT" -C "$RR" add -- "$1" && "$REAL_GIT" -C "$RR" commit -qm "$2"
 }
-check "a change to the files projects receive raises ORION_VERSION above origin/main's" number_raised_with_shipped_files
+next_tags() { ( cd "$RR" && bash "$RV" next ) | tr '\n' ' ' | sed 's/ $//'; }
+tag_release() { local t; for t in $(next_tags); do "$REAL_GIT" -C "$RR" tag "$t"; done; }
+rel_commit skills/a/SKILL.md "feat(a): a skill"; "$REAL_GIT" -C "$RR" tag v38
+rel_commit README.md "feat(readme): a new section"
+check "only files projects never receive changed since the last whole-number release: nothing to tag" eval '[ -z "$(next_tags)" ]'
+rel_commit orion.sh "fix: a script fix"
+check "the first release is v2.0.0 whatever the types, plus one whole-number tag for orion.sh copies from before" eval '[ "$(next_tags)" = "v2.0.0 v39" ]'
+tag_release
+check "nothing new since the release: nothing to tag" eval '[ -z "$(next_tags)" ]'
+rel_commit skills/a/SKILL.md "fix(a): a typo (#12)"
+check "fix: the last part, and the next whole-number tag beside it" eval '[ "$(next_tags)" = "v2.0.1 v40" ]'
+tag_release
+rel_commit baselines/BASE_CLAUDE.md "feat(base): a new rule"
+check "feat: the middle part" eval '[ "$(next_tags)" = "v2.1.0 v41" ]'
+tag_release
+"$REAL_GIT" -C "$RR" checkout -q -b develop
+rel_commit orion.sh "fix: one"; rel_commit skills/a/SKILL.md "feat(a): two"; rel_commit docs/x.md "docs: three"
+"$REAL_GIT" -C "$RR" checkout -q main && "$REAL_GIT" -C "$RR" merge -q --no-ff --no-edit -m "Merge the develop branch" develop
+check "a release carrying a fix and a feat, merged with a merge commit: one version tag, the middle part" eval '[ "$(next_tags)" = "v2.2.0 v42" ]'
+tag_release
+rel_commit docs/guide.md "feat(guide): a new page"
+check "a merge outside skills/, baselines/ and orion.sh tags nothing, even a feat" eval '[ -z "$(next_tags)" ]'
+rel_commit skills/a/SKILL.md "fix(a): three"; rel_commit skills/a/SKILL.md "feat(a)!: a breaking change"
+check "feat!: the first part" eval '[ "$(next_tags)" = "v3.0.0 v43" ]'
+tag_release; "$REAL_GIT" -C "$RR" checkout -q HEAD~1
+check "a re-run on an older commit the last release already contains: nothing to tag" eval '[ -z "$(next_tags)" ]'
+"$REAL_GIT" -C "$RR" checkout -q main
+title_ok() { bash "$RV" title "$1" >/dev/null 2>&1; }
+check "the title check passes every valid form" eval 'title_ok "feat: x" && title_ok "fix(scope): x" && title_ok "feat(two-words)!: x" && title_ok "docs!: x" && title_ok "chore(skills): refresh a skill (#7)"'
+check "and fails a title with no valid type" eval '! title_ok "Add a thing" && ! title_ok "feat x" && ! title_ok "feet: x" && ! title_ok "Feat: x" && ! title_ok "feat(): x" && ! title_ok "feat:x" && ! title_ok "feat: " && ! title_ok ""'
 
 echo "upgrade from an install whose hook still has the old 20 s limit"
 # The older script, as far as this matters: it writes a 20 s hook and never raises it. CI checks out no
@@ -1041,29 +1088,40 @@ clauses() {  # file
     tr -d '\r' < "$1" | awk '
         /^## / { s = 1; next }
         !s || /^#/ || NF == 0 { next }
-        /^([-*]|[0-9]+\.) / && match($0, / <!-- orion:v[0-9]+ -->$/) {
+        /^([-*]|[0-9]+\.) / && match($0, / <!-- orion:v[0-9]+(\.[0-9]+\.[0-9]+)?[+]? -->$/) {
             print substr($0, RSTART + 13, RLENGTH - 17) " " substr($0, 1, RSTART - 1); next }
         { print "BAD " $0 }'
 }
+# The newest of the versions on stdin, one per line, in orion.sh's order: three parts above a whole number, and a
+# version ending in "+" just above the version it names.
+newest_version() {
+    awk '{ v = $0; p = sub(/[+]$/, "", v); n = split(v, a, ".")
+           k = n == 3 ? sprintf("2 %012d %012d %012d %d", a[1], a[2], a[3], p) : sprintf("1 %012d 0 0 %d", a[1], p)
+           if (k > best) { best = k; out = $0 } }
+         END { print out }'
+}
 check "GLOBAL_CLAUDE.md has clauses, each carrying a valid version marker" eval '[ -n "$(clauses "$GLOBAL")" ] && ! clauses "$GLOBAL" | grep -q "^BAD "'
 check "the clause that labels every line has a risk line say open or fixed in its label" eval 'grep -F "**Label every line with what it is**" "$GLOBAL" | grep -F "Risk (open):" | grep -qF "Risk (fixed):"'
-check "no clause carries a version above ORION_VERSION (it would be offered again every day)" eval '[ -z "$(clauses "$GLOBAL" | awk -v v="$(tr -d " \t\r\n" < "$REPO/ORION_VERSION")" '"'"'$1 + 0 > v + 0'"'"')" ]'
-# A clause changed or added against origin/main must carry a version higher than every clause there, or a person who
-# went through the old file would never be offered it. CI fetches origin/main before the suite.
-changed_clauses_are_newer() {
+# A clause changed or added against origin/main must carry the newest released version plus "+" ("changed after"),
+# so everyone who went through that release is offered it; a pull request left open across a release refreshes its
+# notes. CI fetches origin/main and the release tags before the suite.
+changed_clauses_marked_after_newest_release() {
     local old="$SB/global-main" newest
     "$REAL_GIT" -C "$REPO" rev-parse -q --verify origin/main >/dev/null || { echo "    origin/main not found: fetch it first"; return 1; }
     "$REAL_GIT" -C "$REPO" show origin/main:baselines/global/GLOBAL_CLAUDE.md > "$old" 2>/dev/null || return 0   # new file: every clause is new
-    newest="$(clauses "$old" | cut -d' ' -f1 | grep -x '[0-9][0-9]*' | sort -n | tail -n1)"
+    newest="$("$REAL_GIT" -C "$REPO" tag -l 'v*' | sed 's/^v//' | grep -E '^[0-9]+(\.[0-9]+\.[0-9]+)?$' | newest_version)"
     clauses "$old" | cut -d' ' -f2- > "$SB/global-main-texts"
     clauses "$GLOBAL" | while IFS=' ' read -r d text; do
         grep -qxF -- "$text" "$SB/global-main-texts" && continue
-        [ "$d" -gt "${newest:-0}" ] || { echo "    changed clause not marked above v${newest:-0}: $text"; exit 1; }
+        [ -n "$newest" ] || { echo "    no release tag found: fetch the tags first"; exit 1; }
+        [ "$d" = "$newest+" ] || { echo "    changed clause not marked v$newest+ (the newest release, then +): $text"; exit 1; }
     done
 }
-check "every clause changed against origin/main carries a version above every clause there" changed_clauses_are_newer
+check "every clause changed against origin/main is marked the newest release plus + (changed after it)" changed_clauses_marked_after_newest_release
 GH="$SB/home-global"; mkdir -p "$GH"; PERSONAL="$GH/.claude/CLAUDE.md"
-NEWEST="$(clauses "$GLOBAL" | cut -d' ' -f1 | sort -n | tail -n1)"
+NEWEST="$(clauses "$GLOBAL" | cut -d' ' -f1 | newest_version)"
+# A clause note newer than any the file can carry.
+NEWER=999.0.0
 gl_check() { HOME="$GH" run_check "$@"; }
 asked_global() { grep -q "GLOBAL_CLAUDE.md" "$SB/hook"; }
 section() { mkdir -p "$GH/.claude"; printf '# my own rules\n\n- keep this\n\n# ORION GLOBAL — v%s\n<!-- /ORION GLOBAL -->\n' "$1" > "$PERSONAL"; }
@@ -1079,7 +1137,7 @@ LATER=$(( $(date +%s) + 2 * 86400 )); GP="$P"
 newproj; HOME="$GH" init ask; consume_marker; GP2="$P"; P="$GP"
 check "two days later still silent, in this project and in another" eval 'FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && [ ! -s "$SB/hook" ] && P="$GP2" && FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && [ ! -s "$SB/hook" ]'
 P="$GP"; cp "$P/.claude/orion/global/GLOBAL_CLAUDE.md" "$SB/global-copy"
-printf -- '- a newer rule <!-- orion:v%s -->\n' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+printf -- '- a newer rule <!-- orion:v%s -->\n' "$NEWER" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "a clause with a higher version than the one offered is offered once more" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && hook_out_ok "$SB/hook" && FAKE_LS_SHA="$V" gl_check && ! asked_global'
 check "check --force still offers" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
@@ -1089,7 +1147,7 @@ check "the offer no longer says it comes back tomorrow" eval '! grep -q tomorrow
 # offered, so an older orion.sh never offers again. Where a scenario has the older orion.sh carry every clause on
 # offer, the project copy's markers are capped at the last once-a-day release (17) for it alone; a clause above it is
 # offered even then, which is checked below.
-sed -E 's/<!-- orion:v[0-9]+ -->$/<!-- orion:v17 -->/' "$SB/global-copy" > "$SB/global-older"
+sed -E 's/<!-- orion:v[0-9.]+[+]? -->$/<!-- orion:v17 -->/' "$SB/global-copy" > "$SB/global-older"
 cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 OFFERED="$XDG_CACHE_HOME/orion/global-offered"; OFFERED_V="$XDG_CACHE_HOME/orion/global-offered-version"
 rm -f "$OFFERED_V"; printf '%s' "$(( $(date +%s) - 86401 ))" > "$OFFERED"
@@ -1105,7 +1163,7 @@ rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"
 check "an older orion.sh offered earlier today: this one counts it as offered, silent today and later" eval 'FAKE_LS_SHA="$V" gl_check && ! asked_global && FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check && ! asked_global'
 check "and pinned the time stamp, so that older orion.sh does not offer again the next day" eval '! older_offers "$LATER"'
 rm -f "$OFFERED_V"; printf '%s' "$(date +%s)" > "$OFFERED"; FAKE_NOW="$LATER" FAKE_LS_SHA="$V" gl_check
-printf -- '- a newer rule <!-- orion:v%s -->\n' "$((NEWEST + 1))" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+printf -- '- a newer rule <!-- orion:v%s -->\n' "$NEWER" >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 check "a pinned time stamp never hides a clause with a higher version" eval 'FAKE_LS_SHA="$V" gl_check && asked_global && FAKE_LS_SHA="$V" gl_check && ! asked_global'
 cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 printf -- '- a rule no once-a-day orion.sh carries <!-- orion:v18 -->\n' >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
@@ -1145,6 +1203,16 @@ section 1
 check "a clause above the section's version number is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 section "$NEWEST"
 check "every clause at the section's version number or below: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
+printf -- '- a rule changed after 2.4.1 <!-- orion:v2.4.1+ -->\n' >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+section 999999
+check "a section with an old whole number is older than any three-part note: offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global'
+section 2.4.1
+check "a note changed after 2.4.1 is offered to a section at 2.4.1" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global'
+section 2.4.1+
+check "a section that went through that change: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
+section 2.4.2
+check "a section at the release after it: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
+cp "$SB/global-copy" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 section 1; set_cfg updateMode '"off"'
 check "off mode never offers it" eval 'gl_check --force && [ ! -s "$SB/hook" ]'
 newproj; HOME="$GH" init off
@@ -1223,10 +1291,11 @@ check "modified counts staged and unstaged changes; unstaged counts the unstaged
     "$SB/draw-mixed"    'ctx: --  |  [main]  | stashed:0 untracked:0 modified:4 unstaged:2 unpushed:0'
 
 echo "status line (the project carries orion's copy; the computer's copy takes the newest only on the person's word)"
-# A computer of its own (HOME) and a source repository of its own, whose ORION_VERSION each commit sets by hand.
+# A computer of its own (HOME) and a source repository of its own, each commit of which is a release: release <n> is
+# tagged v2.<n>.0, so release 10 also proves the versions compare part by part, never as text.
 SLH="$SB/home-sl"; SLFILE="$SLH/.claude/statusline/statusline.sh"; mkdir -p "$SLH" "$SB/home-none"; seen_all_personal_rules "$SLH"
 SLSRC="$SB/sl-src"; mkdir -p "$SLSRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$SLSRC/"
-sl_commit() { printf '%s\n' "$1" > "$SLSRC/ORION_VERSION"; ( cd "$SLSRC" && "$REAL_GIT" -c core.autocrlf=false add . && "$REAL_GIT" commit -qm "v$1" ); }
+sl_commit() { SL_VER="2.$1.0"; ( cd "$SLSRC" && "$REAL_GIT" -c core.autocrlf=false add . && "$REAL_GIT" commit -q --allow-empty -m "v$SL_VER" && "$REAL_GIT" tag "v$SL_VER" ); }
 sl_release() {  # number line text: orion release <number>, whose status line gains <text> after line <line>
     local f="$SLSRC/baselines/statusline/statusline.sh"
     awk -v n="$2" -v t="$3" '{ print } NR == n { print t }' "$f" > "$SB/sl" && cat "$SB/sl" > "$f"; sl_commit "$1"
@@ -1235,7 +1304,7 @@ sl_put() {  # dir number: the project's copy as a teammate's git pull brings it
     rm -rf "$P/.claude/orion/statusline"; cp -R "$1" "$P/.claude/orion/statusline"
     { sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '%s\n' "$2"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
 }
-sl_pull() { sl_put "$SLSRC/baselines/statusline" "$(cat "$SLSRC/ORION_VERSION")"; }
+sl_pull() { sl_put "$SLSRC/baselines/statusline" "$SL_VER"; }
 sl_check() { HOME="$SLH" run_check "$@"; }
 sl_cmd() { HOME="$SLH" bash "$P/.claude/orion/orion.sh" statusline "$1" --project "$P" >"$SB/out" 2>&1; }
 "$REAL_GIT" -C "$SLSRC" init -q -b main; sl_commit 1
@@ -1243,7 +1312,7 @@ newproj
 check "init --statusline seeds the computer's copy and its merge base" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" init --project "$P" --yes --statusline --update-mode off >"$SB/out" 2>&1 && [ -f "$SLFILE" ] && [ -f "$SLH/.claude/statusline/.orion-base/statusline.sh" ]'
 consume_marker
 check "the project carries orion's status line, listed in the manifest" eval '[ -f "$P/.claude/orion/statusline/statusline.sh" ] && grep -qx "statusline/statusline.sh" "$P/.claude/orion/.orion-manifest"'
-check "VERSION records the source's version number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = "$(cat "$SLSRC/ORION_VERSION")" ]'
+check "VERSION records the source's version number" eval '[ "$(sed -n 5p "$P/.claude/orion/VERSION")" = "$SL_VER" ]'
 check "same baseline: check is silent" eval 'sl_check --force && [ ! -s "$SB/hook" ]'
 cp -R "$P/.claude/orion/statusline" "$SB/sl-v1"; T1="$(sed -n 5p "$P/.claude/orion/VERSION")"
 sl_release 2 2 '# orion v2'; sl_pull

@@ -1,8 +1,10 @@
 name: release
 
-# Tags main v<N> each time ORION_VERSION reaches a new number. The session-start check of every project reads
-# these tags and offers an update only when one is higher than the number the project installed, so a merge that
-# changes nothing a project receives (and so raises no number) is never offered.
+# After a merge to main that changes what projects receive (skills/, baselines/, orion.sh), tags the next version
+# v<major.minor.patch>, sized by the Conventional Commit types of the pull requests since the last release
+# (.github/scripts/release-version.sh holds the rules). The session-start check of every project reads these tags
+# and offers an update only when one is higher than the version the project installed, so a merge that changes
+# nothing a project receives (and so tags nothing) is never offered.
 on:
   push:
     branches: [main]
@@ -19,20 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Tag the new version number
+        with:
+          fetch-depth: 0
+      - name: Tag the next version
         run: |
-          n="$(tr -d ' \t\r\n' < ORION_VERSION)"
-          case "$n" in ""|*[!0-9]*) echo "ORION_VERSION is not a whole number: '$n'"; exit 1 ;; esac
-          if git ls-remote --exit-code --tags origin "refs/tags/v$n" >/dev/null; then
-            # Two pull requests that raised the number to the same value both pass CI; the second must not ship
-            # unannounced. Fail when what projects receive differs from the tagged release.
-            git fetch --quiet --depth=1 origin "refs/tags/v$n:refs/tags/v$n"
-            if ! git diff --quiet "v$n" HEAD -- skills baselines orion.sh; then
-              echo "::error::files projects receive changed since v$n, but ORION_VERSION is still $n: raise it in a new pull request"
-              exit 1
-            fi
-            echo "v$n is already tagged and nothing projects receive changed: nothing to release"
+          tags="$(bash .github/scripts/release-version.sh next)"
+          if [ -z "$tags" ]; then
+            echo "nothing projects receive changed since the last release: nothing to tag"
             exit 0
           fi
-          git tag "v$n"
-          git push origin "refs/tags/v$n"
+          refs=""
+          for t in $tags; do git tag "$t"; refs="$refs refs/tags/$t"; done
+          git push origin $refs
+          echo "released: $tags"
