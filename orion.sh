@@ -276,9 +276,10 @@ trap cleanup EXIT
 trap 'exit 143' TERM   # a timed-out run still cleans up: exiting on the signal runs the EXIT trap
 trap 'exit 130' INT
 
-# SRC_VERSION is the source's version: in a checkout, the highest release tag its commit contains; fetched, the
-# highest release tag of the source, read before the clone, so a release tagged in between is never claimed for
-# older files. Empty when the source has no release tag.
+# SRC_VERSION is the source's version: in a checkout, the highest release tag its commit contains; fetched from the
+# default branch, the highest release tag of the source, read before the clone, so a release tagged in between is
+# never claimed for older files; fetched from another ref, the release tag on the commit it fetched (release tags
+# mark the default branch only). Empty when there is none.
 fetch_source() {  # source ref
     local here
     here="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" 2>/dev/null && pwd || true )"
@@ -292,7 +293,7 @@ fetch_source() {  # source ref
     have git || die "git is required to fetch orion"
     TMP_DIR="$(mktemp -d)"
     say "fetching orion ($2) from $1 ..."
-    latest_remote "$1" "$2"; SRC_VERSION="$LATEST_NUM"
+    latest_remote "$1" "$2"
     # ORION_FETCH_SECONDS (set by the session-start hook) time-limits the network fetch only, never the copy
     # that follows: a copy cut short half-way would leave the project with a half-updated orion.
     if [ -n "${ORION_FETCH_SECONDS:-}" ]; then
@@ -305,6 +306,12 @@ fetch_source() {  # source ref
     SRC_DIR="$TMP_DIR/orion"
     SRC_SHA="$(git -C "$SRC_DIR" rev-parse HEAD)"
     SRC_TIME="$(git -C "$SRC_DIR" log -1 --format=%ct 2>/dev/null || printf '0')"
+    if [ "$2" = "$ORION_DEFAULT_REF" ]; then
+        SRC_VERSION="$LATEST_NUM"
+    else
+        # an annotated tag's commit comes as its peeled line, <tag>^{}
+        SRC_VERSION="$(printf '%s\n' "$LATEST_REFS" | awk -v s="$SRC_SHA" '$1 == s { sub(/\^\{\}$/, "", $2); print $1, $2 }' | highest_release)"
+    fi
 }
 
 # Run a command for at most N seconds, so the session-start hook ends inside its HOOK_TIMEOUT. Git never
@@ -329,12 +336,13 @@ latest_key() {  # installed-number ref
 
 # One call for both: LATEST_SHA, the ref's commit, and LATEST_NUM, the highest release tag (v<major.minor.patch>,
 # pushed by the release workflow after each release; the old v<N> tags count as older). Either is empty when the
-# source has none.
+# source has none. LATEST_REFS keeps every line the call printed.
 latest_remote() {  # source ref
     local out=""
     out=$(limited 8 git ls-remote "$1" "refs/heads/$2" 'refs/tags/v*' 2>/dev/null || true)
     LATEST_SHA="$(printf '%s\n' "$out" | awk -v r="refs/heads/$2" '$2 == r { print $1; exit }')"
     LATEST_NUM="$(printf '%s\n' "$out" | highest_release)"
+    LATEST_REFS="$out"
 }
 
 # --------------------------------------------------------------------------
