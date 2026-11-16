@@ -4,10 +4,10 @@
   "title": "Version numbers: three parts set by the release job from the pull request's type",
   "login": "Ignacio-Gonzalez-Harris",
   "started_at": "2026-11-15T22:14:58Z",
-  "finished_at": "2026-11-16T00:10:44Z",
-  "outcome": "owner-merges",
+  "finished_at": "2026-11-16T09:28:52Z",
+  "outcome": "merged",
   "pr": 243,
-  "summary": "orion's version becomes three parts set by the release job from the merged pull request titles' Conventional Commit types, with a whole-number bridge tag per release for old installs, a pull request title check, and ORION_VERSION removed. The pull request touches the repository's CLAUDE.md, so a person merges it. The owner must try the change, then merge pull request #243.",
+  "summary": "orion's version becomes three parts set by the release job from the merged pull request titles' Conventional Commit types, with a whole-number bridge tag per release for old installs, a pull request title check, and ORION_VERSION removed. Merged on the owner's word because it touches the repository's CLAUDE.md.",
   "agents": [
     {
       "name": "dev-190",

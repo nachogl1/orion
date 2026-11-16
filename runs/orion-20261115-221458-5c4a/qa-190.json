@@ -1,0 +1,50 @@
+{
+  "run_id": "orion-20261115-221458-5c4a",
+  "issue": 190,
+  "title": "Version numbers: three parts set by the release job from the pull request's type",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 243,
+  "merged_at": "2026-11-16T09:28:52Z",
+  "merge_commit": "462b9fb1de8e399ee63bf0ac46bba85601affb45",
+  "seam": ".github/workflows/release.yml, .github/workflows/ci.yml, orion.sh version functions, baselines/global/GLOBAL_CLAUDE.md, tests/run.sh, CLAUDE.md",
+  "story": "orion's version is now three numbers, such as 2.0.0, and nobody raises it by hand: the release job picks the next version from the type at the start of each pull request title and adds the next whole number as a tag so projects on the old script keep being offered updates. Every pull request gets a title check, and the ORION_VERSION file is gone. The session-start update offer, orion status, the status-bar offer and the personal-rules offer read three-part versions, old whole numbers count as older, a project installed just before a release was tagged is not offered it again, and one following another branch records the version of the files it has.",
+  "checks": [
+    {
+      "key": "orion.sh/status-shows-three-part-version",
+      "criterion": "init records a three-part version",
+      "steps": "In a throw-away git repo holding a copy of orion (orion.sh, skills/, baselines/), commit, tag the commit v38 and v2.3.4, then run `bash <copy>/orion.sh init --project <empty-dir> --yes --no-statusline` and `bash <copy>/orion.sh status --project <empty-dir>`.",
+      "expected": "Line 5 of <empty-dir>/.claude/orion/VERSION reads 2.3.4, and status prints `version:    orion 2.3.4,`."
+    },
+    {
+      "key": "orion.sh/old-number-offered-update",
+      "criterion": "A project with a whole number on line 5 is offered the update, and its next update writes the three-part number",
+      "steps": "In a project installed from that copy with --source <copy>, set line 5 of .claude/orion/VERSION to 38. Add a commit to the copy and tag it v2.4.0, then run `bash .claude/orion/orion.sh check --force`, then `bash .claude/orion/orion.sh update`.",
+      "expected": "check prints one JSON line offering an update from orion 38 to orion 2.4.0; after update, line 5 reads 2.4.0."
+    },
+    {
+      "key": "orion.sh/tagged-after-install",
+      "criterion": "An install made just before its release was tagged gets no repeated offer",
+      "steps": "Continue from the previous check, then tag the copy's same commit v2.4.1. Run `bash .claude/orion/orion.sh check --force`, then `bash .claude/orion/orion.sh update`.",
+      "expected": "check prints nothing; update says `already at`, and line 5 now reads 2.4.1."
+    },
+    {
+      "key": "orion.sh/other-ref-version",
+      "criterion": "A project following a ref other than main records the version of the files it fetched",
+      "steps": "In the copy, run `git branch old <first commit>` (the commit tagged v2.3.4). In the project, set \"ref\": \"old\" in .claude/orion/config.json, then run `bash .claude/orion/orion.sh update --force` and `bash .claude/orion/orion.sh status`.",
+      "expected": "Line 5 reads 2.3.4, not main's newer 2.4.1, and status prints `version:    orion 2.3.4,`."
+    },
+    {
+      "key": "release/title-check",
+      "criterion": "The title check fails on a title with no valid type",
+      "steps": "Run `bash .github/scripts/release-version.sh title \"Add a thing\"`, then `bash .github/scripts/release-version.sh title \"feat(x): a thing\"`.",
+      "expected": "Exit 1 with a message naming the valid form, then exit 0."
+    },
+    {
+      "key": "release/next-version",
+      "criterion": "The release job sizes one version tag per release, adds the next whole-number tag beside it, and tags nothing on a commit an earlier release shipped",
+      "steps": "In a throw-away repo, tag v39 and v2.0.0, commit a change to skills/a.md with subject `fix: a`, run `bash <orion>/.github/scripts/release-version.sh next` and tag what it printed; add a commit to skills/a.md with subject `feat: b`, run it again and tag what it printed; then `git checkout HEAD~1` and run it once more.",
+      "expected": "v2.0.1 and v40, then v2.1.0 and v41, then nothing."
+    }
+  ],
+  "no_qa_reason": null
+}
