@@ -5,7 +5,7 @@
 # orion
 
 > [!CAUTION]
-> orion tells an AI assistant how to work in your project, and the assistant will run commands and edit files on your machine. Review what you install, keep your work saved, and use it at your own risk. It is under constant improvement and is provided as-is.
+> **orion is an experimental framework, provided as-is with no warranty. You are responsible for how you use it and for every change its agents make in your projects.** orion tells an AI assistant how to work in your project, and the assistant will run commands and edit files on your machine. Review what you install, keep your work saved, and use it at your own risk. It is under constant improvement and is provided as-is.
 
 **orion is a framework you install into your own project** to help you build software better and faster with [Claude Code](https://claude.com/claude-code), Anthropic's AI coding assistant.
 

@@ -54,6 +54,12 @@ h1 .accent{background:linear-gradient(90deg,var(--agent),var(--both));-webkit-ba
 .dot-full,.dot-ring{width:12px;height:12px;border-radius:50%;display:inline-block}
 .dot-full{background:var(--human)}.dot-ring{border:2px solid var(--human)}
 
+/* ---------- disclaimer banner ---------- */
+.disclaimer{background:color-mix(in srgb,var(--human) 14%,var(--bg));border-bottom:1px solid color-mix(in srgb,var(--human) 45%,var(--line));color:var(--text);font-size:14px}
+.disclaimer .wrap{display:flex;gap:10px;align-items:flex-start;padding-top:10px;padding-bottom:10px}
+.disclaimer .di{color:var(--human);font-weight:800;flex:none}
+.disclaimer b{color:var(--human)}
+
 /* ---------- nav ---------- */
 nav.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .nav-inner{display:flex;align-items:center;gap:16px;height:58px}
@@ -156,6 +162,8 @@ aside.drawer.on{transform:none}
 </style>
 </head>
 <body>
+
+<div class="disclaimer" role="note" aria-label="Disclaimer"><div class="wrap"><span class="di" aria-hidden="true">⚠</span><p style="margin:0"><b>Experimental framework.</b> orion is experimental and provided as-is, with no warranty. You are responsible for how you use it and for every change its agents make in your projects, so review what it installs and what its agents do.</p></div></div>
 
 <nav class="top" aria-label="Main">
   <div class="wrap nav-inner">

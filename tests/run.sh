@@ -505,8 +505,9 @@ check "nothing orion owns is left" eval '[ ! -e "$P/.claude/orion" ] && [ ! -e "
 echo "init's agent-autonomy notice (--yes, and a shell with no terminal)"
 # Whoever installs orion is told up front that its agents claim issues, file tickets and merge their own work.
 NOTICE='merge their own pull requests'
+DISCLAIMER='orion is an experimental framework'
 newproj
-check "init --yes shows the notice and asks nothing" eval 'init ask && grep -qF "$NOTICE" "$SB/out" && ! grep -qF "[y/N]" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ]'
+check "init --yes shows the experimental disclaimer and the notice and asks nothing" eval 'init ask && grep -qF "$DISCLAIMER" "$SB/out" && grep -qF "$NOTICE" "$SB/out" && ! grep -qF "[y/N]" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ]'
 newproj
 check "init without --yes in a shell with no terminal refuses, exit 1, and installs nothing" eval '! bash "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 </dev/null && grep -q "refusing to init without --yes" "$SB/out" && grep -qF "$NOTICE" "$SB/out" && [ -z "$(ls -A "$P")" ]'
 # The Windows launcher hands --yes through to orion.sh, so an unattended install from PowerShell works the same way.
