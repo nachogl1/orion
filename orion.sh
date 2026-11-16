@@ -885,7 +885,7 @@ install_statusline() {  # force
     fi
 }
 
-# What whoever installs orion must know first: its agents act on their own (the baseline's Who merges rule).
+# What whoever installs orion must know first: it is experimental and the user carries the responsibility, and its agents act on their own (the baseline's Who merges rule).
 autonomy_notice() {
     say ""
     say "DISCLAIMER: orion is an experimental framework, provided as-is with no warranty."
