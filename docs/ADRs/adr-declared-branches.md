@@ -48,8 +48,9 @@ work into the branch the project releases from. Nothing tells the person which s
    session start `check` runs `git remote set-head origin --auto` as a time-limited step of its own: whatever
    `config.json` says (a clone still on the old default branch may not have the two keys yet), and also when the
    session is on no branch or on a branch with no remote copy, the two cases in which its pull step does nothing.
-   Then, when this clone has `developBranch` and it differs from `origin/HEAD` (GitHub's default branch is not the
-   declared one), it says so in its one message, at most once a day. It stays silent otherwise and still exits 0
+   Then, only when that step succeeded (offline or cut off, the pointer may be stale and proves nothing) and this
+   clone has `developBranch` and it differs from `origin/HEAD` (GitHub's default branch is not the declared one),
+   it says so in its one message, at most once a day. It stays silent otherwise and still exits 0
    on every failure.
 8. **`verify` warns, existing installs included**: one `WARN` when the keys are missing (an install from before
    this decision), one when GitHub's default branch is not the declared development branch (when `gh` can read it),
