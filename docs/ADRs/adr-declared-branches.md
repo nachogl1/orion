@@ -27,9 +27,10 @@ work into the branch the project releases from. Nothing tells the person which s
 3. **The names are kept in `.claude/orion/config.json`** as `developBranch` and `releaseBranch`, a file the project
    commits, so every teammate's clone reads the same two names. **One sub-command writes them**,
    `orion.sh branches --dev <name> --release <name>`: it stores the two keys and does the GitHub step of decision 4.
-   `init` runs it on a first install; on an existing install, `init --dev-branch` or `--release-branch` changes the
-   keys the way `--source` and `--ref` change theirs; `/orion-verify` runs it on the person's yes. `update` never
-   touches them. The starter `CLAUDE.md` that `init` writes names the release branch in its deploy line, and the
+   `init` runs it on a first install; on an existing install, `init --dev-branch` or `--release-branch` runs the
+   same sub-command, GitHub step included; `/orion-verify` runs it on the person's yes. It adds a key that is
+   missing, which the setter behind `--source` and `--ref` cannot do (that one only rewrites a key already in the
+   file), so an install from before this decision gets its keys the same way. `update` never touches them. The starter `CLAUDE.md` that `init` writes names the release branch in its deploy line, and the
    baseline's list of what a project's `CLAUDE.md` must state gains both names.
 4. **orion makes GitHub match, and only this far**: it creates a declared branch that does not exist yet (from the
    current default branch) and sets the development branch as the repository's default branch
@@ -43,11 +44,13 @@ work into the branch the project releases from. Nothing tells the person which s
    develop-branch map decided; the two keys in `config.json` record what the project declared, so a disagreement can
    be seen.
 7. **`check` keeps every clone in step, every session.** A clone made before the switch keeps pointing its
-   `origin/HEAD` at the old default branch, so its skills would merge daily work into the release branch. At session
-   start `check` compares this clone's `origin/HEAD` with `developBranch` (no network). On a difference it runs
-   `git remote set-head origin --auto` inside its time-limited fetch step; when the two still differ (GitHub's
-   default branch is not the declared one), it says so in its one message, at most once a day. It stays silent
-   otherwise and still exits 0 on every failure.
+   `origin/HEAD` at the old default branch, so its skills would merge daily work into the release branch. At every
+   session start `check` runs `git remote set-head origin --auto` as a time-limited step of its own: whatever
+   `config.json` says (a clone still on the old default branch may not have the two keys yet), and also when the
+   session is on no branch or on a branch with no remote copy, the two cases in which its pull step does nothing.
+   Then, when this clone has `developBranch` and it differs from `origin/HEAD` (GitHub's default branch is not the
+   declared one), it says so in its one message, at most once a day. It stays silent otherwise and still exits 0
+   on every failure.
 8. **`verify` warns, existing installs included**: one `WARN` when the keys are missing (an install from before
    this decision), one when GitHub's default branch is not the declared development branch (when `gh` can read it),
    and one when this checkout's `origin/HEAD` points at another branch. `/orion-verify` then asks for the names and
@@ -63,8 +66,13 @@ work into the branch the project releases from. Nothing tells the person which s
 
 - orion changes a repository setting for the first time. It is the one setting the skills depend on, changed only
   on the names the person gave, and it is undone with the same command.
-- `init` gains an optional use of `gh` and of the network. The suite stays offline, so its checks run against a
-  stand-in `gh`.
+- `orion.sh` reaches the network in three new places. The `branches` sub-command calls `gh` and pushes a declared
+  branch that does not exist yet, the first push `orion.sh` ever makes (a new branch, never a commit onto an
+  existing one). `check` makes one more time-limited call at every session start. `verify`, which has no network
+  call today, reads GitHub's default branch through `gh` and skips that one comparison when it cannot. The suite
+  stays offline, so its checks run against a stand-in `gh` and a local remote.
+- A session that is already open when the default branch changes keeps the old `origin/HEAD` until its next start;
+  whoever makes the switch tells the people and agents working at that moment.
 - Open pull requests keep their old base: GitHub does not move them when the default branch changes. orion says so
   and names the command (`gh pr edit <N> --base <development branch>`); it never moves them itself.
 - A workflow in the project that runs only on a push to the old default branch (CI, a deploy) gets no run for a
