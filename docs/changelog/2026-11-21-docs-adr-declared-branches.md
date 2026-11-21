@@ -1,0 +1,1 @@
+A decision record proposes that a project names its development and release branches at install and that orion sets GitHub's default branch to match, so a develop/release split no longer needs manual setup.
