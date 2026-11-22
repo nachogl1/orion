@@ -5,9 +5,10 @@
 #
 # usage: bash tests/wsl.sh [--distro <name>]   run from Git Bash, after committing: WSL tests HEAD, never
 #                                              uncommitted changes, so a dirty checkout is refused; the
-#                                              distro needs git, jq and python3 (without jq the suite
-#                                              skips the jq checks); exits 1 when either part fails, 2
-#                                              when it cannot start
+#                                              distro needs bash, git, jq and python3 (without jq the
+#                                              suite skips the jq checks); exits 1 when either part
+#                                              fails, 2 when it cannot start (no distro, or one with
+#                                              no bash or git)
 
 set -u
 
@@ -28,8 +29,14 @@ BRANCH="$(git -C "$REPO" symbolic-ref -q --short HEAD)" \
 HEAD_SHA="$(git -C "$REPO" rev-parse HEAD)"
 # The repository itself, not this worktree: a worktree's .git file points at a Windows path that Linux git cannot follow.
 COMMON="$(cd "$REPO" && cd "$(git rev-parse --git-common-dir)" && pwd)"
-SRC="$(MSYS_NO_PATHCONV=1 wsl.exe "${DISTRO[@]}" --cd '~' -- wslpath -u "$(cygpath -m "$COMMON")" 2>/dev/null | tr -d '\r\0')"
+SRC="$(MSYS_NO_PATHCONV=1 wsl.exe ${DISTRO[@]+"${DISTRO[@]}"} --cd '~' -- wslpath -u "$(cygpath -m "$COMMON")" 2>/dev/null | tr -d '\r\0')"
 case "$SRC" in /*) ;; *) echo "tests/wsl.sh: WSL could not run (no distro installed, or no such --distro)" >&2; exit 2 ;; esac
+# A distro can run and still lack what the suite needs: Docker Desktop's own distro, often the only one installed,
+# has neither bash nor git. Without this check its "bash: not found" (127) would read as a failed suite.
+for tool in bash git; do
+    MSYS_NO_PATHCONV=1 wsl.exe ${DISTRO[@]+"${DISTRO[@]}"} --cd '~' -- sh -c "command -v $tool" >/dev/null 2>&1 \
+        || { echo "tests/wsl.sh: the WSL part could not start: the WSL distro has no $tool. Install a full Linux distro (wsl --install) or name one with --distro <name>" >&2; exit 2; }
+done
 # The version checks compare with origin/main, as CI does after fetching it.
 git -C "$REPO" fetch -q origin main 2>/dev/null \
     || echo "tests/wsl.sh: could not fetch origin/main: comparing with the last one fetched" >&2
@@ -37,7 +44,7 @@ git -C "$REPO" fetch -q origin main 2>/dev/null \
 echo "== the whole suite in WSL, on $BRANCH at ${HEAD_SHA:0:7}"
 # Windows drives sit on WSL's PATH (/mnt/c/... by default, under whatever root wsl.conf sets): without them the
 # suite cannot pick Windows' powershell.exe and feed it Linux paths. origin/main comes from this repository's copy.
-MSYS_NO_PATHCONV=1 wsl.exe "${DISTRO[@]}" --cd '~' -- bash -s -- "$SRC" "$BRANCH" "$HEAD_SHA" <<'EOF'
+MSYS_NO_PATHCONV=1 wsl.exe ${DISTRO[@]+"${DISTRO[@]}"} --cd '~' -- bash -s -- "$SRC" "$BRANCH" "$HEAD_SHA" <<'EOF'
 src="$1" branch="$2" sha="$3"
 drives="$(wslpath -u C:/)"; drives="${drives%/}"; drives="${drives%/*}/"
 PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -vE "^${drives}[A-Za-z](/|\$)" | paste -sd: -)"; export PATH

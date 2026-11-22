@@ -551,6 +551,22 @@ for tool in $tools; do
 done
 if [ "$WINDOWS_ONLY" = 1 ]; then summary; exit; fi
 
+echo "tests/wsl.sh (the suite's launcher on a Windows computer)"
+# A stand-in wsl.exe whose distro answers wslpath and has nothing else, as Docker Desktop's own distro does, and a
+# copy of tests/wsl.sh in a throw-away repository, so the state of the real checkout plays no part.
+wsl_without_bash_cannot_start() {
+    local r="$SB/wslrepo"
+    mkdir -p "$r/tests" "$SB/wslbin"; cp "$REPO/tests/wsl.sh" "$r/tests/wsl.sh"
+    "$REAL_GIT" -C "$r" init -q -b main && "$REAL_GIT" -C "$r" -c core.autocrlf=false add . && "$REAL_GIT" -C "$r" commit -qm init || return 1
+    printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in *wslpath*) echo /mnt/c/repo; exit 0 ;; esac' 'exit 127' > "$SB/wslbin/wsl.exe"
+    printf '%s\n' '#!/usr/bin/env bash' 'echo C:/repo' > "$SB/wslbin/cygpath"
+    chmod +x "$SB/wslbin/wsl.exe" "$SB/wslbin/cygpath"
+    env PATH="$SB/wslbin:$PATH" bash "$r/tests/wsl.sh" >"$SB/out" 2>&1
+    [ $? = 2 ] && grep -q "could not start" "$SB/out" && grep -q "bash" "$SB/out" && ! grep -q "FAILED" "$SB/out" \
+        || { sed 's/^/  /' "$SB/out"; return 1; }
+}
+check "a WSL distro without bash: the suite could not start, never a failed suite" wsl_without_bash_cannot_start
+
 echo "init's agent-autonomy notice at a terminal"
 # Runs orion.sh in a pseudo-terminal (a terminal made by the test), as a person typing $1 at its question; prints what
 # the terminal showed and exits with orion's code, or 124 after 60 s, so a question nobody answers never hangs the suite.
@@ -576,11 +592,17 @@ sys.stdout.write(out.decode(errors="replace"))
 sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))
 ' "$@"
 }
-newproj
-check "an interactive init shows the notice and asks to continue" eval 'at_terminal n "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1; grep -qF "$NOTICE" "$SB/out" && grep -qF "[y/N]" "$SB/out"'
-check "a no at that question installs nothing" eval '[ -z "$(ls -A "$P")" ] && grep -q "aborted" "$SB/out"'
-newproj
-check "a yes at that question installs orion" eval 'at_terminal y "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
+# Python on Windows has no pty module, and nothing else there lets a script type at a terminal (Git Bash's winpty
+# refuses a piped stdin), so under Git Bash these three checks cannot run at all: Linux, macOS and CI run them.
+if "$PY" -c 'import pty' >/dev/null 2>&1; then
+    newproj
+    check "an interactive init shows the notice and asks to continue" eval 'at_terminal n "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1; grep -qF "$NOTICE" "$SB/out" && grep -qF "[y/N]" "$SB/out"'
+    check "a no at that question installs nothing" eval '[ -z "$(ls -A "$P")" ] && grep -q "aborted" "$SB/out"'
+    newproj
+    check "a yes at that question installs orion" eval 'at_terminal y "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
+else
+    echo "  note  not run here: these three checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
+fi
 
 echo "a renamed skill (update swaps orion's old copy, never a project's own folder)"
 # An install from before the drift check was renamed: its managed copy still carries the old folder name.
