@@ -1,0 +1,1 @@
+The suite no longer reports false failures on a Windows computer: three checks that need a pseudo-terminal say they were not run there, and `tests/wsl.sh` says it could not start when the WSL distro has no bash or git.
