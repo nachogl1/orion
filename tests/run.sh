@@ -108,22 +108,6 @@ check "clear-git-resources scan.sh parses" bash -n "$REPO/skills/clear-git-resou
 check "issue_map.py compiles" "$PY" -m py_compile "$REPO/skills/issue-map/scripts/issue_map.py"
 check "build_docx.py compiles" "$PY" -m py_compile "$REPO/skills/generate-project-writeup/assets/build_docx.py"
 
-echo "tests/wsl.sh (the suite's launcher on a Windows computer)"
-# A stand-in wsl.exe whose distro answers wslpath and has nothing else, as Docker Desktop's own distro does, and a
-# copy of tests/wsl.sh in a throw-away repository, so the state of the real checkout plays no part.
-wsl_without_bash_cannot_start() {
-    local r="$SB/wslrepo"
-    mkdir -p "$r/tests" "$SB/wslbin"; cp "$REPO/tests/wsl.sh" "$r/tests/wsl.sh"
-    "$REAL_GIT" -C "$r" init -q -b main && "$REAL_GIT" -C "$r" -c core.autocrlf=false add . && "$REAL_GIT" -C "$r" commit -qm init || return 1
-    printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in *wslpath*) echo /mnt/c/repo; exit 0 ;; esac' 'exit 127' > "$SB/wslbin/wsl.exe"
-    printf '%s\n' '#!/usr/bin/env bash' 'echo C:/repo' > "$SB/wslbin/cygpath"
-    chmod +x "$SB/wslbin/wsl.exe" "$SB/wslbin/cygpath"
-    env PATH="$SB/wslbin:$PATH" bash "$r/tests/wsl.sh" >"$SB/out" 2>&1
-    [ $? = 2 ] && grep -q "could not start" "$SB/out" && grep -q "bash" "$SB/out" && ! grep -q "FAILED" "$SB/out" \
-        || { sed 's/^/  /' "$SB/out"; return 1; }
-}
-check "a WSL distro without bash: the suite could not start, never a failed suite" wsl_without_bash_cannot_start
-
 echo "labels"
 # The baseline promises that /dev-next's preflight creates every label of its Labels line; the skill's Labels row must list each one.
 dev_next_creates_every_baseline_label() {
@@ -566,6 +550,22 @@ for tool in $tools; do
     unset ORION_JSON_TOOL
 done
 if [ "$WINDOWS_ONLY" = 1 ]; then summary; exit; fi
+
+echo "tests/wsl.sh (the suite's launcher on a Windows computer)"
+# A stand-in wsl.exe whose distro answers wslpath and has nothing else, as Docker Desktop's own distro does, and a
+# copy of tests/wsl.sh in a throw-away repository, so the state of the real checkout plays no part.
+wsl_without_bash_cannot_start() {
+    local r="$SB/wslrepo"
+    mkdir -p "$r/tests" "$SB/wslbin"; cp "$REPO/tests/wsl.sh" "$r/tests/wsl.sh"
+    "$REAL_GIT" -C "$r" init -q -b main && "$REAL_GIT" -C "$r" -c core.autocrlf=false add . && "$REAL_GIT" -C "$r" commit -qm init || return 1
+    printf '%s\n' '#!/usr/bin/env bash' 'case "$*" in *wslpath*) echo /mnt/c/repo; exit 0 ;; esac' 'exit 127' > "$SB/wslbin/wsl.exe"
+    printf '%s\n' '#!/usr/bin/env bash' 'echo C:/repo' > "$SB/wslbin/cygpath"
+    chmod +x "$SB/wslbin/wsl.exe" "$SB/wslbin/cygpath"
+    env PATH="$SB/wslbin:$PATH" bash "$r/tests/wsl.sh" >"$SB/out" 2>&1
+    [ $? = 2 ] && grep -q "could not start" "$SB/out" && grep -q "bash" "$SB/out" && ! grep -q "FAILED" "$SB/out" \
+        || { sed 's/^/  /' "$SB/out"; return 1; }
+}
+check "a WSL distro without bash: the suite could not start, never a failed suite" wsl_without_bash_cannot_start
 
 echo "init's agent-autonomy notice at a terminal"
 # Runs orion.sh in a pseudo-terminal (a terminal made by the test), as a person typing $1 at its question; prints what
