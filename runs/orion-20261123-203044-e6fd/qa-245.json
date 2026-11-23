@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 245,
+  "title": "Run ids are compared as text, so a changed repository prefix breaks the harvest and QA bookmarks",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 250,
+  "merged_at": "2026-11-23T20:43:22Z",
+  "merge_commit": "e7497564ad7bbdaf4e516ae2e427503eecfdc2ad",
+  "seam": "skills/dev-next/SKILL.md, skills/harvest/SKILL.md, skills/harvest-qa/SKILL.md",
+  "story": "The harvest and QA skills used to pick new run reports by sorting their names as text, so a project whose name changed spelling between runs saw old notes forever or lost new ones. They now sort by the date and time inside each run id.",
+  "checks": [],
+  "no_qa_reason": "Skill wording only; nothing a user drives on its own, and a suite check covers the wording."
+}

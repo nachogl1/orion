@@ -1,0 +1,41 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 245,
+  "title": "Run ids are compared as text, so a changed repository prefix breaks the harvest and QA bookmarks",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T20:32:14Z",
+  "finished_at": "2026-11-23T20:43:22Z",
+  "outcome": "merged",
+  "pr": 250,
+  "summary": "dev-next, harvest and harvest-qa now decide which runs are newer by the date-and-time part of a run id, with the whole id only as a tie-breaker, so a repository prefix that changed between runs no longer hides or repeats audit notes. A suite check guards the wording.",
+  "agents": [
+    {
+      "name": "ready-check-245",
+      "model": "sonnet",
+      "tokens_total": 87112
+    },
+    {
+      "name": "dev-245",
+      "model": "opus",
+      "tokens_total": 122191
+    },
+    {
+      "name": "review-245-r1",
+      "model": "opus",
+      "tokens_total": 112157
+    }
+  ],
+  "phases": {
+    "qa_seconds": 15,
+    "dev_seconds": 461,
+    "review_seconds": 139,
+    "ci_seconds": 90
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}
