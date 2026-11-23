@@ -610,15 +610,17 @@ sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))
 ' "$@"
 }
 # Python on Windows has no pty module, and nothing else there lets a script type at a terminal (Git Bash's winpty
-# refuses a piped stdin), so under Git Bash these three checks cannot run at all: Linux, macOS and CI run them.
+# refuses a piped stdin), so under Git Bash these four checks cannot run at all: Linux, macOS and CI run them.
 if "$PY" -c 'import pty' >/dev/null 2>&1; then
     newproj
     check "an interactive init shows the notice and asks to continue" eval 'at_terminal n "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1; grep -qF "$NOTICE" "$SB/out" && grep -qF "[y/N]" "$SB/out"'
     check "a no at that question installs nothing" eval '[ -z "$(ls -A "$P")" ] && grep -q "aborted" "$SB/out"'
     newproj
-    check "a yes at that question installs orion" eval 'at_terminal y "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
+    check "a yes at that question installs orion" eval 'at_terminal y "$ORION" init --project "$P" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
+    newproj
+    check "it then asks about each mod, and a no installs none on this computer" eval 'at_terminal "$(printf "y\nn")" "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && grep -qF "Also install the orion mod control-tower" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ] && [ ! -e "$HOME/.claude/orion-mods" ]'
 else
-    echo "  note  not run here: these three checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
+    echo "  note  not run here: these four checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
 fi
 
 echo "a renamed skill (update swaps orion's old copy, never a project's own folder)"
