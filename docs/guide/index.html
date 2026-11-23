@@ -258,6 +258,7 @@ aside.drawer.on{transform:none}
         </div>
         <ul class="plain small">
           <li>Want the optional status bar? Add <code>--statusline</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks.</li>
+          <li>Want the optional mods? Add <code>--mods</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks; later, <code>bash .claude/orion/orion.sh mod install control-tower</code> adds one. They need Claude Code's <code>claude</code> command.</li>
           <li>Want updates applied without being asked? Choose <i>auto</i> when the installer asks, or add <code>--update-mode auto</code>.</li>
           <li>Installing with no terminal to answer in (a script)? Add <code>--yes</code> to say yes to the notice up front.</li>
         </ul>
@@ -280,13 +281,14 @@ aside.drawer.on{transform:none}
     <div class="sec-head">
       <div class="eyebrow">What you get</div>
       <h2 id="partsTitle">What orion installs, and how each part is updated</h2>
-      <p>Four parts. Three live in the project and reach your teammates with a clone; one lives only on your computer. orion has one version number, raised each time something a project receives changes.</p>
+      <p>Five parts. The base rules and the skills live in the project and reach your teammates with a clone; your personal rules, the status bar and the mods are set up on each computer, only on your word. orion has one version number, raised each time something a project receives changes.</p>
     </div>
     <div class="grid3">
       <div class="tile"><h3>The base rules</h3><p><b>Where:</b> <code>.claude/orion/BASE_CLAUDE.md</code>, imported by your <code>CLAUDE.md</code>. <b>Owner:</b> orion; never edit the copy. <b>Updates:</b> replaced on every update. When they change, the next session offers <code>/orion-verify</code> once, to check they still fit your project.</p></div>
       <div class="tile"><h3>The skills</h3><p><b>Where:</b> <code>.claude/skills/&lt;name&gt;/</code>, each marked with an <code>.orion-managed</code> file. <b>Owner:</b> orion; your own skills (no marker) are never touched. <b>Updates:</b> replaced on every update.</p></div>
       <div class="tile"><h3>Your personal rules</h3><p><b>Where:</b> offered for your own <code>~/.claude/CLAUDE.md</code>, on this computer only. <b>Owner:</b> you. <b>Updates:</b> each rule orion offers carries the orion version number that last changed it, and your file's ORION GLOBAL heading records the version you last went through. A rule from a higher version is offered once on each computer; nothing is written without your yes.</p></div>
       <div class="tile"><h3>The status bar (optional)</h3><p><b>Where:</b> <code>~/.claude/statusline</code>, on this computer only; the project carries orion's copy. <b>Owner:</b> you. <b>Updates:</b> it records the orion version number of the copy it came from. When the project brings one from a higher version, the session start offers it: an unedited copy is replaced, an edited one gets orion's changes merged in, and you can skip that version.</p></div>
+      <div class="tile"><h3>The mods (optional)</h3><p>Claude Code plugins that change how it looks and behaves. The first is Orion Control Tower: a pane beside the chat with what is still running and what waits for you, shown and hidden with <code>/control-tower</code>. <b>Where:</b> <code>~/.claude/orion-mods/&lt;name&gt;/</code>, on this computer only, installed from there for you alone (user scope); the project carries orion's copy. <b>Owner:</b> you choose whether a mod is installed; its contents are orion's, so edits of your own are replaced (copy a mod under a new name to keep them). <b>Updates:</b> it records the orion version number of the copy it came from. When the project brings a changed one from a higher version, the session start offers it: yes replaces your copy and reinstalls it (<code>mod install</code>), no skips that version (<code>mod skip</code>). <code>mod remove &lt;name&gt;</code> uninstalls it; uninstalling orion leaves it alone.</p></div>
     </div>
   </section>
 

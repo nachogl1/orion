@@ -14,7 +14,7 @@
 set -eu
 
 # What a project receives: a release changes at least one of these.
-SHIPPED="skills baselines orion.sh"
+SHIPPED="skills baselines mods orion.sh"
 FIRST_VERSION=2.0.0
 TYPES="build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test"
 # type(scope)!: summary, the scope and the ! optional

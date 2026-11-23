@@ -870,6 +870,8 @@ check "feat!: the first part" eval '[ "$(next_tags)" = "v3.0.0 v43" ]'
 tag_release; "$REAL_GIT" -C "$RR" checkout -q HEAD~1
 check "a re-run on an older commit the last release already contains: nothing to tag" eval '[ -z "$(next_tags)" ]'
 "$REAL_GIT" -C "$RR" checkout -q main
+rel_commit mods/m/README.md "fix(m): a mod fix"
+check "a change to a mod is a release too" eval '[ "$(next_tags)" = "v3.0.1 v44" ]'
 title_ok() { bash "$RV" title "$1" >/dev/null 2>&1; }
 check "the title check passes every valid form" eval 'title_ok "feat: x" && title_ok "fix(scope): x" && title_ok "feat(two-words)!: x" && title_ok "docs!: x" && title_ok "chore(skills): refresh a skill (#7)"'
 check "and fails a title with no valid type" eval '! title_ok "Add a thing" && ! title_ok "feat x" && ! title_ok "feet: x" && ! title_ok "Feat: x" && ! title_ok "feat(): x" && ! title_ok "feat:x" && ! title_ok "feat: " && ! title_ok ""'
@@ -1406,5 +1408,66 @@ printf '# mine\n' >> "$SLFILE"
 check "a copy stamped with a commit time before version numbers is offered the newer one, and merge takes it and keeps the edits" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && sl_cmd merge && grep -q "^# orion v6" "$SLFILE" && grep -q "^# mine" "$SLFILE" && [ "$(sed -n 1p "$SLH/.claude/statusline/.orion-baseline")" = "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
 check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
 check "uninstall removes the project's copy and leaves the computer's" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ]'
+
+echo "mods (the project carries orion's copy of each mod; a computer installs one only on the person's word)"
+# A computer of its own (HOME) and a stub `claude` that records every call, first on the path: the real plugin
+# command is never run, and nothing reaches the network.
+MDH="$SB/home-mods"; MKT="$MDH/.claude/orion-mods"; MOD=control-tower; CALLS="$SB/claude-calls"
+mkdir -p "$MDH" "$SB/claude-bin"; seen_all_personal_rules "$MDH"
+cat > "$SB/claude-bin/claude" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$CALLS"
+EOF
+chmod +x "$SB/claude-bin/claude"
+MODPATH="$SB/claude-bin:$FAKEPATH"
+# The same path with every folder holding a real claude left out, for the run where Claude Code is missing.
+NOCLAUDE_PATH="$(printf '%s' "$FAKEPATH" | tr ':' '\n' | while IFS= read -r d; do [ -e "$d/claude" ] || [ -e "$d/claude.exe" ] || printf '%s:' "$d"; done)"
+mod_cmd() { HOME="$MDH" PATH="$MODPATH" bash "$P/.claude/orion/orion.sh" mod "$@" --project "$P" >"$SB/out" 2>&1; }
+mod_check() { HOME="$MDH" run_check "$@"; }
+mod_calls() { if [ -f "$CALLS" ]; then wc -l < "$CALLS" | tr -d ' '; else printf 0; fi; }
+mod_bump() {  # version [line]: the project at orion <version>, as a teammate's pull brings it; its mod gains <line>
+    { sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '%s\n' "$1"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
+    [ -z "${2:-}" ] || printf '%s\n' "$2" >> "$P/.claude/orion/mods/$MOD/README.md"
+}
+# Every file of every mod in the repository sits in the project's copy and in its manifest.
+mods_copied_and_listed() {
+    local f n=0
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue; n=$((n+1))
+        [ -f "$P/.claude/orion/$f" ] && grep -qxF "$f" "$P/.claude/orion/.orion-manifest" || { echo "  missing: $f"; return 1; }
+    done <<< "$(cd "$REPO" && find mods -type f | LC_ALL=C sort)"
+    [ "$n" -gt 0 ]
+}
+newproj
+( cd "$MDH" && find . | LC_ALL=C sort ) > "$SB/home-before"
+HOME="$MDH" PATH="$MODPATH" bash "$ORION" init --project "$P" --yes --no-statusline --update-mode off >"$SB/out" 2>&1; consume_marker
+check "init copies every mod into the project, listed in the manifest" mods_copied_and_listed
+check "and changes nothing outside the project: no copy on this computer, no plugin command" eval '[ ! -e "$MKT" ] && [ ! -e "$CALLS" ] && [ "$( cd "$MDH" && find . | LC_ALL=C sort )" = "$(cat "$SB/home-before")" ]'
+check "the test path really has no claude" eval '! env PATH="$NOCLAUDE_PATH" bash -c "command -v claude" >/dev/null 2>&1'
+check "without Claude Code's command, mod install says so in one line, exits 1 and changes nothing" eval '! HOME="$MDH" PATH="$NOCLAUDE_PATH" bash "$P/.claude/orion/orion.sh" mod install "$MOD" --project "$P" >"$SB/out" 2>&1 && [ "$(wc -l < "$SB/out" | tr -d " ")" = 1 ] && grep -q claude "$SB/out" && [ ! -e "$MKT" ] && [ ! -e "$CALLS" ]'
+check "mod install of a mod the project does not carry fails and changes nothing" eval '! mod_cmd install no-such-mod && [ ! -e "$MKT" ] && [ ! -e "$CALLS" ]'
+mod_bump 2.1.0
+check "mod install copies the mod into this computer's marketplace folder" eval 'mod_cmd install "$MOD" && [ -f "$MKT/$MOD/.claude-plugin/plugin.json" ] && json_ok "$MKT/.claude-plugin/marketplace.json" && grep -qF "\"./$MOD\"" "$MKT/.claude-plugin/marketplace.json"'
+check "and installs it from there with the plugin command, at user scope" eval '[ "$(cat "$CALLS")" = "plugin install $MOD --marketplace $MKT --scope user" ]'
+check "and records the orion version it took" eval '[ "$(sed -n 1p "$MKT/$MOD.orion-baseline")" = 2.1.0 ]'
+check "the copies match: check prints nothing" eval 'mod_check --force && [ ! -s "$SB/hook" ]'
+mod_bump 2.2.0 '# orion v2'; n="$(mod_calls)"
+check "a newer mod is offered once, in one JSON line, even under updateMode off" eval 'mod_check --force && hook_out_ok "$SB/hook" && [ "$(grep -o "mod install $MOD" "$SB/hook" | wc -l | tr -d " ")" = 1 ] && grep -qF "mod skip $MOD" "$SB/hook"'
+check "and never taken on its own" eval '! grep -q "# orion v2" "$MKT/$MOD/README.md" && [ "$(mod_calls)" = "$n" ]'
+check "mod skip declines that version: check prints nothing" eval 'mod_cmd skip "$MOD" && mod_check --force && [ ! -s "$SB/hook" ] && [ "$(mod_calls)" = "$n" ]'
+mod_bump 2.3.0
+check "a newer orion whose mod did not change offers nothing, and the record moves forward" eval 'mod_check --force && [ ! -s "$SB/hook" ] && [ "$(sed -n 1p "$MKT/$MOD.orion-baseline")" = 2.3.0 ]'
+mod_bump 2.2.5 '# older'
+check "a lower version is never offered, even when its mod differs" eval 'mod_check --force && [ ! -s "$SB/hook" ]'
+mod_bump 2.4.0 '# orion v4'
+check "mod install replaces the computer's copy and reinstalls the plugin" eval 'mod_check --force && grep -qF "mod install $MOD" "$SB/hook" && : > "$CALLS" && mod_cmd install "$MOD" && grep -q "# orion v4" "$MKT/$MOD/README.md" && [ "$(sed -n 1p "$CALLS")" = "plugin uninstall $MOD@orion-mods --scope user" ] && [ "$(tail -n 1 "$CALLS")" = "plugin install $MOD --marketplace $MKT --scope user" ]'
+check "after the reinstall, check prints nothing" eval 'mod_check --force && [ ! -s "$SB/hook" ]'
+n="$(mod_calls)"
+check "orion uninstall leaves the computer's copy and calls no plugin command" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$MKT/$MOD/.claude-plugin/plugin.json" ] && [ "$(mod_calls)" = "$n" ]'
+check "mod remove uninstalls the plugin and deletes the computer's copy" eval ': > "$CALLS" && HOME="$MDH" PATH="$MODPATH" bash "$ORION" mod remove "$MOD" >"$SB/out" 2>&1 && grep -qxF "plugin uninstall $MOD@orion-mods --scope user" "$CALLS" && grep -qxF "plugin marketplace remove orion-mods" "$CALLS" && [ ! -e "$MKT" ]'
+MDH="$SB/home-mods2"; MKT="$MDH/.claude/orion-mods"; mkdir -p "$MDH"; seen_all_personal_rules "$MDH"; rm -f "$CALLS"
+newproj
+check "init --mods installs every mod on this computer" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" init --project "$P" --yes --no-statusline --mods --update-mode off >"$SB/out" 2>&1 && [ "$(grep -c "^plugin install " "$CALLS")" = "$(ls -d "$REPO"/mods/*/ | wc -l | tr -d " ")" ] && [ -f "$MKT/$MOD.orion-baseline" ]'
+check "the guide page says how mods are installed, offered, skipped and removed" eval 'grep -qF -- "--mods" "$GUIDE" && grep -qF "mod install" "$GUIDE" && grep -qF "mod skip" "$GUIDE" && grep -qF "mod remove" "$GUIDE" && grep -qF "~/.claude/orion-mods" "$GUIDE" && grep -qF "/control-tower" "$GUIDE"'
 
 summary

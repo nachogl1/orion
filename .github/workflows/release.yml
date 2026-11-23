@@ -1,6 +1,6 @@
 name: release
 
-# After a merge to main that changes what projects receive (skills/, baselines/, orion.sh), tags the next version
+# After a merge to main that changes what projects receive (skills/, baselines/, mods/, orion.sh), tags the next version
 # v<major.minor.patch>, sized by the Conventional Commit types of the pull requests since the last release
 # (.github/scripts/release-version.sh holds the rules). The session-start check of every project reads these tags
 # and offers an update only when one is higher than the version the project installed, so a merge that changes
