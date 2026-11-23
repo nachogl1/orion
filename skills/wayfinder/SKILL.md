@@ -361,15 +361,36 @@ stops, with the person present:
    carries one.
 5. Add one line under the map's **Settled** linking the epic, then close the map.
 
+## Reading an ADR's status line
+
+Whenever this skill reads an ADR under `docs/ADRs/` (the dedupe deep-dive, or the dedupe of
+[Writing the ADRs](#writing-the-adrs-adrs-only)), its status line, right under its title, is read first. It is one of
+exactly three:
+
+- `**Status: pending**` — not yet folded into the PRD: read beside the PRD as product truth.
+- `**Status: folded into the PRD on <yyyy-mm-dd>**` — already in the PRD: not read again.
+- `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` — a later ADR (named by its file name) overrides it: skipped,
+  never what a decision is linked to, and `/reconcile` never folds it. Whoever writes the newer ADR sets this line on
+  the older one in the same pull request.
+
+**An unknown status line** — any other line, or none at all (`proposed`, `Status: Accepted`,
+`approved by the owner on <date>`, …) — is never read as pending and never skipped silently. Stop at that ADR and ask
+the person which of the three it is (clickable options, the three lines in plain words, the one its text suggests
+marked as recommended; for a replaced one, ask which ADR replaced it), then read it by the answer. The fixed line
+goes into the pull request this session opens that a person merges, since it touches `docs/ADRs/`: the ADRs of an
+ADRS map, else the PRD question's `docs(prd)` pull request ([Who merges](#who-merges)). A session that opens neither
+writes nothing, and the next session that reads the ADR asks again.
+
 ## Writing the ADRs (ADRS only)
 
 When the last ticket of an ADRS map closes and no fog is left, the session that closed it records the decisions
 before it stops, with the person present:
 
 1. **Dedupe first:** read `docs/ADRs/` on `origin/<default>` (the default branch, looked up as the *Git*
-   guardrail below says) and the open pull requests that touch it. A decision an
-   existing ADR already records is linked, not written again; one that changes an existing ADR gets a new ADR that
-   says which one it replaces.
+   guardrail below says) and the open pull requests that touch it, each ADR by its status line
+   ([Reading an ADR's status line](#reading-an-adrs-status-line)). A decision an existing ADR already records is
+   linked, not written again; one that changes an existing ADR gets a new ADR that says which one it replaces, and in
+   the same pull request the older one's status line becomes `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**`.
 2. **One ADR per decision** the map took (a research ticket that only found a fact feeds the ADR it supports), each
    at `docs/ADRs/adr-<change-name>.md` in the mandatory rules' ADR shape: a title, the status line
    `**Status: pending**` (not yet folded into the PRD) right under it, then context, decision, consequences and
@@ -419,7 +440,7 @@ So, for each pull request this skill opens:
 | Pull request | Touches | Merged by |
 |---|---|---|
 | The ADRs of an ADRS map, `feat/wayfinder-adrs-<map-slug>` | `docs/ADRs/` | **a person** |
-| The PRD edit from the PRD question, `docs(prd)` | `docs/PRDs/` | **a person** |
+| The PRD edit from the PRD question, `docs(prd)` | `docs/PRDs/`, and `docs/ADRs/` for a status line fixed on the person's answer | **a person** |
 | Any other pull request this skill opens | none of the paths above and no `outside-change` story | the agent that opened it, on green, with `/dev-next`'s bar |
 
 The agent that merges waits for the checks first (the host can take minutes to report them), squash-merges, then
@@ -435,7 +456,7 @@ Every question to the user goes through clickable options (`AskUserQuestion`): d
 Before creating a map, a ticket, or *offering* to create one, confirm nothing already covers it. This gets skipped and gets it wrong; do it properly every time:
 
 - Search the **repository's open and recently-closed issues** with several term variations (`gh issue list --search …`, `gh search issues`) — not one keyword. **Read** the candidates; do not just count them.
-- Search the **codebase** for an existing implementation, TODO, ADR, or design doc that already answers or intentionally defers the question.
+- Search the **codebase** for an existing implementation, TODO, ADR, or design doc that already answers or intentionally defers the question. An ADR answers only by its status line ([Reading an ADR's status line](#reading-an-adrs-status-line)): a replaced one answers nothing, and an unknown one is asked about first.
 - **Never defer to a closed issue.** If you point at an existing issue as the reason not to chart something, verify it is actually **open** first — a closed issue means nobody picks the work up and it silently falls through the cracks. If it is closed, or does not really cover the case, chart it anyway.
 - If something does cover it, **link to it** instead of creating a duplicate, and say which item and why.
 
