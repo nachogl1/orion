@@ -1,0 +1,77 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 193,
+  "title": "dev-next audit: token counts are blank when sub-agents run as agent-team teammates",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T23:10:00Z",
+  "finished_at": "2026-11-23T23:49:26Z",
+  "outcome": "merged",
+  "pr": 258,
+  "summary": "dev-next's audit now fills a sub-agent's token figure from its transcript when the Agent tool reports none (as with agent-team teammates), through a stdlib helper script that always exits 0 and records null with a reason when it cannot find one.",
+  "agents": [
+    {
+      "name": "dev-193",
+      "model": "opus",
+      "tokens_total": 209926
+    },
+    {
+      "name": "review-193-r1",
+      "model": "opus",
+      "tokens_total": 140502
+    },
+    {
+      "name": "review-193-r2",
+      "model": "opus",
+      "tokens_total": 110281
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1583,
+    "review_seconds": 649,
+    "ci_seconds": 120
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "skills/dev-next/scripts/agent_tokens.py",
+      "what": "The name lookup searches every project on the computer, so another session's agent with the same name since the run started can be recorded as this agent's figure: a wrong number where the rule says never guess.",
+      "why": "Restricting the search to the lead session's project folder needs Claude Code's project-folder naming.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": "skills/dev-next/references/audit.md",
+      "what": "Where a teammate's transcript lives is still unproven against a real agent-team run; a teammate in its own terminal pane likely gets no figure.",
+      "why": "No team-mode run has happened on this computer; the first one should confirm or extend the lookup.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": "CLAUDE.md",
+      "what": "The One file row, the Stack line and the scripts/ list do not name skills/dev-next/scripts/agent_tokens.py, so a later agent does not know it exists or how to check it.",
+      "why": "CLAUDE.md changes only on the person's word.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": "skills/dev-next (spawning)",
+      "what": "With agent teams on, every spawn that passes a name launches as a teammate; dropping name in that mode would keep sub-agents as sub-agents so the tool reports their figures.",
+      "why": "Outside this issue's seam.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": "skills/dev-next/references/audit.md",
+      "what": "The Agent tool's figure is close to the size of a sub-agent's last request (cache reads included), not the whole run's cost, so audit numbers mislead anyone reading them as cost.",
+      "why": "The issue keeps records without team mode unchanged.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}

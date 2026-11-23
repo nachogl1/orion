@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 193,
+  "title": "dev-next audit: token counts are blank when sub-agents run as agent-team teammates",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 258,
+  "merged_at": "2026-11-23T23:49:26Z",
+  "merge_commit": "8430f48c774ae719798f1e3d8a4a7c3656e59f9e",
+  "seam": "skills/dev-next/references/audit.md, skills/dev-next/SKILL.md",
+  "story": "dev-next run reports used to show blank token counts for sub-agents run as agent-team teammates. The report now reads the figure from the sub-agent's transcript when the tool gives none, and records why when it cannot.",
+  "checks": [],
+  "no_qa_reason": "Skill text and a helper script the orchestrator runs; nothing a user drives."
+}
