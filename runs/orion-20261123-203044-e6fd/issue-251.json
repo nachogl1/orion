@@ -1,0 +1,44 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 251,
+  "title": "Remove the owner-merges label so agents merge every story on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T22:06:00Z",
+  "finished_at": "2026-11-23T22:32:06Z",
+  "outcome": "merged",
+  "pr": 253,
+  "summary": "The owner-merges label is gone from orion's rules, skills, PRD and guide, and from the GitHub repository, so /dev-next merges every story it builds on green checks. A suite check fails if the label comes back.",
+  "agents": [
+    {
+      "name": "dev-251",
+      "model": "opus",
+      "tokens_total": 161511
+    },
+    {
+      "name": "review-251-r1",
+      "model": "opus",
+      "tokens_total": 150669
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1316,
+    "review_seconds": 218,
+    "ci_seconds": 90
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "docs/PRDs/PRD.md, mods/",
+      "what": "The PRD says a mod is checked by hand with claude plugin validate, claude plugin test and tsc; with owner-merges gone nobody runs them before an agent merges a mods/ change on green CI, which runs none of the three.",
+      "why": "Whether the dev agent's gate runs them is a gate decision outside this issue's seam.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}

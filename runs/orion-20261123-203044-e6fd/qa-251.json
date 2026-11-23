@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 251,
+  "title": "Remove the owner-merges label so agents merge every story on green",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 253,
+  "merged_at": "2026-11-23T22:32:06Z",
+  "merge_commit": "f5111678b0ecc2d883fc4e7f5b117421f6c89264",
+  "seam": "owner-merges lines of baselines/BASE_CLAUDE.md, docs/PRDs/PRD.md, docs/guide/index.html and the skill files",
+  "story": "Agents used to stop at a green pull request and wait for the owner whenever a story carried the owner-merges label. That label no longer exists: /dev-next now merges every story it builds once checks are green, apart from the person-merges cases (PRD, ADR, prototype, CLAUDE.md, outside-change).",
+  "checks": [],
+  "no_qa_reason": "Rules and skill text only; nothing a user drives, and a suite check guards it."
+}
