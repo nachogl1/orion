@@ -193,7 +193,6 @@ hold it — is what guarantees CI ran on the `main` that the branch actually lan
 | Phase 5, after step 4 or on red / conflict | Release `merging`. |
 | Phase 5 step 5 clean-up | Remove the issue entry. |
 | Phase 5, two red rounds → stopped | Release `merging` and remove the issue entry — step 5 is never reached on this path. |
-| Phase 5, an `owner-merges` story green → stopped at its pull request | Remove the issue entry; `merging` was never taken. |
 | Any stop (`SKILL.md`, the stop rule at the top), `needs-human` or not | Remove the issue entry, and release `merging` if held. The assignee stays on the issue. |
 
 ## Read-modify-write

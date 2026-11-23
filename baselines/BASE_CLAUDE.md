@@ -81,8 +81,8 @@
   issue, and the new issue names that pull request (or the issue, if no pull request is open yet) under
   `### References`.
 - **Read an issue only with `gh issue view <N> --json title,body,labels,comments`.** Shorter forms drop the body.
-- Labels: `epic` `story` `agent-ready` `needs-human` `in-progress` `outside-change` `bug` `owner-merges`, plus the
-  `wayfinder:*` set the planning skill owns and the `tier:*` set. `/dev-next` creates any of the eight that are missing
+- Labels: `epic` `story` `agent-ready` `needs-human` `in-progress` `outside-change` `bug`, plus the
+  `wayfinder:*` set the planning skill owns and the `tier:*` set. `/dev-next` creates any of the seven that are missing
   in its preflight.
   - `tier:*`: what a story is for, so anyone reading the list sees it. Every story carries exactly one; an epic never
     does. A story cut from a PRD takes the tier the PRD gives that work (`tier:mvp`, `tier:stretch`,
@@ -97,14 +97,12 @@
   - `wayfinder:*`: a planning ticket, never a story. `/dev-next` never takes an issue carrying one, and the drift
     checks (`/dev-next`'s probe, `/reconcile`) leave such issues out.
   - `agent-ready`: nothing is left to ask. An agent claims it, builds it, gets a fresh-agent review and merges with no
-    human (unless it also carries `owner-merges`). **An issue with none of `agent-ready`, `needs-human` or
+    human. **An issue with none of `agent-ready`, `needs-human` or
     `outside-change` is not taken automatically**: `/dev-next` stops in preflight and asks the human what it is. A
     label given then earns one ready-check before building.
   - `needs-human`: a person must act or decide first, then flips it to `agent-ready` — or the ticket is human-only
     work for good. The reason is the issue's **last comment**. Labelling `needs-human` removes `agent-ready`; the two
     never sit together.
-  - `owner-merges`: a person merges this story's pull request. It sits beside a readiness label, never in place of
-    one: an agent builds the story as usual, opens the pull request with its evidence and stops without merging.
   - **`outside-change`: the work touches a repository this team does not own. It never runs autonomously and always
     ends at a pull request for that repository's own reviewer.** It always also carries `needs-human`, so one filter
     catches every issue an agent must not take. The issue names the external work item under `### External reference`
@@ -187,7 +185,7 @@ stand in. **Disagreement is a bug**: the PRD wins on product, the rules files wi
   delete the branch. `/dev-next` merges only once the project's build and test commands are filled in. **A person
   merges** a pull request that touches the PRD (`docs/PRDs/`), an ADR (`docs/ADRs/`: merging it is the person's
   approval), the UX prototype (`docs/ux/prototypes/`) or the project's `CLAUDE.md` (an agent never lands its own
-  rules), even when the rest is bookkeeping, and the pull request of an `owner-merges` story; the agent merges one of
+  rules), even when the rest is bookkeeping; the agent merges one of
   these only on the person's explicit word for that one pull request, once its checks are green. Never merge an
   `outside-change` pull request: its repository's own reviewer does.
 - **Squash-merge only, then delete the branch** (`--delete-branch` breaks on a worktree; see

@@ -44,7 +44,7 @@ repository's files). This skill expects that file to state the items below; the 
 | Item | Default when `CLAUDE.md` is silent |
 |---|---|
 | **Tracker** | GitHub Issues in the repository `origin` points at — the only tracker this skill supports. A `CLAUDE.md` that names another tracker → stop in preflight (phase 0 step 1) and say so. |
-| **Labels** | `epic`, `story`, `agent-ready`, `needs-human`, `in-progress`, `outside-change`, `bug`, `owner-merges`, plus the `wayfinder:*` set the planning skill owns (`wayfinder:map`, `wayfinder:research`, …). Missing ones of the eight are created in preflight (phase 0 step 7); `wayfinder:*` labels are never created here. An issue carrying any `wayfinder:*` label is a planning ticket: never eligible, never asked about, never counted as drift. Every story also carries one `tier:*` label (`references/new-issue.md` step 2): it is for readers only, and never makes an issue more or less eligible or changes the order issues are taken in. |
+| **Labels** | `epic`, `story`, `agent-ready`, `needs-human`, `in-progress`, `outside-change`, `bug`, plus the `wayfinder:*` set the planning skill owns (`wayfinder:map`, `wayfinder:research`, …). Missing ones of the seven are created in preflight (phase 0 step 7); `wayfinder:*` labels are never created here. An issue carrying any `wayfinder:*` label is a planning ticket: never eligible, never asked about, never counted as drift. Every story also carries one `tier:*` label (`references/new-issue.md` step 2): it is for readers only, and never makes an issue more or less eligible or changes the order issues are taken in. |
 | **The gate chain** — build → lint → typecheck → full suite, with the exact commands | Derived from the CI workflow (`.github/workflows/`) and the project files (`package.json`, `pyproject.toml`, `Makefile`, …), and the run says so in the first touchpoint. Nothing derivable → stop (phase 0 step 3). |
 | **Skip-count baseline** | The skip count the suite reports on `main` before the change; any other number fails the gate. |
 | **Worktree root** `<wt root>` | `C:\wt` on Windows, `~/wt` elsewhere. Worktrees live outside the project. |
@@ -70,8 +70,7 @@ repository's files). This skill expects that file to state the items below; the 
 **Several issues at once → one terminal with `/dev-next N`, never N terminals started together.** Sibling terminals of
 one login rank the same top candidate and lose claim races to each other.
 
-**Every issue, however many, ends the same way: its own pull request, merged into `main` on green CI** — except a
-story labelled `owner-merges`, whose pull request is left open with green checks for its owner (phase 5). The count
+**Every issue, however many, ends the same way: its own pull request, merged into `main` on green CI**. The count
 changes how many run side by side, never the destination.
 
 ## Roles — spawn these as sub-agents, never do their work yourself
@@ -205,7 +204,7 @@ project's `CLAUDE.md`.
    **stop before claiming and print it** — every story would end `INHERITED RED`. On any other branch this check is
    skipped; the dev agent's first gate run reports a red `main` as `INHERITED RED` instead.
    Steps 1, 2, 3 and 6 (the update or the restore) are the only things that stop a run before it starts; step 8 pauses it.
-7. **Labels, then snapshot.** `gh label list --limit 200 --json name --jq '.[].name'`; create every one of the eight
+7. **Labels, then snapshot.** `gh label list --limit 200 --json name --jq '.[].name'`; create every one of the seven
    labels in *What this skill reads from the project* that is missing, with `gh label create <name> --description
    "<one line>"` (a fresh repository carries only GitHub's defaults, so without this step every run would stall in
    step 8). Never rename or delete a label. Then snapshot what everyone else is doing — open issues with assignees,
@@ -395,11 +394,6 @@ release the slot → verify the issue closed → delete worktree and branch → 
 
 **Never merge on red or pending. "No checks reported" is red.** Red after two rounds → the story stopped, keeping `agent-ready`.
 
-**A story labelled `owner-merges` is never merged by this skill.** It is built and reviewed as usual; then, without
-taking the `merging` slot, `references/merge-and-ci.md` steps 1-3 bring its pull request to green checks, and the run
-stops there (*Owner merges* in that file): the pull request stays open, the assignee stays, `in-progress` is removed
-and the in-flight entry dropped. The run report says the owner must try the change before merging it.
-
 More than one pull request → **one merge at a time, on the whole machine**. The `merging` slot is the queue: a terminal
 that finds it taken waits. After the first lands, each remaining branch merges `origin/main` again, pushes, and gets a
 fresh check run before it may merge (*Parallelism* rule 6).
@@ -410,9 +404,6 @@ Write the per-issue JSON per `references/audit.md` to the `audit/<your login>` b
 local transcripts age out — so it happens on every run from the first. It carries the run's `Defer:` lines as the
 `deferred` list (phase 4), and only the `friction` and `lessons_learned` lines that meet the bar in `audit.md`
 (important or critical; a routine wait is not a line). The lists are usually empty.
-
-An `owner-merges` issue's report carries outcome `owner-merges` and the owner's step (`audit.md`); it gets no QA
-record — the owner tries the change before merging, and `/harvest-qa` drives only what is on `main`.
 
 A `merged` issue also gets its QA record, `runs/<run id>/qa-<N>.json` on the same branch, from the dev agent's
 `QA checks` blocks and story (`audit.md`, *The QA record*): the checks a later `/harvest-qa` run drives against
@@ -450,14 +441,14 @@ reconciles and never edits an issue for it.
 
 Then print **ten lines per issue, no more** (the second touchpoint): issue and title · what shipped · pull request link · suite result ·
 CI result · anything stopped and why (and whether it waits on a person, `needs-human`, or on the runner,
-`agent-ready`) · an `owner-merges` pull request left for its owner · what is on deck next.
+`agent-ready`) · what is on deck next.
 
 The run then ends with a **close-out**, always last, after the `Harvest due`, `QA due` and `Drift found` lines if there are any.
 It tells the human whether anything in this session still waits on them:
 
 - **Something waits on them** → `For you in this session:` followed by a numbered list, one action per line, most
   urgent first — a question left on a `needs-human` issue, a stopped story to look at and resume with
-  `/dev-next #<N>`, an `owner-merges` pull request to try and then merge, a pull request left open, red or pending
+  `/dev-next #<N>`, a pull request left open, red or pending
   CI, a merge slot still held, a failed audit write, `Harvest due`, `QA due`, `Drift found`. Each line names the thing
   in plain words and says what to do.
 - **Nothing waits on them** → exactly: `All good: everything merged, nothing to report, nothing left for you. You can
@@ -471,8 +462,8 @@ The close-out only offers; the human closes the session, never the skill.
 ## Rules that are not negotiable
 
 0. **Never push to `main`.** Every change lands as a pull request that is then merged. Full autonomy means you may open,
-   review and merge it yourself — never that you may skip it. This skill merges only its own pull requests, and never
-   one of an `owner-merges` story; who merges any other pull request is the baseline's *Who merges* rule.
+   review and merge it yourself — never that you may skip it. This skill merges only its own pull requests; who merges
+   any other pull request is the baseline's *Who merges* rule.
 1. **Never wait for a human after preflight.** The first touchpoint (phase 0 steps 2 and 8, phase 2) is the one place
    questions are asked; from phase 3 on: stop it, explain it, keep the assignee, move on.
 2. **The reviewer is always fresh.** Enforced here, not left to good intentions.

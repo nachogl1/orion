@@ -410,8 +410,7 @@ The mandatory rules, *Who merges*, decide every pull request this skill opens:
 > `/dev-next`'s bar: never on red or pending checks ("no checks reported" counts as red), squash-merge, then delete
 > the branch. […] **A person merges** a pull request that touches the PRD (`docs/PRDs/`), an ADR (`docs/ADRs/`:
 > merging it is the person's approval), the UX prototype (`docs/ux/prototypes/`) or the project's `CLAUDE.md` (an
-> agent never lands its own rules), even when the rest is bookkeeping, and the pull request of an `owner-merges`
-> story; the agent merges one of these only on the person's explicit word for that one pull request, once its checks
+> agent never lands its own rules), even when the rest is bookkeeping; the agent merges one of these only on the person's explicit word for that one pull request, once its checks
 > are green. Never merge an `outside-change` pull request: its repository's own reviewer does.
 
 So, for each pull request this skill opens:
@@ -420,7 +419,7 @@ So, for each pull request this skill opens:
 |---|---|---|
 | The ADRs of an ADRS map, `feat/wayfinder-adrs-<map-slug>` | `docs/ADRs/` | **a person** |
 | The PRD edit from the PRD question, `docs(prd)` | `docs/PRDs/` | **a person** |
-| Any other pull request this skill opens | none of the paths above, no `outside-change` and no `owner-merges` story | the agent that opened it, on green, with `/dev-next`'s bar |
+| Any other pull request this skill opens | none of the paths above and no `outside-change` story | the agent that opened it, on green, with `/dev-next`'s bar |
 
 The agent that merges waits for the checks first (the host can take minutes to report them), squash-merges, then
 deletes the branch and removes its worktree. A pull request a person merges is reported with its link as their next

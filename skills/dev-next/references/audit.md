@@ -57,9 +57,7 @@ The numbers in the example (issue, pull request, timestamps) are illustrative on
 
 - `outcome` is one of `merged`, `needs-human` (stopped on a question for a person), `failed` (stopped on a technical
   failure, still `agent-ready` and assigned to the runner), `inherited-red` (the gate was already red on `main`; the
-  story was stopped without blame and a `bug` issue opened — `SKILL.md` phase 3), `owner-merges` (the story's pull
-  request is open with green checks and waits for its owner — `merge-and-ci.md`, *Owner merges*). An `owner-merges`
-  report's `summary` ends with the owner's step: `The owner must try the change, then merge pull request #<P>.`
+  story was stopped without blame and a `bug` issue opened — `SKILL.md` phase 3).
 - `summary` is one or two sentences: what the issue was about and what shipped. Written for someone who never read the issue.
 - `lessons_learned` is what the next run should do differently or know up front — about the code, the domain or the
   process. Empty list if none.

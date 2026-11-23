@@ -423,7 +423,7 @@ const NODES = {
     what:[
       "Epic to story is a native GitHub sub-issue, never a text list.",
       "A story is blocked until every blocker is closed, whether listed under Blocked by or set as GitHub's native relation.",
-      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug, owner-merges (a person merges its pull request), and wayfinder:* for planning tickets.",
+      "Labels: epic, story, agent-ready, needs-human, outside-change, in-progress, bug, and wayfinder:* for planning tickets.",
       "Every story carries one tier:* label saying what it is for: the PRD's tier (tier:mvp, tier:stretch, ...), or where it came from (tier:bug, tier:dev-quick, ...). The PRD tiers chain by blocks, so a later tier waits for the one before; nothing ranks work by the label itself."
     ],
     you:["Flip a needs-human story to agent-ready once you have made its decision.","Write tickets by hand only to the same shape the skills use."],
@@ -481,9 +481,9 @@ const NODES = {
       "Waits for green checks, squash-merges, verifies the issue closed.",
       "Deletes the worktree and the branch."
     ],
-    you:["Only for a story labelled owner-merges: try the change, then merge its open pull request yourself."],
+    you:["Nothing."],
     out:["One commit on main per story. The story closed."],
-    rules:["Never push to main: every change reaches main as a merged pull request.","An owner-merges story stops at its pull request with green checks: a person merges it.","Never merge on red or pending: \"no checks reported\" counts as red.","A run that gives up keeps the story assigned to its runner and agent-ready (needs-human only for a real question); resume it with /dev-next #<N>."]},
+    rules:["Never push to main: every change reaches main as a merged pull request.","Never merge on red or pending: \"no checks reported\" counts as red.","A run that gives up keeps the story assigned to its runner and agent-ready (needs-human only for a real question); resume it with /dev-next #<N>."]},
 
   audit:{phase:"B", actor:"agent", touch:"none", kicker:"dev-next · 6", title:"Audit", gsub:"Leaves a report and a QA record.", sub:"Leaves a run report and a QA record, then counts what is due.",
     what:[

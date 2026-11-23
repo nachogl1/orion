@@ -293,8 +293,7 @@ The mandatory rules, *Who merges*, decide the pull request this skill opens:
 > `/dev-next`'s bar: never on red or pending checks ("no checks reported" counts as red), squash-merge, then delete
 > the branch. […] **A person merges** a pull request that touches the PRD (`docs/PRDs/`), an ADR (`docs/ADRs/`:
 > merging it is the person's approval), the UX prototype (`docs/ux/prototypes/`) or the project's `CLAUDE.md` (an
-> agent never lands its own rules), even when the rest is bookkeeping, and the pull request of an `owner-merges`
-> story; the agent merges one of these only on the person's explicit word for that one pull request, once its checks
+> agent never lands its own rules), even when the rest is bookkeeping; the agent merges one of these only on the person's explicit word for that one pull request, once its checks
 > are green. Never merge an `outside-change` pull request: its repository's own reviewer does.
 
 So, for the one pull request a harvest opens:
