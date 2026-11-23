@@ -188,8 +188,11 @@ project's `CLAUDE.md`.
 5. Mint a **run id** in **UTC**: `<repo>-<yyyymmdd-hhmmss>-<4 hex>`, where `<repo>` is
    `gh repo view --json name --jq .name` and the time comes from `date -u +%Y%m%d-%H%M%S`
    (PowerShell: `(Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')`). It names the worktree, the audit entry and
-   every claim comment, and the harvest sorts audit reports by it. Never truncate the hex suffix: two terminals started
-   in the same second differ only there. Never use a local clock: ids from different time zones then sort wrongly.
+   every claim comment, and the harvest orders audit reports by it. Run ids are ordered by their `yyyymmdd-hhmmss` part,
+   then by the whole id on a tie, never as plain text: `<repo>` may differ between runs (a renamed repository, or
+   `alpha-…` and `Alpha_Project-…` on one branch), and as text that prefix would outrank the time. Never truncate the
+   hex suffix: two terminals started in the same second differ only there. Never use a local clock: ids from different
+   time zones then sort wrongly.
 6. **Start from the latest `main`, without switching any branch.** `git -C <main checkout> fetch origin main`. Every
    worktree this run creates branches from `origin/main` (phase 3), never from whatever the main checkout has checked
    out, so every dev on the team starts from the same point. **Never `git checkout` or `git switch` in the main
@@ -224,7 +227,7 @@ project's `CLAUDE.md`.
 
 **Sibling terminals stagger.** Re-read the in-flight file before ranking (phase 0 step 9 already wrote this run's
 issue-less entry). Count *k* = the **other** runs with an entry that started in the last 5 minutes and before this one
-(by `startedAt`, then run id; any login on this machine), **issue-less entries included**; skip the top *k* candidates
+(by `startedAt`, then the run id's `yyyymmdd-hhmmss` part, then the whole run id; any login on this machine), **issue-less entries included**; skip the top *k* candidates
 and start from candidate *k*+1, so siblings started together take distinct offsets. Counting only claimed runs lets
 them rank the same top candidate — learned the hard way. One terminal with `/dev-next N` stays the right way to run
 several.
@@ -418,13 +421,15 @@ A `merged` issue also gets its QA record, `runs/<run id>/qa-<N>.json` on the sam
 Then count the one harvest pile: `deferred` entries + `friction` + `lessons_learned` lines across every developer's
 audit branch — fetch them first with `git fetch origin 'refs/heads/audit/*:refs/remotes/origin/audit/*'`, list reports
 with `git ls-tree -r --name-only origin/audit/<login> runs/`, read with `git show`, never check out — in runs whose run id
-sorts after that login's `harvested_through` entry in `docs/harvest-state.json` (`git show origin/main:docs/harvest-state.json`), plus every entry in that
-file's `carried` list (the file is written only by the `/harvest` skill; no file → everything is unharvested). At
+is newer than that login's `harvested_through` entry in `docs/harvest-state.json` (`git show origin/main:docs/harvest-state.json`), plus every entry in that
+file's `carried` list (the file is written only by the `/harvest` skill; no file → everything is unharvested). Newer
+means a later `yyyymmdd-hhmmss` part of the run id, then the larger whole id on a tie, never a plain text comparison:
+the `<repo>` prefix may differ between runs (`alpha-…` and `Alpha_Project-…` on one branch). At
 **10 or more** → the summary ends with the line `Harvest due: run /harvest`. Counting only; this skill never runs the
 harvest.
 
 Then count the QA pile **separately, in records, never added to the harvest count**: `runs/<run id>/qa-<N>.json`
-files across every audit branch in runs newer than that login's `tested_through` entry in `docs/harvest-qa-state.json`
+files across every audit branch in runs newer (by the same time-part rule) than that login's `tested_through` entry in `docs/harvest-qa-state.json`
 (`git show origin/main:docs/harvest-qa-state.json`), plus the records that file's `carried` list points at (its entries are single checks: count each distinct
 login, run and issue once, and not again when that record is already counted as newer; the file is written only by
 `/harvest-qa`; no file → every record is untested). At **5 or more records** → the summary ends with the line `QA due:

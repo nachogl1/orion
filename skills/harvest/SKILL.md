@@ -119,7 +119,9 @@ Good (the three-line question):
    pile again this run.
 3. **The pile:** for every `origin/audit/<login>` branch, `git ls-tree -r --name-only origin/audit/<login> runs/`
    lists its reports; keep `runs/<run id>/issue-<N>.json` whose run id is newer than that login's `harvested_through`
-   entry (run ids sort by time: `<repo>-<yyyymmdd-hhmmss>-<hex>`, in UTC). Read each with
+   entry. Run ids are `<repo>-<yyyymmdd-hhmmss>-<hex>`, in UTC; newer means a later `yyyymmdd-hhmmss` part, then the
+   larger whole id on a tie, never a plain text comparison: the `<repo>` prefix may differ between runs (a renamed
+   repository, or `alpha-…` and `Alpha_Project-…` on one branch), and as text that prefix would outrank the time. Read each with
    `git show origin/audit/<login>:runs/<run id>/issue-<N>.json` — **never check the branch out, and never read a
    `qa-<N>.json`**: those are the QA records `/harvest-qa` works through, with its own bookmark. Collect every
    `deferred` entry, every `friction` line and every `lessons_learned` line with its run id, issue number, login and
@@ -257,7 +259,8 @@ the pull request depends on what it touches (*Who merges*, below).
    <login>'s decision".
 4. **Already tracked / already done** (Phase 1, steps 1 and 2) → nothing is written; the pull request table names the
    task or the merged story.
-5. Write `docs/harvest-state.json`: for every login read, `harvested_through` = the newest run id seen this run;
+5. Write `docs/harvest-state.json`: for every login read, `harvested_through` = the newest run id seen this run,
+   by the time-part rule of Phase 0 step 3 (never the largest as text);
    `carried` = every item the human left for next time this run (a group answered "not this time", and every low
    note kept for later) **plus every item carried in step 2** because its task was claimed or owned by someone
    (previous `carried` entries that were decided drop out);
