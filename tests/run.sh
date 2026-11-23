@@ -118,9 +118,10 @@ dev_next_creates_every_baseline_label() {
     for l in $labels; do case "$row" in *"\`$l\`"*) ;; *) echo "  dev-next does not create: $l"; return 1 ;; esac; done
 }
 check "dev-next's preflight creates every label the baseline lists" dev_next_creates_every_baseline_label
-# No label makes /dev-next stop at a green pull request for a person: the removed owner-merges label never comes back.
+# No label makes /dev-next stop at a green pull request for a person: the removed owner-merges label never comes back
+# (text files only: a compiled Python cache holds its checkout's path, which may carry the branch name).
 check "no rule, skill, PRD or guide names the removed owner-merges label" \
-    eval '! grep -rqiE "owner-merges|owner merges" "$REPO/skills" "$REPO/baselines" "$REPO/docs/PRDs" "$REPO/docs/guide"'
+    eval '! grep -rIqiE "owner-merges|owner merges" "$REPO/skills" "$REPO/baselines" "$REPO/docs/PRDs" "$REPO/docs/guide"'
 
 echo "dev-next sub-agents and the in-flight file"
 # Every spawn in dev-next (and the roles dev-quick hands to it) names its sub-agent with the issue number, never a bare role-N:
