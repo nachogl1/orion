@@ -413,7 +413,10 @@ fresh check run before it may merge (*Parallelism* rule 6).
 Write the per-issue JSON per `references/audit.md` to the `audit/<your login>` branch. It cannot be reconstructed later —
 local transcripts age out — so it happens on every run from the first. It carries the run's `Defer:` lines as the
 `deferred` list (phase 4), and only the `friction` and `lessons_learned` lines that meet the bar in `audit.md`
-(important or critical; a routine wait is not a line). The lists are usually empty.
+(important or critical; a routine wait is not a line). The lists are usually empty. Each sub-agent's `tokens_total` is
+the figure the Agent tool reported for it; when the tool reported none (a sub-agent that ran as an agent-team
+teammate), count it from that sub-agent's own transcript with `scripts/agent_tokens.py`, and record where every figure
+came from (`audit.md`, *What the token figures are*).
 
 A `merged` issue also gets its QA record, `runs/<run id>/qa-<N>.json` on the same branch, from the dev agent's
 `QA checks` blocks and story (`audit.md`, *The QA record*): the checks a later `/harvest-qa` run drives against
@@ -502,4 +505,5 @@ The close-out only offers; the human closes the session, never the skill.
 | `references/new-issue.md` | phase 4, whenever a `Critical:` line becomes an issue; phases 3 and 5, whenever a red default branch becomes a `bug` issue |
 | `references/merge-and-ci.md` | phase 5 |
 | `references/audit.md` | phase 6 — the run report and the QA record |
+| `scripts/agent_tokens.py` | phase 6, for a sub-agent the Agent tool reported no token figure for |
 | `references/shell-traps.md` | whenever a shell command behaves strangely |
