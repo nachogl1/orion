@@ -11,9 +11,9 @@ argument-hint: "(none) | <path to one PRD> | --since <yyyy-mm-dd>"
 
 The standing rule says there are **two sources of truth, kept in step**: the issues track the work, the PRD holds the
 product, and a disagreement between them is a bug. The product is the PRD **together with its pending ADRs**: a later
-`/wayfinder` map may record its decisions as ADRs only (short decision records under `docs/ADRs/`, each with a status
-line, `pending` or `folded into the PRD on <date>`), and until one is folded in, it is as much product truth as the
-PRD. People and repositories move on — a PRD section is rewritten after its stories were cut, a story is filed from a
+`/wayfinder` map may record its decisions as ADRs only (short decision records under `docs/ADRs/`, each with one of
+three status lines, phase 0 step 5), and until one is folded in, it is as much product truth as the PRD. People and
+repositories move on — a PRD section is rewritten after its stories were cut, a story is filed from a
 conversation nobody wrote down, an epic is closed with children still open, a folder is renamed under a story that
 names the old one, a decision waits in an ADR nobody folded into the PRD. Nothing in the pipeline notices on its own.
 This skill is the check: it reads both sources and the code on the default branch, lists every way they have drifted apart, and
@@ -54,7 +54,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 | `map-health-<slug>` | sonnet | low | the mechanical lens: labels, parents, both blocker forms, seams, order. Returns one line per finding, no essay |
 | `prd-trace-<slug>` | opus | high | the two PRD lenses: PRD → issues and issues → PRD. Returns a bounded table |
 | `code-check-<slug>` | sonnet | low | the product lens: what the default branch actually holds against what the PRD and the closed stories claim. Returns one line per finding |
-| `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits and folds (with each folded ADR's status line), the bookmark and the changelog file in its own worktree, runs the gate, opens the pull request and merges it on green when *Who merges* gives it to the agent |
+| `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits and folds (with each folded ADR's status line), the status lines the person fixed in phase 0, the bookmark and the changelog file in its own worktree, runs the gate, opens the pull request and merges it on green when *Who merges* gives it to the agent |
 
 `<slug>` is the repository name, lower-case, hyphenated (one PRD given → the PRD's file name without `PRD` and `.md`).
 Name every sub-agent after what it does, keep the agent id each spawn returns, and ask each for a bounded result. A
@@ -82,10 +82,10 @@ Two findings in that list need a word more, in the plain words the person hears:
   still does not say it. The planning and checking skills read it beside the PRD, so nothing is built wrong today, but
   anyone who reads only the PRD misses that decision, and the pile grows with every map that ends this way. An ADR is
   pending when its status line, right under its title, reads `**Status: pending**`; one that reads
-  `**Status: folded into the PRD on <yyyy-mm-dd>**` is already in the PRD and is never reported. An ADR with no status
-  line, or with any other one (written before status lines existed: `Status: Accepted`,
-  `**Status: approved by the owner on <date>.**`, …), is read as pending. The fix is **Fold into the PRD** (phase 1
-  step 6), usually rated "fix some day".
+  `**Status: folded into the PRD on <yyyy-mm-dd>**` is already in the PRD and one that reads
+  `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` was overridden by a later ADR, so neither is ever reported. An
+  ADR with no status line, or with any other one, is never guessed at: phase 0 step 5 asks the person which of the
+  three it is first. The fix is **Fold into the PRD** (phase 1 step 6), usually rated "fix some day".
 - **A later-tier story that can be started too early** (third lens). *In plain words:* the PRD builds the product in
   tiers, the first usable version first (`tier:mvp`), then the extras (`tier:stretch`, then `tier:stretch-2`), and
   every story of a later tier must wait for the final stories of the tier before it (the stories of that tier no other
@@ -152,12 +152,22 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
    <reconciled_at>..origin/<default> -- docs/PRDs/` for what changed since the bookmark and `git diff
    <reconciled_at>..origin/<default> -- <file>` per changed file.
    **The pending ADRs beside them:** every `docs/ADRs/*.md` on `origin/<default>` (`git ls-tree -r --name-only
-   origin/<default> -- docs/ADRs/`), its status line read first. `**Status: pending**`, no status line, or any status line other than
-   the folded one below (an older ADR's `Status: Accepted`, say) → read in full as pending: it is
-   product truth beside the PRD, and where it changes what the PRD says, the ADR is the later decision and wins (note
-   the PRD sections it names, for the fold). `**Status: folded into the PRD on <yyyy-mm-dd>**` → already in the PRD,
-   not read again. Only ADRs on the default branch count: one in an open pull request is not yet
-   approved.
+   origin/<default> -- docs/ADRs/`) whose status line reads `**Status: pending**`. The status line, right under each
+   ADR's title, is read first, and it is one of exactly three:
+   - `**Status: pending**` → read in full as pending: it is product truth beside the PRD, and where it changes what
+     the PRD says, the ADR is the later decision and wins (note the PRD sections it names, for the fold).
+   - `**Status: folded into the PRD on <yyyy-mm-dd>**` → already in the PRD, not read again.
+   - `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` → a later ADR (named by its file name) overrides it:
+     skipped, never reported and never folded. Whoever writes the newer ADR sets this line on the older one in the
+     same pull request.
+
+   **An unknown status line** — any other line, or none at all (`proposed`, `Status: Accepted`,
+   `approved by the owner on <date>`, …) — is never read as pending and never skipped silently. Stop at that ADR
+   and, before phase 1, ask the person which of the three it is (`AskUserQuestion`, one question per ADR, the three
+   lines as the options in plain words, the one its text suggests marked "(Recommended)"; for a replaced one, ask
+   which ADR replaced it). Read it by the answer from then on, and fix its line in this run's pull request (phase 3
+   step 3), which a person merges because it touches `docs/ADRs/`. Only ADRs on the default branch count: one in an
+   open pull request is not yet approved.
 6. **The issues.** `gh issue list --state all --limit 500 --json number,title,state,labels,assignees,body,closedAt,
    updatedAt` (page past 500 with `--search` on `created:` ranges when the list is cut), the open epics'
    sub-issue lists (`gh api repos/{owner}/{repo}/issues/<epic>/sub_issues --jq 'map(.number)'`), and for every open
@@ -173,8 +183,9 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
 
 ## Phase 1 — Check, then judge
 
-1. **Spawn the three check agents at once**, each with the scratch file, the bookmark date, the `accepted` list and a
-   bounded brief:
+1. **Spawn the three check agents at once**, each with the scratch file, the bookmark date, the `accepted` list, the
+   list of pending ADRs phase 0 step 5 settled (each by file, with the person's answer for an unknown status line)
+   and a bounded brief:
    - `map-health-<slug>`: "one line per finding of the *issue map is broken* lens, in the order of the lens table:
      issue number and title, what is wrong, the evidence (the two lists that disagree, the missing folder, the label
      pair). Check every open issue; closed ones only for *closed while a blocker is open* and *closed epic with open
@@ -184,7 +195,8 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
      while a story with an earlier PRD tier label is still open: the story, its tier, the open earlier-tier stories,
      and the final stories of the tier before it (those no other story of that tier waits for) it should be blocked
      by."
-   - `prd-trace-<slug>`: "three tables. (a) One row per PRD and pending-ADR scope item, acceptance line and build
+   - `prd-trace-<slug>`: "the pending ADRs are exactly the list in this brief, never picked again by their status
+     line on the default branch. Three tables. (a) One row per PRD and pending-ADR scope item, acceptance line and build
      decision: the section or ADR, the issue(s) that cover it or `none`, and `changed since bookmark` plus one line on
      whether the covering open stories still match the section as it reads now. (b) One row per open story and per
      story closed since the bookmark: the PRD section or pending ADR it names, whether that exists and still says what
@@ -216,10 +228,10 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
      interview, a renamed thing. Goes in this run's `docs(prd)` pull request.
    - **Fold into the PRD** — the only answer for a pending ADR besides leaving it: the ADR's decision is written into
      the PRD sections it names, and **the ADR's status line changes in the same pull request**, from
-     `**Status: pending**` (or no status line, or any other status line) to
+     `**Status: pending**` (or an unknown line the person called pending in phase 0) to
      `**Status: folded into the PRD on <yyyy-mm-dd>**` (the day of the run), which replaces the old line and never
-     sits beside it. When the PRD already says it, only the status line changes. Goes in this run's `docs(prd)` pull
-     request.
+     sits beside it. A replaced ADR is never folded. When the PRD already says it, only the status line changes. Goes
+     in this run's `docs(prd)` pull request.
    - **File a story** — the PRD asks for something no story covers, written to `new-issue.md` (names the PRD section
      under `### References`; the tier the PRD gives that section; `needs-human` unless nothing is left to ask), native
      sub-issue of the matching epic, both blocker forms. Several uncovered items in one PRD area are **one** story
@@ -270,8 +282,8 @@ Nothing is edited, filed, closed, accepted or dropped automatically: the human d
 Issue edits go straight to GitHub (they are the tracker's own state, like a claim or a label); file changes go through
 **one** pull request on `feat/reconcile-<yyyymmdd>` (or the project's own branch pattern) in a worktree under the
 project's worktree root, opened by `reconcile-pr-<slug>`. Who merges it depends on what it touches (*Who merges*,
-below): one with only the bookmark and its changelog file merges on green; one that edits the PRD or folds an ADR is
-the person's to merge.
+below): one with only the bookmark and its changelog file merges on green; one that edits the PRD, folds an ADR or
+fixes an ADR's status line is the person's to merge.
 
 1. **Fix the issues** → `gh issue edit` for bodies and labels (body to a UTF-8 file, `--body-file`; PowerShell adds a
    byte-order mark — `.claude/skills/dev-next/references/shell-traps.md`), the native sub-issue and `blocked_by`
@@ -291,7 +303,9 @@ the person's to merge.
    to `**Status: folded into the PRD on <yyyy-mm-dd>**`. Any other status line an older ADR carries is **replaced**
    by the folded line, never kept beside it, so the ADR has exactly one status line; one with none gets the folded
    line added under its title. Nothing else in the ADR changes: it stays as the record of why. A fold and its status line never land in separate pull
-   requests, so the PRD and the ADR never disagree on the default branch.
+   requests, so the PRD and the ADR never disagree on the default branch. **An unknown status line the person
+   answered in phase 0** and that is not folded now gets the line they chose in the same way (it replaces the old
+   line, or is added under the title when there was none), in the same worktree and pull request.
 4. **File a story** → exactly as `new-issue.md` says: every heading, `story` plus one readiness label and the tier
    the PRD gives that section (created first when missing, `new-issue.md` step 2), native sub-issue of its epic (the
    person picks when none fits), both blocker forms read back, the tier blocks of a story added to a tier later
@@ -309,8 +323,8 @@ the person's to merge.
    `reconcile-pr-<slug>` reports the failing command and stops, and this session names it first in the close-out for
    a person to fix (the pull request holds only PRD text, ADR status lines, the bookmark and a changelog file, so red
    almost always means the default branch itself is red). Then commit with Conventional Commits (`docs(prd): reconcile …` when
-   the PRD changed or an ADR was folded, else `chore(reconcile): …`), **never `git add -A`**, push and open the pull
-   request with the table below. No file change at all (only issue edits) → still write the bookmark and open the
+   the PRD changed or an ADR was folded, or an ADR's status line was fixed, else `chore(reconcile): …`), **never
+   `git add -A`**, push and open the pull request with the table below. No file change at all (only issue edits) → still write the bookmark and open the
    pull request; it is what tells `/dev-next` the drift was looked at.
 8. **Merge it as *Who merges* says.** A `chore(reconcile)` pull request (the bookmark and the changelog file only) →
    `reconcile-pr-<slug>` waits for its checks (the host can take minutes to report them; "no checks reported" counts
@@ -347,7 +361,7 @@ So, for the one pull request a run opens:
 | Pull request | Touches | Merged by |
 |---|---|---|
 | `chore(reconcile): …` — the run made only issue edits, or none | `docs/reconcile-state.json` and the run's changelog file | `reconcile-pr-<slug>`, on green, with `/dev-next`'s bar (phase 3 step 8) |
-| `docs(prd): reconcile …` — the run edits the PRD or folds a pending ADR | `docs/PRDs/`, and `docs/ADRs/` for each folded ADR's status line, beside the bookmark and the changelog file | **a person**; the bookmark waits with it |
+| `docs(prd): reconcile …` — the run edits the PRD, folds a pending ADR or fixes an ADR's unknown status line | `docs/PRDs/`, and `docs/ADRs/` for each folded or fixed status line, beside the bookmark and the changelog file | **a person**; the bookmark waits with it |
 
 This skill never edits `docs/ux/prototypes/` or the project's `CLAUDE.md`; a drift finding that needs either is
 filed as a story, never fixed in this pull request. The agent merges a `docs(prd)` pull request only on the person's
