@@ -54,7 +54,9 @@ fast and wrong here.
    not start, a check needs something the agent does not have); they are part of the pile again this run.
 4. **The pile:** for every `origin/audit/<login>` branch, `git ls-tree -r --name-only origin/audit/<login> runs/`
    lists its files; keep `runs/<run id>/qa-<N>.json` whose run id is newer than that login's `tested_through` entry
-   (run ids sort by time: `<repo>-<yyyymmdd-hhmmss>-<hex>`, in UTC). Read each with
+   (run ids are `<repo>-<yyyymmdd-hhmmss>-<hex>`, in UTC; newer means a later `yyyymmdd-hhmmss` part, then the larger
+   whole id on a tie, never a plain text comparison: the `<repo>` prefix may differ between runs, such as `alpha-…` and
+   `Alpha_Project-…` on one branch, and as text that prefix would outrank the time). Read each with
    `git show origin/audit/<login>:runs/<run id>/qa-<N>.json` — **never check the branch out, never read an
    `issue-<N>.json`**. Collect every check with its `key`, the record's `story`, `seam`, `merged_at`, run id, issue
    number and login, plus every `carried` entry.
@@ -125,7 +127,8 @@ finish.
    confirm before flipping it to `agent-ready` (the steps reproduce for them, and nothing is left to ask). Read every
    issue back the way `new-issue.md` verifies it. **`Drop`** → nothing is filed; the check is logged `tracked` + `bug`
    when an open issue covers it, otherwise `fail` + `dropped` with the person's reason.
-3. Write `docs/harvest-qa-state.json`: for every login read, `tested_through` = the newest run id seen this run;
+3. Write `docs/harvest-qa-state.json`: for every login read, `tested_through` = the newest run id seen this run,
+   by the time-part rule of Phase 0 step 4 (never the largest as text);
    `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug` or `dropped`,
    `superseded` + `by`, `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
    `last_qa` = today. A check in `carried` is **not** in `log`. Audit branches are never written to.
