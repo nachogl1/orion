@@ -36,9 +36,9 @@ On Windows, run `bash tests/wsl.sh` (from Git Bash, after committing) in place o
 
 ## Branches and releases
 
-- **`develop` is the default branch**: daily work starts from it and merges into it. Every story branch is cut from it, every pull request targets it, and a `Closes #<N>` line closes its issue on that merge.
+- **`develop` is the default branch**: daily work starts from it and merges into it. Every story branch is cut from it, every pull request targets it, and a `Closes #<N>` line closes its issue on that merge. **Until `develop` exists on the remote, `main` is both the default and the release branch**: branch from `main`, target `main`, and never create `develop` yourself (a story of its own does that).
 - **`main` is the release branch**: the branch projects install and update from (their `ref: main`), the one `release.yml` tags and the one the guide page publishes from. Nothing reaches it but a release pull request.
-- **A release happens only on the owner's word.** The agent then opens a pull request from `develop` into `main` whose description lists the one-line `docs/changelog/` entries added since the last release, and merges it with a **merge commit** (never squashed: a squash leaves `main` without `develop`'s commits, so the next release would conflict) once every check is green. The release job then tags the version, as *Conventions for changes here* says.
+- **A release happens only on the owner's word.** The agent then opens a pull request from `develop` into `main` whose description lists the one-line `docs/changelog/` entries added since the last release, and merges it with a **merge commit** (never squashed: a squash leaves `main` without `develop`'s commits, so the next release would conflict) once every check is green. `develop` is kept after that merge: the rule that a merged branch is deleted never covers it. The release job then tags the version, as *Conventions for changes here* says.
 
 ## Boundaries
 
