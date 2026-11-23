@@ -424,6 +424,23 @@ harvest_qa_guide_box_merges_on_green() {
         || { echo "  the guide's /harvest-qa box does not say its log pull request merges itself on green"; return 1; }
 }
 check "the guide's /harvest-qa box says its log pull request merges on green" harvest_qa_guide_box_merges_on_green
+# Run ids order by their time part, then the whole id: the <repo> prefix may differ between runs, so a text
+# comparison would put an old run after a new one. Every skill that orders them says so in its own words.
+run_ids_order_by_time_part() {
+    local f flat
+    for f in "$REPO/skills/dev-next/SKILL.md" "$HV" "$HQ"; do
+        flat="$(tr -s ' \n' ' ' < "$f")"
+        printf '%s' "$flat" | grep -qF '`yyyymmdd-hhmmss` part' && printf '%s' "$flat" | grep -qF 'may differ between runs' \
+            || { echo "  ${f#"$REPO"/} does not order run ids by their time part or say the prefix may differ"; return 1; }
+        ! printf '%s' "$flat" | grep -qiE 'run ids sort by time|run id sorts after' \
+            || { echo "  ${f#"$REPO"/} still orders run ids as text"; return 1; }
+    done
+    for f in "$HV" "$HQ"; do
+        tr -s ' \n' ' ' < "$f" | grep -qF 'the newest run id seen this run, by the time-part rule' \
+            || { echo "  ${f#"$REPO"/} does not write its bookmark by the time-part rule"; return 1; }
+    done
+}
+check "dev-next, harvest and harvest-qa order run ids by their time part, never as text" run_ids_order_by_time_part
 
 echo "generate-project-writeup"
 WU="$REPO/skills/generate-project-writeup/SKILL.md"
