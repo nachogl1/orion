@@ -1481,12 +1481,18 @@ check "a lower version is never offered, even when its mod differs" eval 'mod_ch
 mod_bump 2.4.0 '# orion v4'
 check "mod install replaces the computer's copy and reinstalls the plugin" eval 'mod_check --force && grep -qF "mod install $MOD" "$SB/hook" && : > "$CALLS" && mod_cmd install "$MOD" && grep -q "# orion v4" "$MKT/$MOD/README.md" && [ "$(sed -n 1p "$CALLS")" = "plugin uninstall $MOD@orion-mods --scope user" ] && [ "$(tail -n 1 "$CALLS")" = "plugin install $MOD --marketplace $MKT --scope user" ]'
 check "after the reinstall, check prints nothing" eval 'mod_check --force && [ ! -s "$SB/hook" ]'
+rm -rf "$MKT/$MOD"
+check "a copy deleted by hand counts as not installed: mod install puts it back" eval ': > "$CALLS" && mod_cmd install "$MOD" && [ -f "$MKT/$MOD/.claude-plugin/plugin.json" ] && [ "$(tail -n 1 "$CALLS")" = "plugin install $MOD --marketplace $MKT --scope user" ]'
 n="$(mod_calls)"
 check "orion uninstall leaves the computer's copy and calls no plugin command" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$MKT/$MOD/.claude-plugin/plugin.json" ] && [ "$(mod_calls)" = "$n" ]'
 check "mod remove uninstalls the plugin and deletes the computer's copy" eval ': > "$CALLS" && HOME="$MDH" PATH="$MODPATH" bash "$ORION" mod remove "$MOD" >"$SB/out" 2>&1 && grep -qxF "plugin uninstall $MOD@orion-mods --scope user" "$CALLS" && grep -qxF "plugin marketplace remove orion-mods" "$CALLS" && [ ! -e "$MKT" ]'
 MDH="$SB/home-mods2"; MKT="$MDH/.claude/orion-mods"; mkdir -p "$MDH"; seen_all_personal_rules "$MDH"; rm -f "$CALLS"
 newproj
 check "init --mods installs every mod on this computer" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" init --project "$P" --yes --no-statusline --mods --update-mode off >"$SB/out" 2>&1 && [ "$(grep -c "^plugin install " "$CALLS")" = "$(ls -d "$REPO"/mods/*/ | wc -l | tr -d " ")" ] && [ -f "$MKT/$MOD.orion-baseline" ]'
+rm -rf "$P/.claude/orion/mods"
+check "update at the same commit brings back the mods an older orion.sh did not copy, listed in the manifest" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" update --project "$P" >"$SB/out" 2>&1 && mods_copied_and_listed'
+rm -rf "$MKT/$MOD"
+check "mod remove takes a record whose copy was deleted by hand" eval ': > "$CALLS" && HOME="$MDH" PATH="$MODPATH" bash "$ORION" mod remove "$MOD" >"$SB/out" 2>&1 && grep -qxF "plugin uninstall $MOD@orion-mods --scope user" "$CALLS" && [ ! -e "$MKT" ]'
 check "the guide page says how mods are installed, offered, skipped and removed" eval 'grep -qF -- "--mods" "$GUIDE" && grep -qF "mod install" "$GUIDE" && grep -qF "mod skip" "$GUIDE" && grep -qF "mod remove" "$GUIDE" && grep -qF "~/.claude/orion-mods" "$GUIDE" && grep -qF "/control-tower" "$GUIDE"'
 
 summary

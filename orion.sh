@@ -947,7 +947,8 @@ mod_install() {  # name
     { mod_name_ok "$name" && [ -d "$src" ]; } || { warn "this project carries no orion mod named '$name'"; return 1; }
     have claude || { warn "Claude Code's 'claude' command was not found, so mod $name was not installed and nothing changed"; return 1; }
     t="$(project_stamp)"
-    if [ -f "$(mod_stamp "$name")" ] && ! version_gt "$t" "$(mod_taken "$name")"; then
+    # a copy deleted by hand counts as not installed, whatever the record says
+    if [ -f "$(mod_stamp "$name")" ] && [ -d "$dir/$name" ] && ! version_gt "$t" "$(mod_taken "$name")"; then
         say "mod $name: nothing to install - this computer's copy already follows this project's orion version or a newer one"
         return 0
     fi
@@ -977,7 +978,9 @@ mod_skip() {  # name
 # Uninstall the mod and delete the computer's copy; the last one removed takes the marketplace folder with it.
 mod_remove() {  # name
     local name="$1" dir; dir="$(mod_home)"
-    { mod_name_ok "$name" && [ -d "$dir/$name" ]; } || { warn "no orion mod named '$name' is installed on this computer"; return 1; }
+    # a record whose copy was deleted by hand still names a plugin to uninstall
+    { mod_name_ok "$name" && { [ -d "$dir/$name" ] || [ -f "$(mod_stamp "$name")" ]; }; } \
+        || { warn "no orion mod named '$name' is installed on this computer"; return 1; }
     have claude || { warn "Claude Code's 'claude' command was not found, so mod $name was not removed and nothing changed"; return 1; }
     claude plugin uninstall "$name@$MOD_MARKET" --scope user \
         || warn "Claude Code could not uninstall mod $name (its message is above); its copy is deleted all the same"
@@ -1178,8 +1181,8 @@ cmd_update() {
     fetch_source "$source" "$ref"
     # the hint is printed only without --quiet, so an auto-update (capped at 10 s on older hooks) skips the cost
     local rules_before=""; [ "$quiet" = "1" ] || rules_before="$(rules_sum)"
-    # an update run by an older orion.sh left out the status line or the personal rules: redo it once
-    { [ -d "$dir/statusline" ] && [ -d "$dir/global" ]; } || force=1
+    # an update run by an older orion.sh left out the status line, the personal rules or the mods: redo it once
+    { [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && { [ -d "$dir/mods" ] || [ ! -d "$SRC_DIR/mods" ]; }; } || force=1
     if [ "$SRC_SHA" = "$current" ] && [ "$force" != "1" ]; then
         say "orion is already at $(short "$current") - nothing to do (pass --force to re-copy anyway)"
         # installed before its release was tagged: only the version on line 5 is behind
