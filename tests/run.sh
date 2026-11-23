@@ -1445,26 +1445,33 @@ mod_cmd() { HOME="$MDH" PATH="$MODPATH" bash "$P/.claude/orion/orion.sh" mod "$@
 mod_check() { HOME="$MDH" run_check "$@"; }
 mod_calls() { if [ -f "$CALLS" ]; then wc -l < "$CALLS" | tr -d ' '; else printf 0; fi; }
 mod_bump() {  # version [line]: the project at orion <version>, as a teammate's pull brings it; its mod gains <line>
+    local a="$P/.claude/orion/mods/$MOD.tar"
     { sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '%s\n' "$1"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
-    [ -z "${2:-}" ] || printf '%s\n' "$2" >> "$P/.claude/orion/mods/$MOD/README.md"
+    [ -n "${2:-}" ] || return 0
+    rm -rf "$SB/modx"; mkdir -p "$SB/modx" && tar -xf "$a" -C "$SB/modx" && printf '%s\n' "$2" >> "$SB/modx/README.md" \
+        && ( cd "$SB/modx" && tar -cf - . ) > "$a"
 }
-# Every file of every mod in the repository sits in the project's copy and in its manifest.
+# Every mod in the repository sits in the project as one archive, listed in the manifest, holding every one of its files.
 mods_copied_and_listed() {
-    local f n=0
-    while IFS= read -r f; do
-        [ -n "$f" ] || continue; n=$((n+1))
-        [ -f "$P/.claude/orion/$f" ] && grep -qxF "$f" "$P/.claude/orion/.orion-manifest" || { echo "  missing: $f"; return 1; }
-    done <<< "$(cd "$REPO" && find mods -type f | LC_ALL=C sort)"
+    local d name f a n=0
+    for d in "$REPO"/mods/*/; do
+        name="$(basename "$d")"; a="$P/.claude/orion/mods/$name.tar"; n=$((n+1))
+        { [ -f "$a" ] && grep -qxF "mods/$name.tar" "$P/.claude/orion/.orion-manifest"; } || { echo "  missing: mods/$name.tar"; return 1; }
+        while IFS= read -r f; do
+            tar -tf "$a" | grep -qxF "./$f" || { echo "  not in mods/$name.tar: $f"; return 1; }
+        done <<< "$(cd "$d" && find . -type f | sed 's|^\./||')"
+    done
     [ "$n" -gt 0 ]
 }
 newproj
 ( cd "$MDH" && find . | LC_ALL=C sort ) > "$SB/home-before"
 HOME="$MDH" PATH="$MODPATH" bash "$ORION" init --project "$P" --yes --no-statusline --update-mode off >"$SB/out" 2>&1; consume_marker
 check "init copies every mod into the project, listed in the manifest" mods_copied_and_listed
+check "and keeps no loose file a test runner, linter or TypeScript would collect: only one archive per mod" eval '[ -z "$(find "$P/.claude/orion/mods" -type f ! -name "*.tar")" ] && [ -z "$(find "$P/.claude/orion/mods" -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.json")" ]'
 check "and changes nothing outside the project: no copy on this computer, no plugin command" eval '[ ! -e "$MKT" ] && [ ! -e "$CALLS" ] && [ "$( cd "$MDH" && find . | LC_ALL=C sort )" = "$(cat "$SB/home-before")" ]'
 check "the test path really has no claude" eval '! env PATH="$NOCLAUDE_PATH" bash -c "command -v claude" >/dev/null 2>&1'
 check "without Claude Code's command, mod install says so in one line, exits 1 and changes nothing" eval '! HOME="$MDH" PATH="$NOCLAUDE_PATH" bash "$P/.claude/orion/orion.sh" mod install "$MOD" --project "$P" >"$SB/out" 2>&1 && [ "$(wc -l < "$SB/out" | tr -d " ")" = 1 ] && grep -q claude "$SB/out" && [ ! -e "$MKT" ] && [ ! -e "$CALLS" ]'
-check "mod install of a mod the project does not carry fails and changes nothing" eval '! mod_cmd install no-such-mod && [ ! -e "$MKT" ] && [ ! -e "$CALLS" ]'
+check "mod install of a mod the project does not carry fails, says to run update, and changes nothing" eval '! mod_cmd install no-such-mod && grep -qF "(run: orion.sh update)" "$SB/out" && [ ! -e "$MKT" ] && [ ! -e "$CALLS" ]'
 mod_bump 2.1.0
 check "mod install copies the mod into this computer's marketplace folder" eval 'mod_cmd install "$MOD" && [ -f "$MKT/$MOD/.claude-plugin/plugin.json" ] && json_ok "$MKT/.claude-plugin/marketplace.json" && grep -qF "\"./$MOD\"" "$MKT/.claude-plugin/marketplace.json"'
 check "and installs it from there with the plugin command, at user scope" eval '[ "$(cat "$CALLS")" = "plugin install $MOD --marketplace $MKT --scope user" ]'
@@ -1489,6 +1496,8 @@ check "mod remove uninstalls the plugin and deletes the computer's copy" eval ':
 MDH="$SB/home-mods2"; MKT="$MDH/.claude/orion-mods"; mkdir -p "$MDH"; seen_all_personal_rules "$MDH"; rm -f "$CALLS"
 newproj
 check "init --mods installs every mod on this computer" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" init --project "$P" --yes --no-statusline --mods --update-mode off >"$SB/out" 2>&1 && [ "$(grep -c "^plugin install " "$CALLS")" = "$(ls -d "$REPO"/mods/*/ | wc -l | tr -d " ")" ] && [ -f "$MKT/$MOD.orion-baseline" ]'
+cp "$P/.claude/orion/mods/$MOD.tar" "$SB/mod-before.tar"
+check "an update that leaves a mod alone leaves its archive byte for byte" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && cmp -s "$SB/mod-before.tar" "$P/.claude/orion/mods/$MOD.tar"'
 rm -rf "$P/.claude/orion/mods"
 check "update at the same commit brings back the mods an older orion.sh did not copy, listed in the manifest" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" update --project "$P" >"$SB/out" 2>&1 && mods_copied_and_listed'
 rm -rf "$MKT/$MOD"

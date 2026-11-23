@@ -38,7 +38,7 @@
 #   .claude/orion/BASE_CLAUDE.md      the mandatory rules, imported by CLAUDE.md
 #   .claude/orion/statusline/         the status line baseline each computer's copy follows
 #   .claude/orion/global/             GLOBAL_CLAUDE.md, the personal rules offered for ~/.claude/CLAUDE.md
-#   .claude/orion/mods/               the optional Claude Code mods each computer may install
+#   .claude/orion/mods/<name>.tar     the optional Claude Code mods each computer may install, one archive each
 #   .claude/orion/VERSION             commit the files came from (its commit time, and orion's version number)
 #   .claude/orion/.orion-manifest     the list above
 # What orion creates ONCE and never touches again (yours):
@@ -637,13 +637,13 @@ apply_core() {  # source ref update-mode
     # only the offer of orion's personal rules: nothing imports it, the person takes clauses on their word
     rm -rf "$dir/global"; cp -R "$SRC_DIR/baselines/global" "$dir/global"
     # and orion's mods, which a computer installs only on the person's word
-    rm -rf "$dir/mods"; [ ! -d "$SRC_DIR/mods" ] || cp -R "$SRC_DIR/mods" "$dir/mods"
+    apply_mods
     # line 4, the source's commit time, is for information only; line 5, orion's version number, tells the
     # update check whether a release is newer, and the computer's status line whether this project's copy is
     printf '%s\n%s\n%s\n%s\n%s\n' "$SRC_SHA" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SRC_TIME:-0}" "$SRC_VERSION" > "$dir/VERSION"
     { printf '%s\n' "orion.sh" "BASE_CLAUDE.md" "VERSION" ".orion-manifest"
       ( cd "$SRC_DIR/baselines" && find statusline global -type f | LC_ALL=C sort )
-      [ ! -d "$SRC_DIR/mods" ] || ( cd "$SRC_DIR" && find mods -type f | LC_ALL=C sort ); } > "$dir/.orion-manifest"
+      mod_dirs "$SRC_DIR/mods" | sed 's|.*|mods/&.tar|'; } > "$dir/.orion-manifest"
     if [ ! -f "$dir/config.json" ]; then
         printf '{\n  "updateMode": "%s",\n  "source": "%s",\n  "ref": "%s",\n  "branchLimit": %s,\n  "worktreeLimit": %s\n}\n' \
             "$(json_escape "$mode")" "$(json_escape "$1")" "$(json_escape "$2")" "$BRANCH_LIMIT_DEFAULT" "$WORKTREE_LIMIT_DEFAULT" > "$dir/config.json"
@@ -893,9 +893,11 @@ install_statusline() {  # force
 }
 
 # --------------------------------------------------------------------------
-# mods (optional, per computer). Every project carries orion's copy of each mod in .claude/orion/mods/<name>; a
-# computer gets its own copy only on the person's word, in a folder Claude Code installs it from at user scope
-# (never through the project's settings). A newer copy replaces the computer's whole, with no merge.
+# mods (optional, per computer). Every project carries orion's copy of each mod as one archive,
+# .claude/orion/mods/<name>.tar, so no tool of the project's own (a test runner, a linter, TypeScript) ever collects
+# the mod's sources. A computer gets its own copy, unpacked, only on the person's word, in a folder Claude Code
+# installs it from at user scope (never through the project's settings). A newer copy replaces the computer's whole,
+# with no merge.
 #   ~/.claude/orion-mods/<name>/                          the computer's copy of the mod
 #   ~/.claude/orion-mods/<name>.orion-baseline            orion version number and checksum of the newest copy taken or skipped
 #   ~/.claude/orion-mods/.claude-plugin/marketplace.json  lists every copy, so the folder is a local marketplace
@@ -903,28 +905,56 @@ install_statusline() {  # force
 MOD_MARKET="orion-mods"
 mod_home() { printf '%s' "$HOME/.claude/$MOD_MARKET"; }
 mod_stamp() { printf '%s' "$(mod_home)/$1$SL_STAMP"; }
-mod_src() { printf '%s' "$PROJECT/.claude/orion/mods/$1"; }
+mod_src() { printf '%s' "$PROJECT/.claude/orion/mods/$1.tar"; }
 mod_name_ok() { case "$1" in ""|-*|*[!a-z0-9-]*) return 1 ;; esac; }
-# The mods in a folder, one name per line: this project's (mod_names) or this computer's (mod_copies).
+# The mod folders in a folder, one name per line: orion's source (mods/) or this computer's copies (mod_copies).
 mod_dirs() { local d; for d in "$1"/*/; do [ -d "$d" ] && basename "$d"; done; return 0; }
-mod_names() { mod_dirs "$PROJECT/.claude/orion/mods"; }
 mod_copies() { mod_dirs "$(mod_home)"; }
+# The mods this project carries, one name per line.
+mod_names() { local f; for f in "$PROJECT"/.claude/orion/mods/*.tar; do [ -f "$f" ] && basename "$f" .tar; done; return 0; }
+mod_unpack() { mkdir -p "$2" && tar -xf "$1" -C "$2"; }  # archive dest
+# The checksum of the files an archive holds (line endings aside), never of the archive's own bytes, which carry
+# the time each file was packed.
+mod_sum() {  # archive
+    local t s=""; t="$(mktemp -d)"
+    if mod_unpack "$1" "$t" 2>/dev/null; then s="$(tree_sum "$t" | cksum)"; fi
+    rm -rf "$t"; printf '%s' "$s"
+}
+
+# Pack every mod orion ships into the project, one archive each. An archive is rewritten only when its files
+# changed, so an update that leaves a mod alone leaves its archive byte for byte as it was; anything else in the
+# folder (a mod orion no longer ships) goes.
+apply_mods() {
+    local dir="$PROJECT/.claude/orion/mods" src="$SRC_DIR/mods" f name
+    [ -d "$src" ] || { rm -rf "$dir"; return 0; }
+    mkdir -p "$dir"
+    for f in "$dir"/* "$dir"/.[!.]*; do
+        [ -e "$f" ] || continue
+        name="$(basename "$f" .tar)"
+        { [ "$f" = "$dir/$name.tar" ] && [ -d "$src/$name" ]; } || rm -rf "$f"
+    done
+    for name in $(mod_dirs "$src"); do
+        f="$dir/.$name.tar.new"
+        ( cd "$src/$name" && tar -cf - . ) > "$f"
+        if [ -f "$dir/$name.tar" ] && [ "$(mod_sum "$f")" = "$(mod_sum "$dir/$name.tar")" ]; then rm -f "$f"; else mv -f "$f" "$dir/$name.tar"; fi
+    done
+}
 # The orion version number of the newest copy this computer took or skipped.
 mod_taken() { sl_number "$(sed -n '1p' "$(mod_stamp "$1")" 2>/dev/null | tr -d '\r')"; }
 
 # Record the newest copy of a mod this computer has seen (installed or skipped): its orion version number, then its checksum.
 mod_mark() {  # name stamp
-    printf '%s\n%s\n' "$2" "$(tree_sum "$(mod_src "$1")" | cksum)" > "$(mod_stamp "$1")"
+    printf '%s\n%s\n' "$2" "$(mod_sum "$(mod_src "$1")")" > "$(mod_stamp "$1")"
 }
 
 # Prints "offer" when this project's copy of a mod this computer installed comes from a higher orion version and
 # differs from the copy last taken or skipped; a copy that did not change only moves the record forward.
 mod_sync() {  # name
     local t
-    { [ -f "$(mod_stamp "$1")" ] && [ -d "$(mod_src "$1")" ]; } || return 0
+    { [ -f "$(mod_stamp "$1")" ] && [ -f "$(mod_src "$1")" ]; } || return 0
     t="$(project_stamp)"
     version_gt "$t" "$(mod_taken "$1")" || return 0
-    if [ "$(tree_sum "$(mod_src "$1")" | cksum)" = "$(sed -n '2p' "$(mod_stamp "$1")" | tr -d '\r')" ]; then
+    if [ "$(mod_sum "$(mod_src "$1")")" = "$(sed -n '2p' "$(mod_stamp "$1")" | tr -d '\r')" ]; then
         mod_mark "$1" "$t"
     else
         printf 'offer'
@@ -940,11 +970,11 @@ mod_write_market() {
       printf '\n  ]\n}\n'; } > "$dir/.claude-plugin/marketplace.json"
 }
 
-# Copy this project's mod to the computer and install it from there at user scope; one already installed is
+# Unpack this project's mod on the computer and install it from there at user scope; one already installed is
 # replaced and reinstalled. Never steps back to an older orion version's copy.
 mod_install() {  # name
     local name="$1" src dir t; src="$(mod_src "$1")"; dir="$(mod_home)"
-    { mod_name_ok "$name" && [ -d "$src" ]; } || { warn "this project carries no orion mod named '$name'"; return 1; }
+    { mod_name_ok "$name" && [ -f "$src" ]; } || { warn "this project carries no orion mod named '$name' (run: orion.sh update)"; return 1; }
     have claude || { warn "Claude Code's 'claude' command was not found, so mod $name was not installed and nothing changed"; return 1; }
     t="$(project_stamp)"
     # a copy deleted by hand counts as not installed, whatever the record says
@@ -953,7 +983,8 @@ mod_install() {  # name
         return 0
     fi
     mkdir -p "$dir"
-    rm -rf "$dir/.$name.new"; cp -R "$src" "$dir/.$name.new"
+    rm -rf "$dir/.$name.new"
+    mod_unpack "$src" "$dir/.$name.new" || { rm -rf "$dir/.$name.new"; warn "could not unpack mod $name from $src; nothing changed"; return 1; }
     rm -rf "${dir:?}/$name"; mv "$dir/.$name.new" "$dir/$name"
     mod_write_market
     if [ -f "$(mod_stamp "$name")" ]; then
@@ -994,6 +1025,12 @@ mod_remove() {  # name
     say "mod $name: uninstalled, and its copy deleted from this computer"
 }
 
+mod_description() {  # name
+    local t d=""; t="$(mktemp -d)"
+    if mod_unpack "$(mod_src "$1")" "$t" 2>/dev/null; then d="$(config_get "$t/.claude-plugin/plugin.json" description "")"; fi
+    rm -rf "$t"; printf '%s' "$d"
+}
+
 # init offers every mod the project carries: --mods takes them all, a terminal is asked mod by mod, else none.
 offer_mods() {  # yes|no|prompt
     local name resp
@@ -1004,7 +1041,7 @@ offer_mods() {  # yes|no|prompt
         fi
         if [ "$1" = prompt ]; then
             is_tty || continue
-            say "  mod $name: $(config_get "$(mod_src "$name")/.claude-plugin/plugin.json" description "")"
+            say "  mod $name: $(mod_description "$name")"
             ask "Also install the orion mod $name for this computer (a Claude Code plugin at user scope, optional)? [y/N] "
             [[ "$resp" =~ ^[Yy]$ ]] || continue
         fi
