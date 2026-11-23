@@ -1,0 +1,44 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 191,
+  "title": "Mods installer: offer each mod like the status line, installed at user scope on the person's yes",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 252,
+  "merged_at": "2026-11-23T22:04:19Z",
+  "merge_commit": "dab2cfa1e7cb47403c84aab81018d0c3aa696813",
+  "seam": "orion.sh (mod parts), orion.ps1, tests/run.sh, .github/workflows/release.yml, CLAUDE.md, docs/guide/index.html",
+  "story": "orion can now offer its optional mods, starting with Orion Control Tower, much like it offers the status bar. Every project carries orion's copy as an archive, but a computer gets a mod only when the person says yes, at setup or later with one command. When a project brings a newer version of an installed mod, the session start asks whether to take or skip it; removing orion leaves mods alone, and one command removes a mod for good.",
+  "checks": [
+    {
+      "key": "orion.sh/init-copies-mods",
+      "criterion": "After init, the project holds orion's copy of each mod, listed in the manifest; nothing outside the project changed",
+      "steps": "Make an empty git folder. Run bash orion.sh init --project <folder> --yes --no-statusline --update-mode off from an orion checkout.",
+      "expected": "<folder>/.claude/orion/mods/control-tower.tar exists, .claude/orion/.orion-manifest lists it, no loose .ts/.tsx/.js/.json under .claude/orion/mods, and ~/.claude/orion-mods does not exist."
+    },
+    {
+      "key": "orion.sh/mod-install",
+      "criterion": "The install sub-command creates the marketplace folder, installs at user scope and records the version taken",
+      "steps": "In that project run bash .claude/orion/orion.sh mod install control-tower.",
+      "expected": "A line saying the mod is installed for this computer from ~/.claude/orion-mods; ~/.claude/orion-mods/.claude-plugin/marketplace.json lists ./control-tower; claude plugin list shows control-tower@orion-mods."
+    },
+    {
+      "key": "orion.sh/mod-check-offer",
+      "criterion": "check offers a newer mod once, never a lower or skipped version, and is silent when copies match",
+      "steps": "After installing run orion.sh check; then raise line 5 of .claude/orion/VERSION and change a file inside the mod archive, run check; then run mod skip control-tower and check again.",
+      "expected": "Nothing first; then one JSON line naming mod install control-tower; nothing after the skip."
+    },
+    {
+      "key": "orion.sh/mod-remove",
+      "criterion": "orion uninstall leaves the computer's copy; mod remove deletes it and uninstalls the plugin",
+      "steps": "Run orion.sh uninstall --yes in the project, then orion.sh mod remove control-tower from an orion checkout.",
+      "expected": "After uninstall ~/.claude/orion-mods/control-tower still exists; after remove it says the mod is uninstalled and its copy deleted, and claude plugin list no longer shows it."
+    },
+    {
+      "key": "docs-guide/mods-tile",
+      "criterion": "The guide page has the mods tile and the install line",
+      "steps": "Open docs/guide/index.html in a browser.",
+      "expected": "A tile 'The mods (optional)' naming ~/.claude/orion-mods, mod install, mod skip, mod remove and /control-tower, and an install-steps line about --mods."
+    }
+  ],
+  "no_qa_reason": null
+}

@@ -1,0 +1,63 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 191,
+  "title": "Mods installer: offer each mod like the status line, installed at user scope on the person's yes",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T20:30:44Z",
+  "finished_at": "2026-11-23T22:04:19Z",
+  "outcome": "merged",
+  "pr": 252,
+  "summary": "orion now carries each mod in every project as one archive and installs it on a computer only on the person's word (orion.sh mod install|skip|remove), offering newer versions at session start. The owner's own install of Control Tower is left for after the merge, since the owner retired owner-merges.",
+  "agents": [
+    {
+      "name": "dev-191",
+      "model": "opus",
+      "tokens_total": 285720
+    },
+    {
+      "name": "review-191-r1",
+      "model": "opus",
+      "tokens_total": 169924
+    },
+    {
+      "name": "review-191-r2",
+      "model": "opus",
+      "tokens_total": 195315
+    },
+    {
+      "name": "review-191-r3",
+      "model": "opus",
+      "tokens_total": 180476
+    },
+    {
+      "name": "review-191-r4",
+      "model": "opus",
+      "tokens_total": 117391
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 3359,
+    "review_seconds": 2070,
+    "ci_seconds": 90
+  },
+  "rounds": {
+    "review": 4,
+    "ci": 1
+  },
+  "friction": [
+    "Two review rounds were spent on design gaps the story did not foresee: an update is run by the project's older orion.sh, so new copy steps need the redo-once guard; and copying a mod's TypeScript sources into a project lets the project's own test and lint tools collect them. A story that adds files to the project copy should name both up front."
+  ],
+  "lessons_learned": [
+    "Anything new orion copies into a project must be invisible to the project's own tools (test runners, linters, TypeScript): store it as an archive or in a form with no source extensions."
+  ],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "orion.sh (mod install)",
+      "what": "The real claude plugin install/uninstall/marketplace commands were only exercised against a stub; the --marketplace option needs a recent Claude Code, so an install on an older Claude Code may fail.",
+      "why": "Agents may not install into the owner's real ~/.claude; the owner's first real install is the proof.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}
