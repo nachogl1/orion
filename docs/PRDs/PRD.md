@@ -79,7 +79,6 @@ one, so old installs are offered the update as usual. This replaces decision 1 o
 | Default branch | The repository's GitHub default branch, where daily work starts from and squash-merges into; the rules and skills look it up instead of naming `main`. `develop` for orion, usually `main` in a project. |
 | Release | A pull request from the default branch into the release branch (the branch a project deploys from, named in its `CLAUDE.md`; `main` for orion), opened only on the owner's word and merged with a merge commit, the one exception to squash-merging. A project with no release branch has none. |
 | Mod | A Claude Code plugin that changes how Claude Code looks and behaves, offered per computer and installed at user scope only on the person's word. |
-| `owner-merges` | A story label: `/dev-next` builds the story and opens its pull request, then stops; the owner tries the change and merges. Every story that builds or changes a mod carries it. |
 | Test copies | How many parallel copies (workers) a run's test suite uses on a shared computer; each run sizes its own. |
 | Epic / story | A group of work / one buildable piece of it. Agents build stories only. Epic → story is a native GitHub sub-issue. |
 | Blocker | An issue that must be CLOSED first; set both as GitHub's native relation and under `### Blocked by`. |
@@ -179,7 +178,7 @@ The loop, from idea to checked software:
   before its gate and checks it is not behind right before merging; before each local test run it sizes its test
   copies (physical cores ÷ live runs, at most half the cores, at least 1, and 1 when under 2 GB of memory is free);
   it names every sub-agent with the issue number and writes its terminal, step and sub-agents into its in-flight
-  entry. An `owner-merges` story stops at its open pull request. A run that gives up keeps its assignee: a technical
+  entry. A run that gives up keeps its assignee: a technical
   failure stays `agent-ready`, a real question becomes `needs-human`, and the runner resumes with `/dev-next #<N>`.
 - `issue-map` — draws the blocked-by graph of every issue into a never-committed local HTML snapshot, rebuilt only
   when a person asks for it. Two opt-in options map only the issues a GitHub search matches (a blocker the search
@@ -209,7 +208,7 @@ Around the loop:
 ### The work-tracking model (shipped as rules in the baseline)
 
 - GitHub Issues in the project's own repository are the only source of truth. PRD → epic → story.
-- Labels: `epic`, `story`, `agent-ready`, `needs-human`, `in-progress`, `outside-change`, `bug`, `owner-merges`,
+- Labels: `epic`, `story`, `agent-ready`, `needs-human`, `in-progress`, `outside-change`, `bug`,
   plus the `wayfinder:*` and `tier:*` sets. A PRD's tiers set the build order through real blocks: every story of a
   later tier is blocked by the final stories of the tier before, and whoever files a story later links it the same
   way; tiers outside the PRD (`tier:bug`, `tier:dev-quick`, …) are outside the chain. `agent-ready` and `needs-human` never sit together; `outside-change` always carries
@@ -225,7 +224,7 @@ Around the loop:
   Decisions taken during a PRD split still go to the PRD.
 - An agent merges every pull request it makes once its checks are green (never on red or pending, "no checks
   reported" counts as red, squash, delete the branch), except one touching the PRD, an ADR, the UX prototype or the
-  project's `CLAUDE.md`, an `outside-change` one, or an `owner-merges` story: a person merges those.
+  project's `CLAUDE.md`, or an `outside-change` one: a person merges those.
 
 ### The audit, harvest, QA and reconcile loop
 
@@ -255,7 +254,7 @@ Around the loop:
 - **A `check` that prints on success, fails a session start, or edits anything the project owns.**
 - **Updates that touch** the project's `CLAUDE.md`, `config.json`, unmarked skills or unrelated settings.
 - **An agent merging** a pull request that touches the PRD, an ADR, the UX prototype or the project's `CLAUDE.md`,
-  an `outside-change` one or an `owner-merges` story; rebasing, stashing or force-pushing in any skill.
+  or an `outside-change` one; rebasing, stashing or force-pushing in any skill.
 - **A hosted service, server or deploy target.** orion runs nothing; it deploys nowhere.
 - **Running `orion init` against this checkout.** This repository imports `baselines/BASE_CLAUDE.md` directly.
 
@@ -284,7 +283,7 @@ A change to orion is done when all of these hold:
   requests never conflict), and every edited Markdown file still renders.
 - **A shared block corrected in one skill is corrected in every copy** (`git grep` for each).
 - **Agents merge their own pull requests on green**, except one touching the PRD, an ADR, the UX prototype or
-  `CLAUDE.md`, or an `owner-merges` story (every mod story is one): a human merges those.
+  `CLAUDE.md`: a human merges those.
 - **A mod is checked by hand** with `claude plugin validate`, `claude plugin test` and `tsc`, since they need Claude
   Code and do not run in CI.
 

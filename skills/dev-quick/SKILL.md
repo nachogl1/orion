@@ -99,7 +99,7 @@ file, you have taken the dev agent's job.
    boundaries an agent must not move, the standing decisions that are never asked about. Every question in phase 2 is
    checked against this file first — a question the project has already answered is not asked.
 3. Labels: `gh label list --limit 200 --json name --jq '.[].name'`; create any of `epic`, `story`, `agent-ready`,
-   `needs-human`, `in-progress`, `outside-change`, `bug`, `owner-merges` that is missing, with a one-line description. Never rename or
+   `needs-human`, `in-progress`, `outside-change`, `bug` that is missing, with a one-line description. Never rename or
    delete one. (`/dev-next` does the same; whichever runs first creates them.)
 4. **Latest `main`, read only, without switching any branch.** `git fetch origin main`, then read the code as it is
    on `origin/main` (`git show origin/main:<path>`, `git grep <pattern> origin/main`, `git ls-tree -r --name-only

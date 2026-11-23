@@ -7,21 +7,6 @@ enforcement. Follow it exactly.
 **Never push to `main`.** Every change lands through `gh pr merge` on a pull request that exists and has been reviewed.
 Full autonomy means the agent may open, review and merge that pull request — never that it may skip it.
 
-## Owner merges — a story that stops at its pull request
-
-A story labelled `owner-merges` is merged by a person, never by this skill (the baseline's *Who merges* rule). After
-its review approves it:
-
-1. **No slot.** Skip step 0: nothing merges, so the machine's queue is not held.
-2. **Steps 1-3 as written**, so the owner gets a pull request on the current `main` with green checks: merge
-   `origin/main` in and push, poll for the check run (without the slot, the poll skips the `merging` refresh and
-   re-check), and read the gate. A conflict or red goes back to `dev-N` as in those steps; red after two rounds, or no
-   checks reported, stops the story as in step 3.
-3. **Green → stop, never `gh pr merge`.** The issue's last comment: `Pull request #<P> is open with green checks. This
-   story is owner-merges: try the change, then merge it yourself.` Then `gh issue edit <N> --remove-label in-progress`
-   (the assignee stays), and the issue's entry is removed from the in-flight file. Steps 4 and 5 are never reached:
-   the worktree and branch stay for the open pull request, and the issue closes when the owner merges it (`Closes #<N>`).
-
 ## 0 · Take the merge slot
 
 Read the in-flight file (`in-flight.md`). `merging` held with a `since` under 30 minutes → wait, re-read every 60
