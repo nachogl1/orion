@@ -1,6 +1,6 @@
 ---
 name: prd-to-tickets
-description: 'ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies and the tier order (every later-tier story waits for the final stories of the tier before); every story owns one folder or module; both blocker forms set (GitHub''s native relation and the Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; existing open issues become blockers, never duplicates. Reads the PRD together with its pending ADRs. Its first message checks docs/ux/prototypes/ on the default branch for every screen the PRD names and, when one is missing, offers to draft the missing screens, opens that pull request and stops, so stories are cut only from screens already merged. Its own pull requests merge on green unless they touch the PRD, an ADR, the prototype or CLAUDE.md, which a person merges. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".'
+description: 'ORION - Split a PRD (a product requirements document under docs/PRDs/) into GitHub epics and stories that agents can build in parallel. Scaffold first, then the shared-contract stories, then everything fans out; blockers only on real contract dependencies and the tier order (every later-tier story waits for the final stories of the tier before); every story owns one folder or module; both blocker forms set (GitHub''s native relation and the Blocked by body section); epic to story as native sub-issues; every story labelled agent-ready or needs-human, and outside-change + needs-human when it lands in a repository the team does not own; existing open issues become blockers, never duplicates. Reads the PRD together with its pending ADRs. Its first message, after any ADR status question, checks docs/ux/prototypes/ on the default branch for every screen the PRD names and, when one is missing, offers to draft the missing screens, opens that pull request and stops, so stories are cut only from screens already merged. Its own pull requests merge on green unless they touch the PRD, an ADR, the prototype or CLAUDE.md, which a person merges. Works with GitHub Issues only, like dev-next. Use when the user types /prd-to-tickets, says "split this PRD into tickets", "cut the PRD into stories", or "create the epics and stories for this PRD".'
 argument-hint: "<path to the PRD> --developers N"
 ---
 
@@ -96,9 +96,9 @@ never stashes, never switches branches, commits only the files it touched, and o
    opened for the status lines alone when the person wants no PRD change. A run that opens neither writes nothing,
    and the next run asks again. Note every section number or heading, so each story can name the one it serves under
    `### References` and `### Goal`. Apart from an unknown status line, nothing is asked of the person in this phase:
-   the first thing they hear is phase 1.
+   after any ADR status question, the first thing they hear is phase 1.
 
-## Phase 1 — The UX gate: the first thing the person hears
+## Phase 1 — The UX gate: the first thing the person hears after any ADR status question
 
 The standing rule: **front-end development is led by the UX prototype in `docs/ux/prototypes/`**, and **the prototype
 is merged before this skill cuts a PRD that names screens** (the mandatory rules, *Standing decisions*). A story that

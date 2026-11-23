@@ -183,8 +183,9 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
 
 ## Phase 1 — Check, then judge
 
-1. **Spawn the three check agents at once**, each with the scratch file, the bookmark date, the `accepted` list and a
-   bounded brief:
+1. **Spawn the three check agents at once**, each with the scratch file, the bookmark date, the `accepted` list, the
+   list of pending ADRs phase 0 step 5 settled (each by file, with the person's answer for an unknown status line)
+   and a bounded brief:
    - `map-health-<slug>`: "one line per finding of the *issue map is broken* lens, in the order of the lens table:
      issue number and title, what is wrong, the evidence (the two lists that disagree, the missing folder, the label
      pair). Check every open issue; closed ones only for *closed while a blocker is open* and *closed epic with open
@@ -194,7 +195,8 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
      while a story with an earlier PRD tier label is still open: the story, its tier, the open earlier-tier stories,
      and the final stories of the tier before it (those no other story of that tier waits for) it should be blocked
      by."
-   - `prd-trace-<slug>`: "three tables. (a) One row per PRD and pending-ADR scope item, acceptance line and build
+   - `prd-trace-<slug>`: "the pending ADRs are exactly the list in this brief, never picked again by their status
+     line on the default branch. Three tables. (a) One row per PRD and pending-ADR scope item, acceptance line and build
      decision: the section or ADR, the issue(s) that cover it or `none`, and `changed since bookmark` plus one line on
      whether the covering open stories still match the section as it reads now. (b) One row per open story and per
      story closed since the bookmark: the PRD section or pending ADR it names, whether that exists and still says what
@@ -280,8 +282,8 @@ Nothing is edited, filed, closed, accepted or dropped automatically: the human d
 Issue edits go straight to GitHub (they are the tracker's own state, like a claim or a label); file changes go through
 **one** pull request on `feat/reconcile-<yyyymmdd>` (or the project's own branch pattern) in a worktree under the
 project's worktree root, opened by `reconcile-pr-<slug>`. Who merges it depends on what it touches (*Who merges*,
-below): one with only the bookmark and its changelog file merges on green; one that edits the PRD or folds an ADR is
-the person's to merge.
+below): one with only the bookmark and its changelog file merges on green; one that edits the PRD, folds an ADR or
+fixes an ADR's status line is the person's to merge.
 
 1. **Fix the issues** → `gh issue edit` for bodies and labels (body to a UTF-8 file, `--body-file`; PowerShell adds a
    byte-order mark — `.claude/skills/dev-next/references/shell-traps.md`), the native sub-issue and `blocked_by`

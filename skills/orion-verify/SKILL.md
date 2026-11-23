@@ -141,7 +141,9 @@ Any other line, or none at all (`proposed`, `Status: Accepted`, `approved by the
 line (its file and the line it carries now), and make each one **needs a yes**: which of the three it is. The ADR is
 the project's own file, so it changes only on the person's yes: the chosen line replaces the old one right under the
 title (or is added there when there was none), and nothing else in the file changes. Leaving it is fine: the next
-skill that reads it asks the same question. No `docs/ADRs/` folder, or every line known → nothing to report.
+skill that reads it asks the same question. No `docs/ADRs/` folder, or every line known → nothing to report. A
+skill's `VERIFY.md` that checks the same lines (step 3) adds no second line for the same ADR: each is listed once,
+here.
 
 ## Step 3 — the skills
 
