@@ -584,7 +584,10 @@ PY
 # only when no block binds that key yet; unbind deletes key -> action wherever it sits and drops a block it left
 # empty. The file is rewritten only when something changes. Prints the outcome: bind -> added | present |
 # taken<TAB><the action already there>; unbind -> removed | removed-empty (nothing is left but orion's empty
-# starter) | none; either -> bad when the file is not a keybindings file. Native Windows tools end it with \r.
+# starter) | none; either -> bad when the file is not a keybindings file: not an object, a top-level "bindings"
+# that is neither a list nor null (or missing), or, for bind, a first Global block whose "bindings" is neither an
+# object nor null (or missing). The three editors give the same answer for every shape. Native Windows tools end
+# it with \r.
 keys_edit() { keys_edit_raw "$@" | tr -d '\r'; }
 keys_edit_raw() {  # bind|unbind file key action
     local op="$1" f="$2" k="$3" a="$4" tool
@@ -592,17 +595,17 @@ keys_edit_raw() {  # bind|unbind file key action
     case "$tool" in
         jq)
             local tmp sel state
-            jq -e 'type == "object" and ((.bindings // []) | type) == "array"' "$f" >/dev/null 2>&1 || { echo bad; return; }
+            jq -e 'type == "object" and ((.bindings | type) as $t | $t == "array" or $t == "null")' "$f" >/dev/null 2>&1 || { echo bad; return; }
             sel='.bindings[]? | objects | (.bindings // {}) | objects | to_entries[] | select((.key | ascii_downcase) == $k)'
             tmp=$(mktemp)
             if [ "$op" = bind ]; then
-                state=$(jq -r --arg k "$k" --arg a "$a" "[$sel | .value] as \$v | if (\$v | index(\$a)) != null then \"present\" elif (\$v | length) > 0 then \"taken\t\" + (\$v[0] | if type == \"string\" then . else tojson end) else \"free\" end" "$f" | tr -d '\r')
+                state=$(jq -r --arg k "$k" --arg a "$a" "[$sel | .value] as \$v | if (\$v | index(\$a)) != null then \"present\" elif (\$v | length) > 0 then \"taken\t\" + (\$v[0] | if type == \"string\" then . else tojson end) elif ([.bindings[]? | objects | select(.context == \"Global\")][0].bindings | type) as \$t | \$t == \"object\" or \$t == \"null\" then \"free\" else \"bad\" end" "$f" 2>/dev/null | tr -d '\r')
                 [ "$state" = free ] || { rm -f "$tmp"; echo "$state"; return; }
                 jq --arg k "$k" --arg a "$a" '((.bindings // []) | map(type == "object" and .context == "Global") | index(true)) as $i
                     | if $i == null then .bindings = ((.bindings // []) + [{context: "Global", bindings: {($k): $a}}])
                       else .bindings[$i].bindings = ((.bindings[$i].bindings // {}) + {($k): $a}) end' "$f" > "$tmp" && mv "$tmp" "$f" && echo added
             else
-                state=$(jq -r --arg k "$k" --arg a "$a" "[$sel | select(.value == \$a)] | length" "$f" | tr -d '\r')
+                state=$(jq -r --arg k "$k" --arg a "$a" "[$sel | select(.value == \$a)] | length" "$f" 2>/dev/null | tr -d '\r')
                 [ "$state" != 0 ] || { rm -f "$tmp"; echo none; return; }
                 jq --arg k "$k" --arg a "$a" '.bindings |= map(
                         if type == "object" and ((.bindings | type) == "object") and (.bindings | to_entries | any((.key | ascii_downcase) == $k and .value == $a))
@@ -611,16 +614,17 @@ keys_edit_raw() {  # bind|unbind file key action
                 jq -r 'if ((keys - ["$schema", "$docs", "bindings"]) | length) == 0 and ((.bindings // []) | length) == 0 then "removed-empty" else "removed" end' "$f"
             fi ;;
         python3|python)
-            "$tool" - "$op" "$f" "$k" "$a" <<'PY'
+            "$tool" - "$op" "$f" "$k" "$a" 2>/dev/null <<'PY'
 import json, sys
 op, f, k, a = sys.argv[1:5]
 try:
     d = json.load(open(f, encoding="utf-8-sig"))
 except Exception:
     d = None
-if not isinstance(d, dict) or not isinstance(d.get("bindings") or [], list):
+if not isinstance(d, dict) or not isinstance([] if d.get("bindings") is None else d["bindings"], list):
     print("bad"); sys.exit()
-blocks = d["bindings"] = d.get("bindings") or []
+if d.get("bindings") is None: d["bindings"] = []
+blocks = d["bindings"]
 owned = [b for b in blocks if isinstance(b, dict) and isinstance(b.get("bindings"), dict)]
 def save():
     open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
@@ -631,7 +635,9 @@ if op == "bind":
     else:
         g = next((b for b in blocks if isinstance(b, dict) and b.get("context") == "Global"), None)
         if g is None: blocks.append({"context": "Global", "bindings": {k: a}})
-        else: g.setdefault("bindings", {})[k] = a
+        elif g.get("bindings") is None: g["bindings"] = {k: a}
+        elif isinstance(g["bindings"], dict): g["bindings"][k] = a
+        else: print("bad"); sys.exit()
         save(); print("added")
 else:
     hit = [b for b in owned if any(key.lower() == k and v == a for key, v in b["bindings"].items())]
@@ -649,20 +655,21 @@ PY
                 try { \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json } catch { 'bad'; exit }
                 if (-not (\$d -is [Management.Automation.PSCustomObject])) { 'bad'; exit }
                 \$has = [bool]\$d.PSObject.Properties['bindings']
-                if (\$has -and \$d.bindings -ne \$null -and -not (\$d.bindings -is [array])) { 'bad'; exit }
-                \$blocks = @(); if (\$has -and \$d.bindings -ne \$null) { \$blocks = @(\$d.bindings) }
+                if (\$has -and \$null -ne \$d.bindings -and -not (\$d.bindings -is [array])) { 'bad'; exit }
+                \$blocks = @(); if (\$has -and \$null -ne \$d.bindings) { \$blocks = @(\$d.bindings) }
                 function Get-Own(\$b) { (\$b -is [Management.Automation.PSCustomObject]) -and (\$b.bindings -is [Management.Automation.PSCustomObject]) }
                 function Save-Keys { [IO.File]::WriteAllText(\$f, (\$d | ConvertTo-Json -Depth 10) + [Environment]::NewLine) }
                 if ('$op' -eq 'bind') {
                     \$vals = @(); foreach (\$b in \$blocks) { if (Get-Own \$b) { foreach (\$p in @(\$b.bindings.PSObject.Properties)) { if (\$p.Name -eq \$k) { \$vals += ,\$p.Value } } } }
-                    if (\$vals -contains \$a) { 'present'; exit }
-                    if (\$vals.Count -gt 0) { if (\$vals[0] -eq \$null) { \"taken\`tnull\" } else { \"taken\`t\" + \$vals[0] }; exit }
-                    \$g = \$null; foreach (\$b in \$blocks) { if ((\$b -is [Management.Automation.PSCustomObject]) -and \$b.context -eq 'Global') { \$g = \$b; break } }
-                    if (\$g -eq \$null) {
+                    if (\$vals -ccontains \$a) { 'present'; exit }
+                    if (\$vals.Count -gt 0) { if (\$null -eq \$vals[0]) { \"taken\`tnull\" } else { \"taken\`t\" + \$vals[0] }; exit }
+                    \$g = \$null; foreach (\$b in \$blocks) { if ((\$b -is [Management.Automation.PSCustomObject]) -and \$b.context -ceq 'Global') { \$g = \$b; break } }
+                    if (\$null -eq \$g) {
                         \$entry = [PSCustomObject]@{ context = 'Global'; bindings = [PSCustomObject]@{ \$k = \$a } }
                         if (\$has) { \$d.bindings = @(\$blocks) + @(\$entry) } else { \$d | Add-Member -NotePropertyName bindings -NotePropertyValue @(\$entry) }
                     } else {
-                        if (-not (\$g.bindings -is [Management.Automation.PSCustomObject])) { \$g | Add-Member -Force -NotePropertyName bindings -NotePropertyValue (New-Object PSObject) }
+                        if (\$null -eq \$g.bindings) { \$g | Add-Member -Force -NotePropertyName bindings -NotePropertyValue (New-Object PSObject) }
+                        elseif (-not (\$g.bindings -is [Management.Automation.PSCustomObject])) { 'bad'; exit }
                         \$g.bindings | Add-Member -NotePropertyName \$k -NotePropertyValue \$a
                     }
                     Save-Keys; 'added'
@@ -670,7 +677,7 @@ PY
                     \$n = 0; \$keep = @()
                     foreach (\$b in \$blocks) {
                         \$hit = \$false
-                        if (Get-Own \$b) { foreach (\$p in @(\$b.bindings.PSObject.Properties)) { if (\$p.Name -eq \$k -and \$p.Value -is [string] -and \$p.Value -eq \$a) { \$b.bindings.PSObject.Properties.Remove(\$p.Name); \$hit = \$true; \$n++ } } }
+                        if (Get-Own \$b) { foreach (\$p in @(\$b.bindings.PSObject.Properties)) { if (\$p.Name -eq \$k -and \$p.Value -is [string] -and \$p.Value -ceq \$a) { \$b.bindings.PSObject.Properties.Remove(\$p.Name); \$hit = \$true; \$n++ } } }
                         if (\$hit -and @(\$b.bindings.PSObject.Properties).Count -eq 0) { continue }
                         \$keep += ,\$b
                     }

@@ -570,6 +570,32 @@ keybinding_cases() {
     printf '\357\273\277{"bindings":[{"context":"Chat","bindings":{"ctrl+x p":"chat:modelPicker"}}]}\n' > "$KF"; cp "$KF" "$SB/keys-before"
     check "a chord taken by another binding: install keeps the file byte for byte and says so in one line" eval 'keys_cmd install && cmp -s "$SB/keys-before" "$KF" && [ "$(grep -c "chat:modelPicker" "$SB/out")" = 1 ] && grep "chat:modelPicker" "$SB/out" | grep -qF "$KEY_ACTION" && [ -d "$KBH/.claude/orion-mods/control-tower" ]'
     check "and mod remove leaves that binding alone" eval 'keys_cmd remove && cmp -s "$SB/keys-before" "$KF"'
+    check "every editor gives the same answer on a malformed file: left byte for byte with one warning, or bound where the shape allows it" keys_malformed
+}
+# Each shape, then what every editor must do with it: "bad" leaves the file byte for byte and warns in one line,
+# "added" binds the key; never a traceback or an error of the editor's own shown to the person.
+KEY_SHAPES='bad	not json
+bad	[]
+bad	{"bindings":{}}
+bad	{"bindings":""}
+bad	{"bindings":0}
+bad	{"bindings":false}
+bad	{"bindings":[{"context":"Global","bindings":["keep-me"]}]}
+added	{"bindings":null}
+added	{"bindings":[{"context":"Global","bindings":null}]}'
+keys_malformed() {
+    local want shape
+    while IFS="$(printf '\t')" read -r want shape; do
+        printf '%s\n' "$shape" > "$KF"; cp "$KF" "$SB/keys-before"; rm -rf "$KBH/.claude/orion-mods/control-tower"
+        keys_cmd install || { echo "  install failed on: $shape"; return 1; }
+        ! grep -qiE "traceback|error|exception" "$SB/out" || { echo "  editor error shown on: $shape"; sed 's/^/    /' "$SB/out"; return 1; }
+        case "$want" in
+            bad) { cmp -s "$SB/keys-before" "$KF" && [ "$(grep -c "could not be read as a keybindings file" "$SB/out")" = 1 ]; } \
+                    || { echo "  not left alone with one warning: $shape"; return 1; } ;;
+            added) { json_ok "$KF" && [ "$(keys_count "$KF" "$KEY_CHORD" "$KEY_ACTION")" = 1 ]; } \
+                    || { echo "  not bound: $shape"; return 1; } ;;
+        esac
+    done <<< "$KEY_SHAPES"
 }
 for tool in $tools; do
     echo "settings edits with $tool"
