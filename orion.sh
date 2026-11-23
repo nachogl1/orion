@@ -935,7 +935,8 @@ apply_mods() {
     done
     for name in $(mod_dirs "$src"); do
         f="$dir/.$name.tar.new"
-        ( cd "$src/$name" && tar -cf - . ) > "$f"
+        # macOS tar would add AppleDouble ._* entries for files with extended attributes; elsewhere a no-op
+        ( cd "$src/$name" && COPYFILE_DISABLE=1 tar -cf - . ) > "$f"
         if [ -f "$dir/$name.tar" ] && [ "$(mod_sum "$f")" = "$(mod_sum "$dir/$name.tar")" ]; then rm -f "$f"; else mv -f "$f" "$dir/$name.tar"; fi
     done
 }
