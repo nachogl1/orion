@@ -120,11 +120,20 @@ stand in. **Disagreement is a bug**: the PRD wins on product, the rules files wi
   - **A hard-to-reverse decision** (a new mechanism, a format, a dependency, a change of scope: something costly to
     undo, or that a later reader will ask "why?" about) gets an **ADR** (a short decision record: context, decision,
     consequences, alternatives) at `docs/ADRs/adr-<change-name>.md`. The agent proposes it and the person confirms
-    one is needed; the person approves the ADR before any ticket or code for that change exists. Every ADR carries a
-    status line, `pending` or `folded into the PRD on <date>`. **During a PRD split (`/prd-to-tickets`) this rule
-    does not apply**: a hard-to-reverse decision taken there is recorded under the stories it shapes and offered for
-    the PRD's build-decisions section through the PRD pull request the split already asks about, so the backlog and
-    the drift checks see it; an ADR is optional rationale there and never blocks a story.
+    one is needed; the person approves the ADR before any ticket or code for that change exists. Right under its
+    title, every ADR carries exactly one of three status lines: `**Status: pending**` (not yet folded into the PRD:
+    read beside the PRD as product truth), `**Status: folded into the PRD on <yyyy-mm-dd>**` (already in the PRD: not
+    read again) or `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` (a later ADR, named by its file name,
+    overrides it: every skill skips it and `/reconcile` never folds it; whoever writes the newer ADR sets this line on
+    the older one in the same pull request). Any other line, or none at all (`proposed`, `Status: Accepted`,
+    `approved by the owner on <date>`, …), is **unknown**: it is never read as pending and never skipped silently. A
+    skill that meets one (`/reconcile`, `/prd-to-tickets`, `/wayfinder`) stops at that ADR, asks the person which of
+    the three it is, and fixes the line in the pull request that run already opens, which a person merges because it
+    touches `docs/ADRs/`; `/orion-verify` lists every such ADR and fixes a line only on the person's yes. **During a
+    PRD split (`/prd-to-tickets`) a decision needs no ADR**: a hard-to-reverse decision taken there is recorded under
+    the stories it shapes and offered for the PRD's build-decisions section through the PRD pull request the split
+    already asks about, so the backlog and the drift checks see it; an ADR is optional rationale there and never
+    blocks a story.
   - **A big change or a product update:** the agent only asks whether the person wants a PRD. Creating or updating a
     PRD is the person's process, on their terms — planned with `/wayfinder`, then written or provided by the person.
     **An agent never drafts a PRD on its own.**

@@ -126,6 +126,23 @@ Read `~/.claude/CLAUDE.md` if it exists (the person's own rules for every projec
 
 The file is personal: quote it only in the chat, never in the project, a commit, an issue or a report.
 
+### The ADRs' status lines
+
+Read every `docs/ADRs/*.md` in the project, if any (the project's decision records). Right under its title, each must
+carry exactly one of three status lines:
+
+- `**Status: pending**` — not yet folded into the PRD: read beside the PRD as product truth.
+- `**Status: folded into the PRD on <yyyy-mm-dd>**` — already in the PRD: not read again.
+- `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` — a later ADR (named by its file name) overrides it: every
+  skill skips it and none folds it into the PRD.
+
+Any other line, or none at all (`proposed`, `Status: Accepted`, `approved by the owner on <date>`, …), is
+**unknown**: the planning and checking skills never guess at it, they stop and ask. List every ADR with an unknown
+line (its file and the line it carries now), and make each one **needs a yes**: which of the three it is. The ADR is
+the project's own file, so it changes only on the person's yes: the chosen line replaces the old one right under the
+title (or is added there when there was none), and nothing else in the file changes. Leaving it is fine: the next
+skill that reads it asks the same question. No `docs/ADRs/` folder, or every line known → nothing to report.
+
 ## Step 3 — the skills
 
 For every folder under `.claude/skills/` (orion-managed ones carry an `.orion-managed` marker; the others are the
@@ -178,8 +195,9 @@ Put every **needs a yes** item into **one** AskUserQuestion call, one question p
 call for the rest), phrased for someone who has never seen these files: what is wrong, what the fix changes, with
 "Apply the fix" as the recommended option and "Leave it" as the other. A clash with the person's own rules file has
 three options instead: edit their file, propose the change to orion, or leave it; recommend editing their file unless
-orion's rule is clearly wrong for every project. Apply exactly what was accepted. No questions
-when nothing needs one.
+orion's rule is clearly wrong for every project. An ADR's unknown status line has four: the three status lines, in
+plain words, and "Leave it"; recommend the line its text suggests (for a replaced one, ask which ADR replaced it).
+Apply exactly what was accepted. No questions when nothing needs one.
 
 ## Step 6 — report
 

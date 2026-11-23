@@ -1,0 +1,1 @@
+An ADR's status line is now one of three, `pending`, `folded into the PRD on <date>` or the new `replaced by <newer ADR> on <date>`, read the same way by every skill, and an ADR with any other line is asked about and fixed instead of guessed at.

@@ -48,7 +48,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 | `inventory-<slug>` | sonnet | low | optional: maps every open issue and the repository's layout onto the PRD's sections and returns a bounded table (phase 2) |
 | `ux-prototype-<slug>` | opus | high | drafts the screens the prototype lacks from the PRD in its own worktree, adds the PRD's one line pointing at the prototype folder and opens its pull request (phase 1, `references/ux-prototype.md`) |
 | `plan-check-<slug>` | opus | xhigh | fresh context: reads the cut plan against the rules in phase 3 and returns PASS or every violation (phase 5) |
-| `prd-update-<slug>` | sonnet | low | only when the person says yes in phase 6 step 6: applies the agreed lines to the PRD in its own worktree and opens the `docs(prd)` pull request |
+| `prd-update-<slug>` | sonnet | low | only when the person says yes in phase 6 step 6, or an ADR status line fixed in phase 0 still has to land: applies the agreed lines to the PRD and the fixed status lines to `docs/ADRs/` in its own worktree and opens the `docs(prd)` pull request |
 
 `<slug>` is the PRD's file name without `PRD` and `.md`, lower-case, hyphenated. Name every sub-agent after what it
 does, keep the agent id each spawn returns, and ask each for a bounded result. A sub-agent works in its own worktree,
@@ -76,13 +76,27 @@ never stashes, never switches branches, commits only the files it touched, and o
    origin/<default>` — never through the main checkout's files. That checkout may sit on another branch or hold
    someone's work: never switch its branch, never stash, never reset. This session creates no branch of its
    own; only its sub-agents do, each in its own worktree.
-5. **Locate the PRD** (arguments above) and read it in full, **together with its pending ADRs**: every
-   `docs/ADRs/*.md` on `origin/<default>` whose status line says `pending` (not yet folded into the PRD). Product truth is
-   the PRD plus those ADRs (the mandatory rules, *Standing decisions*); where a pending ADR changes what the PRD says,
-   the ADR is the later decision and wins, and the stories it shapes name it under `### References`. An ADR whose
-   status line says `folded into the PRD on <date>` is already in the PRD and is not read again. Note every section
-   number or heading, so each story can name the one it serves under `### References` and `### Goal`. Nothing is
-   asked of the person in this phase: the first thing they hear is phase 1.
+5. **Locate the PRD** (arguments above) and read it in full, **together with its pending ADRs**. Every
+   `docs/ADRs/*.md` on `origin/<default>` is read for its status line first, which says whether it is pending; right
+   under its title, it carries exactly one of three:
+   - `**Status: pending**` (not yet folded into the PRD) → read in full. Product truth is the PRD plus these ADRs (the
+     mandatory rules, *Standing decisions*); where a pending ADR changes what the PRD says, the ADR is the later
+     decision and wins, and the stories it shapes name it under `### References`.
+   - `**Status: folded into the PRD on <yyyy-mm-dd>**` → already in the PRD, not read again.
+   - `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` → a later ADR (named by its file name) overrides it:
+     skipped, and no story names it. Whoever writes the newer ADR sets this line on the older one in the same pull
+     request.
+
+   **An unknown status line** — any other line, or none at all (`proposed`, `Status: Accepted`,
+   `approved by the owner on <date>`, …) — is never read as pending and never skipped silently: stop at that ADR and
+   ask the person which of the three it is (`AskUserQuestion`, one question per ADR, the three lines as the options
+   in plain words, the one its text suggests marked "(Recommended)"; for a replaced one, ask which ADR replaced it),
+   then read it by the answer. The fixed line goes into the first pull request this run opens that a person merges
+   (it touches `docs/ADRs/`): the prototype's when phase 1 stops the run, else the PRD update of phase 6 step 6,
+   opened for the status lines alone when the person wants no PRD change. A run that opens neither writes nothing,
+   and the next run asks again. Note every section number or heading, so each story can name the one it serves under
+   `### References` and `### Goal`. Apart from an unknown status line, nothing is asked of the person in this phase:
+   the first thing they hear is phase 1.
 
 ## Phase 1 — The UX gate: the first thing the person hears
 
@@ -111,7 +125,8 @@ screens someone has already seen, with screen ids that already exist. Before any
      `references/ux-prototype.md`. It works in its own worktree on `feat/ux-prototype-<slug>` (or the project's own
      branch pattern), adds only the missing screens to `docs/ux/prototypes/<slug>/` (one self-contained HTML
      click-through plus a `README.md` listing the screens; a new folder when there is none), adds one line to the PRD
-     pointing at the prototype folder when the PRD has none yet, opens the pull request (a person merges it, *Who
+     pointing at the prototype folder when the PRD has none yet, writes any ADR status line the person fixed in
+     phase 0, opens the pull request (a person merges it, *Who
      merges*), and returns the pull request link and the screen list.
    - **The person provides them** — nothing is spawned; the person says where the screens will live.
    - **They are not screens after all** — say so and go to phase 2 without them.
@@ -278,11 +293,12 @@ File in dependency order, so every blocker exists before the issue it blocks:
    the background, as its own command, never chained. Its footer confirms the body sections and native relations agree.
 6. **Ask once, after the batch:** "Should we update the PRD with this too?" — one line per change the interview made
    to the product (naming the PRD section), only when there is one. "No" ends it; "yes" → spawn `prd-update-<slug>`
-   with the exact lines and sections: it works in its own worktree on `feat/prd-update-<slug>` (or the project's
-   own branch pattern), adds its own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; the folder
+   with the exact lines and sections, and with the ADR status lines the person fixed in phase 0 (the sub-agent is
+   spawned for those lines alone when the answer is "no" or there was nothing to ask): it works in its own worktree
+   on `feat/prd-update-<slug>` (or the project's own branch pattern), adds its own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; the folder
    created with a `README.md` explaining the format if missing), runs the gate (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite)
-   and on green commits only the PRD and the changelog file, opens a `docs(prd)` pull request (a person merges it,
-   *Who merges*), and returns its link; red → it reports the failing command and stops. Never pushed to the default branch.
+   and on green commits only the PRD, the fixed ADR status lines and the changelog file, opens a `docs(prd)` pull
+   request (a person merges it, *Who merges*), and returns its link; red → it reports the failing command and stops. Never pushed to the default branch.
 7. **Close-out, ten lines or fewer:** epics and stories filed (counts per level against the developer count), which
    story `/dev-next` takes first (the scaffold, or the contract stories when there is no scaffold), every
    `needs-human` item with who acts and what, every `outside-change` with who drives it, the PRD pull request waiting
@@ -304,8 +320,8 @@ So, for each pull request this skill's sub-agents open:
 
 | Pull request | Touches | Merged by |
 |---|---|---|
-| The prototype, `ux-prototype-<slug>` (phase 1) | `docs/ux/prototypes/` and the PRD's one line under `docs/PRDs/` | **a person**; the run stops and the next run starts once it is on the default branch |
-| The PRD update, `prd-update-<slug>` (phase 6 step 6) | `docs/PRDs/` | **a person** |
+| The prototype, `ux-prototype-<slug>` (phase 1) | `docs/ux/prototypes/` and the PRD's one line under `docs/PRDs/`, and `docs/ADRs/` for a status line fixed in phase 0 | **a person**; the run stops and the next run starts once it is on the default branch |
+| The PRD update, `prd-update-<slug>` (phase 6 step 6) | `docs/PRDs/`, and `docs/ADRs/` for a status line fixed in phase 0 | **a person** |
 | Any other pull request this skill opens | none of the paths above and no `outside-change` story | the agent that opened it, on green, with `/dev-next`'s bar |
 
 The agent merges a person's pull request only on the person's explicit word for that one pull request, once its
