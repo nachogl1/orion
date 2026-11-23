@@ -1,0 +1,41 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 239,
+  "title": "ADR status lines: three lines read the same way by every skill, and an unknown one is asked about and fixed",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T23:10:00Z",
+  "finished_at": "2026-11-23T23:39:31Z",
+  "outcome": "merged",
+  "pr": 257,
+  "summary": "The baseline and the reconcile, prd-to-tickets, wayfinder and orion-verify skills now name the same three ADR status lines, including 'replaced by'; any other line is asked about and fixed in a pull request a person merges.",
+  "agents": [
+    {
+      "name": "dev-239",
+      "model": "opus",
+      "tokens_total": 210617
+    },
+    {
+      "name": "review-239-r1",
+      "model": "opus",
+      "tokens_total": 161986
+    },
+    {
+      "name": "review-239-r2",
+      "model": "opus",
+      "tokens_total": 131086
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1344,
+    "review_seconds": 426,
+    "ci_seconds": 105
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}

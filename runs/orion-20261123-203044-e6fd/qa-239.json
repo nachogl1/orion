@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 239,
+  "title": "ADR status lines: three lines read the same way by every skill, and an unknown one is asked about and fixed",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 257,
+  "merged_at": "2026-11-23T23:39:31Z",
+  "merge_commit": "162ceb0bc8d13f06d946bde82202230399ee5e96",
+  "seam": "ADR paragraph of baselines/BASE_CLAUDE.md; ADR-reading steps of skills/reconcile, prd-to-tickets, wayfinder, orion-verify",
+  "story": "Skills used to read an ADR's status line in slightly different ways, and treated an unrecognised line as pending. Every skill now recognises the same three lines and asks the person about any other one, fixing it in a pull request the person merges.",
+  "checks": [],
+  "no_qa_reason": "Skill instructions only; nothing a user drives on its own."
+}
