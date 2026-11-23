@@ -234,8 +234,12 @@ All file changes go through **one** pull request on `feat/harvest-<yyyymmdd>` in
 rules: worktree root, branch pattern, who merges):
 
 ```
-git -C <main checkout> worktree add <wt root>/harvest-<yyyymmdd> -b feat/harvest-<yyyymmdd> origin/main
+git -C <main checkout> worktree add <wt root>/harvest-<yyyymmdd> -b feat/harvest-<yyyymmdd> origin/<default>
 ```
+
+`<default>` is the default branch (where daily work starts from and merges into), looked up and never assumed:
+`git symbolic-ref --short refs/remotes/origin/HEAD` prints `origin/<default>`; when it fails,
+`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`.
 
 `<wt root>` is `C:\wt` on Windows and `~/wt` elsewhere, unless the project's `CLAUDE.md` names another. Who merges
 the pull request depends on what it touches (*Who merges*, below).

@@ -1,6 +1,6 @@
 ---
 name: harvest-qa
-description: 'ORION - Run the QA checks that every merged /dev-next story leaves behind on the developers'' audit branches — against main, one agent at a time, in as many rounds as it takes until every record is tested — dropping records a later story has superseded or made obsolete, showing the person each confirmed failure with its importance and filing a bug issue only for the ones they choose, and keeping a log on main of what was tested, when, on which commit and with what result. Reads only the QA records; never the notes /harvest works through. Use when the user types /harvest-qa, or when a /dev-next run ended with `QA due: run /harvest-qa`.'
+description: 'ORION - Run the QA checks that every merged /dev-next story leaves behind on the developers'' audit branches — against the default branch, one agent at a time, in as many rounds as it takes until every record is tested — dropping records a later story has superseded or made obsolete, showing the person each confirmed failure with its importance and filing a bug issue only for the ones they choose, and keeping a log on the default branch of what was tested, when, on which commit and with what result. Reads only the QA records; never the notes /harvest works through. Use when the user types /harvest-qa, or when a /dev-next run ended with `QA due: run /harvest-qa`.'
 argument-hint: "(no arguments)"
 disable-model-invocation: true
 ---
@@ -11,7 +11,7 @@ disable-model-invocation: true
 > **Editing this skill?** Keep everything here **general**: no project, person, company or stack names. It works with GitHub Issues only, like `dev-next`, whose `references/new-issue.md`, `references/audit.md` and `references/merge-and-ci.md` it relies on.
 
 `/dev-next` builds, reviews and merges a story, but nobody starts the product and checks the acceptance criteria the way
-a user would. This skill does that **later, against `main`**, from the QA record `/dev-next` writes for every merged
+a user would. This skill does that **later, against the default branch**, from the QA record `/dev-next` writes for every merged
 story (`.claude/skills/dev-next/references/audit.md`, *The QA record*). A person starts it; it then runs unattended
 until every record is tested, asks the person what to do with each confirmed failure, and ends with one pull request
 carrying its log, which it merges itself on green.
@@ -42,9 +42,9 @@ fast and wrong here.
      "tested_through": { "<login>": "<last run id tested>" },
      "carried": [ { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "why": "<why it was not tested last time>" } ],
      "log": [
-       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "pass", "commit": "<main sha tested>", "date": "<yyyy-mm-dd>" },
-       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "fail", "bug": "<issue number>", "commit": "<main sha tested>", "date": "<yyyy-mm-dd>" },
-       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "fail", "dropped": "<the person's reason, or \"dropped by the person\">", "commit": "<main sha tested>", "date": "<yyyy-mm-dd>" },
+       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "pass", "commit": "<default-branch sha tested>", "date": "<yyyy-mm-dd>" },
+       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "fail", "bug": "<issue number>", "commit": "<default-branch sha tested>", "date": "<yyyy-mm-dd>" },
+       { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "fail", "dropped": "<the person's reason, or \"dropped by the person\">", "commit": "<default-branch sha tested>", "date": "<yyyy-mm-dd>" },
        { "login": "<login>", "run": "<run id>", "issue": "<N>", "key": "<seam>/<flow>", "result": "superseded", "by": "<run id>/<N>", "date": "<yyyy-mm-dd>" }
      ],
      "last_qa": "<yyyy-mm-dd>"
@@ -72,7 +72,7 @@ story changed and what it replaced — read it; it is there for this step.
 1. **Superseded.** Two checks with the same `key` → the one from the record with the newest `merged_at` is tested; the
    older is logged `superseded` with `by` and counts as tested. Two checks whose keys differ but whose `story` texts say
    the later one replaced the earlier one's flow → same rule; say so in the log entry's `why`.
-2. **Obsolete.** A check whose flow no longer exists on `main` (the story that removed it says so, or the screen or
+2. **Obsolete.** A check whose flow no longer exists on the default branch (the story that removed it says so, or the screen or
    command is gone — confirm with a read of the code, never a guess) → logged `obsolete` with one sentence of evidence;
    counts as tested.
 3. **Already tracked.** A check whose flow is the subject of an **open** `bug` issue (`gh issue list --state open
@@ -89,8 +89,11 @@ finish.
 
 ## Phase 2 — Rounds
 
-1. One worktree of `main` for the whole run, so every round tests the same commit and no story's worktree is touched:
-   `git -C <main checkout> worktree add --detach <wt root>/qa-<yyyymmdd-hhmmss> origin/main`. Record its commit:
+1. One worktree of the default branch for the whole run, so every round tests the same commit and no story's
+   worktree is touched: `git -C <main checkout> worktree add --detach <wt root>/qa-<yyyymmdd-hhmmss> origin/<default>`
+   (`<default>` is the default branch, looked up and never assumed: `git symbolic-ref --short
+   refs/remotes/origin/HEAD` prints `origin/<default>`; when it fails, `gh repo view --json defaultBranchRef --jq
+   .defaultBranchRef.name`). Record its commit:
    that is `commit` in every log entry this run writes. Resolve the runtime paths the way `/dev-next` does in its
    preflight (the pinned version's real interpreter and SDK, never the plain command on PATH) and pass them to every
    agent. **Keep the `qa-` prefix in the folder name**: it is how `/clear-git-resources` recognises a QA run's
@@ -132,13 +135,13 @@ finish.
    `log` = the existing log plus one entry per check this run decided (`pass`, `fail` + `bug` or `dropped`,
    `superseded` + `by`, `obsolete`, `tracked` + `bug`, `none`); `carried` = every check this run could not decide, each with its `why`;
    `last_qa` = today. A check in `carried` is **not** in `log`. Audit branches are never written to.
-4. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/main`, in a worktree of its own (never the main checkout);
+4. Branch `feat/harvest-qa-<yyyymmdd>` off `origin/<default>`, in a worktree of its own (never the main checkout);
    write the state file there and add the run's own changelog file,
    `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; create the folder with a `README.md` explaining the format if it does not
    exist). **Run the
    gate** (the gate commands the project's `CLAUDE.md` lists: build → lint → typecheck → full suite) in that worktree
    before the pull request opens. Red → do not open it: this pull request only adds a state file and a changelog file,
-   so red means `main` itself is red; the close-out names the failing command first, for a person to fix, and the
+   so red means the default branch itself is red; the close-out names the failing command first, for a person to fix, and the
    worktree is kept so the log is not lost. Green → commit those two files (never `git add -A`), push, open the pull
    request; its body is the table below. Who merges it is set by *Who merges*, below.
 
@@ -181,7 +184,8 @@ not pull requests, and no `outside-change` work is ever done here.
 ## Rules
 
 - **Never start from `/dev-next`.** It counts; a person starts the QA.
-- **`main` only.** A check runs against the merged result, never a branch; a failure is a bug on `main`.
+- **The default branch only.** A check runs against the merged result, never a branch; a failure is a bug on the
+  default branch.
 - **One agent alive at a time.** The product is a shared resource; rounds are sequential, always.
 - **QA records only.** `qa-<N>.json` is the one source; `issue-<N>.json` and `docs/harvest-state.json` are
   `/harvest`'s and are never read or written here.

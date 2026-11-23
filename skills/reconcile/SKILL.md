@@ -1,6 +1,6 @@
 ---
 name: reconcile
-description: 'ORION - Check that the GitHub issues (the issue map: epics, stories, blockers, labels, order) and the PRDs under docs/PRDs/, read together with their pending ADRs under docs/ADRs/, still describe the same product, and that both still match what is on main, then fix the drift with the person present. It finds a story nothing in the PRD or a pending ADR asks for, a PRD section no story covers, a PRD changed after its stories were cut, a closed story the PRD never absorbed, a pending ADR not yet folded into the PRD (and offers to fold it, changing the ADR''s status line in the same pull request), a story with no epic, blockers that disagree between the body and GitHub''s native relation, two open stories on one folder, a label pair that cannot coexist, a later-tier story that is free while an earlier tier is still open, and an order that cannot be built. Every finding is explained as if the person had never heard of the project, with how much it matters; nothing is edited, filed, accepted or dropped without their word. Its own pull request merges on green unless it touches the PRD or an ADR, which a person merges. Works with GitHub Issues only, like dev-next. Use when the user types /reconcile, asks "are the issues still in line with the PRD", "is the backlog up to date", "does the issue map still match the product", or when a /dev-next run ended with `Drift found: run /reconcile`.'
+description: 'ORION - Check that the GitHub issues (the issue map: epics, stories, blockers, labels, order) and the PRDs under docs/PRDs/, read together with their pending ADRs under docs/ADRs/, still describe the same product, and that both still match what is on the default branch, then fix the drift with the person present. It finds a story nothing in the PRD or a pending ADR asks for, a PRD section no story covers, a PRD changed after its stories were cut, a closed story the PRD never absorbed, a pending ADR not yet folded into the PRD (and offers to fold it, changing the ADR''s status line in the same pull request), a story with no epic, blockers that disagree between the body and GitHub''s native relation, two open stories on one folder, a label pair that cannot coexist, a later-tier story that is free while an earlier tier is still open, and an order that cannot be built. Every finding is explained as if the person had never heard of the project, with how much it matters; nothing is edited, filed, accepted or dropped without their word. Its own pull request merges on green unless it touches the PRD or an ADR, which a person merges. Works with GitHub Issues only, like dev-next. Use when the user types /reconcile, asks "are the issues still in line with the PRD", "is the backlog up to date", "does the issue map still match the product", or when a /dev-next run ended with `Drift found: run /reconcile`.'
 argument-hint: "(none) | <path to one PRD> | --since <yyyy-mm-dd>"
 ---
 
@@ -16,7 +16,7 @@ line, `pending` or `folded into the PRD on <date>`), and until one is folded in,
 PRD. People and repositories move on — a PRD section is rewritten after its stories were cut, a story is filed from a
 conversation nobody wrote down, an epic is closed with children still open, a folder is renamed under a story that
 names the old one, a decision waits in an ADR nobody folded into the PRD. Nothing in the pipeline notices on its own.
-This skill is the check: it reads both sources and the code on `main`, lists every way they have drifted apart, and
+This skill is the check: it reads both sources and the code on the default branch, lists every way they have drifted apart, and
 puts the drift right **with the person present**.
 
 **A person runs this.** It is never started by another skill: `/dev-next` only probes for the cheapest signs of drift
@@ -53,7 +53,7 @@ Read the project's `CLAUDE.md` first. It overrides this file where they disagree
 | this session | opus | the user's own | reads the state and the PRDs, spawns the checks, judges, talks to the person and to GitHub |
 | `map-health-<slug>` | sonnet | low | the mechanical lens: labels, parents, both blocker forms, seams, order. Returns one line per finding, no essay |
 | `prd-trace-<slug>` | opus | high | the two PRD lenses: PRD → issues and issues → PRD. Returns a bounded table |
-| `code-check-<slug>` | sonnet | low | the product lens: what `main` actually holds against what the PRD and the closed stories claim. Returns one line per finding |
+| `code-check-<slug>` | sonnet | low | the product lens: what the default branch actually holds against what the PRD and the closed stories claim. Returns one line per finding |
 | `reconcile-pr-<slug>` | sonnet | low | only in phase 3: applies the agreed PRD edits and folds (with each folded ADR's status line), the bookmark and the changelog file in its own worktree, runs the gate, opens the pull request and merges it on green when *Who merges* gives it to the agent |
 
 `<slug>` is the repository name, lower-case, hyphenated (one PRD given → the PRD's file name without `PRD` and `.md`).
@@ -69,8 +69,8 @@ Every finding belongs to exactly one lens, and the person hears the lens name, i
 |---|---|---|
 | **The PRD asks for something no story covers** | every scope item, acceptance line and build decision in each PRD **and each pending ADR** has an epic or a story (open or closed) that names its section (or the ADR) under `### References` or `### Goal`, or plainly implements it; every PRD section **changed since the bookmark** still matches the open stories that reference it (scope, acceptance criteria, vocabulary); nothing on the PRD's do-not-build list has an open story | the PRDs under `docs/PRDs/` (`git log` for what changed) and the pending ADRs under `docs/ADRs/` |
 | **A story the PRD does not ask for, or an outcome the PRD never absorbed** | every open story names a PRD section or a pending ADR that exists and still says what the story says (a story a pending ADR asks for is **not** a story the PRD does not ask for); every epic matches a PRD area or a pending ADR; every story **closed since the bookmark** whose `## Decisions (agent-ready)`, pull request or last comments changed the product in a way neither the PRD nor a pending ADR records; **every pending ADR not yet folded into the PRD** | the issues, open and closed, and their merged pull requests; the ADRs' status lines |
-| **The issue map is broken** | an open non-epic issue with no native parent epic; an open epic with no open children, or a closed epic with open children; `### Blocked by` and the native relation disagree; a blocker that does not exist, points at an epic or closes a cycle; a story closed while a blocker of it is still open (built out of order); **a later-tier story that is free while a story of an earlier tier is still open**; both `agent-ready` and `needs-human`, or a non-epic issue with neither readiness label (epics never carry one); `outside-change` without `needs-human` or without `### External reference`; two open stories on one `### Seam`; a `### Seam` folder absent from `main` that the story does not say it creates; a chain deeper than level 3 | `new-issue.md` (its tier chain included) and the issue-map footer |
-| **The product does not match what the issues say** | a closed story whose seam, test or acceptance evidence is absent from `main` (the pull request was reverted, or never merged); an open story whose work `main` already holds (done under another name); a do-not-build item present in the code; a `TBD` row in the project's commands table that a closed scaffold story was meant to fill | the code and docs on `main` |
+| **The issue map is broken** | an open non-epic issue with no native parent epic; an open epic with no open children, or a closed epic with open children; `### Blocked by` and the native relation disagree; a blocker that does not exist, points at an epic or closes a cycle; a story closed while a blocker of it is still open (built out of order); **a later-tier story that is free while a story of an earlier tier is still open**; both `agent-ready` and `needs-human`, or a non-epic issue with neither readiness label (epics never carry one); `outside-change` without `needs-human` or without `### External reference`; two open stories on one `### Seam`; a `### Seam` folder absent from the default branch that the story does not say it creates; a chain deeper than level 3 | `new-issue.md` (its tier chain included) and the issue-map footer |
+| **The product does not match what the issues say** | a closed story whose seam, test or acceptance evidence is absent from the default branch (the pull request was reverted, or never merged); an open story whose work the default branch already holds (done under another name); a do-not-build item present in the code; a `TBD` row in the project's commands table that a closed scaffold story was meant to fill | the code and docs on the default branch |
 
 The issue map `issue-map` draws is a picture of the third lens; this skill reads the same facts and the footer the
 map prints, and goes further.
@@ -126,18 +126,21 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
 
 1. `gh auth status`, `gh repo view --json nameWithOwner,hasIssuesEnabled`. Issues disabled or another tracker named in
    `CLAUDE.md` → stop and say so. `.claude/skills/dev-next/references/new-issue.md` exists → else stop.
-2. **Latest `main`, read only.** `git fetch origin main`, then read everything on `main` through `origin/main` —
-   `git show origin/main:<path>`, `git ls-tree -r --name-only origin/main -- <path>`, `git grep <pattern>
-   origin/main`, `git log`/`git diff` ranges ending at `origin/main` — never through the main checkout's files. That
-   checkout may sit on another branch or hold someone's work: never switch its branch, never stash, never reset. Every
-   sub-agent reads `main` the same way. This session creates no branch of its own; only `reconcile-pr-<slug>` does, in
+2. **Latest default branch, read only.** `<default>` is the default branch (where daily work starts from and
+   merges into), looked up and never assumed: `git symbolic-ref --short refs/remotes/origin/HEAD` prints
+   `origin/<default>`; when it fails, `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`. `git fetch
+   origin <default>`, then read everything on the default branch through `origin/<default>` — `git show
+   origin/<default>:<path>`, `git ls-tree -r --name-only origin/<default> -- <path>`, `git grep <pattern>
+   origin/<default>`, `git log`/`git diff` ranges ending at `origin/<default>` — never through the main checkout's
+   files. That checkout may sit on another branch or hold someone's work: never switch its branch, never stash, never
+   reset. Every sub-agent reads the default branch the same way, and is given `<default>`. This session creates no branch of its own; only `reconcile-pr-<slug>` does, in
    its own worktree.
 3. Read the project's `CLAUDE.md` in full: layout, commands table, worktree root, boundaries, the PRD location if it
    names one, standing decisions.
 4. Read `docs/reconcile-state.json` if it exists:
    ```json
    {
-     "reconciled_at": "<commit on main the PRDs and issues were read at>",
+     "reconciled_at": "<commit on the default branch the PRDs and issues were read at>",
      "last_reconcile": "<yyyy-mm-dd>",
      "accepted": [ { "lens": "<1-4>", "issue": "<N or none>", "section": "<PRD file and heading, or none>", "reason": "<the person's words>", "on": "<yyyy-mm-dd>" } ]
    }
@@ -145,15 +148,16 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
    No file → nothing has been reconciled yet; every PRD section counts as changed and every closed story as new.
    `accepted` holds findings the person said are fine on purpose: they are checked again, but shown only when the
    facts behind them changed (a new PRD edit on that section, a new comment on that issue).
-5. **The PRDs.** Every `docs/PRDs/*.md` on `origin/main` (or the one given), in full; `git log --name-only
-   <reconciled_at>..origin/main -- docs/PRDs/` for what changed since the bookmark and `git diff
-   <reconciled_at>..origin/main -- <file>` per changed file.
-   **The pending ADRs beside them:** every `docs/ADRs/*.md` on `origin/main` (`git ls-tree -r --name-only origin/main
-   -- docs/ADRs/`), its status line read first. `**Status: pending**`, no status line, or any status line other than
+5. **The PRDs.** Every `docs/PRDs/*.md` on `origin/<default>` (or the one given), in full; `git log --name-only
+   <reconciled_at>..origin/<default> -- docs/PRDs/` for what changed since the bookmark and `git diff
+   <reconciled_at>..origin/<default> -- <file>` per changed file.
+   **The pending ADRs beside them:** every `docs/ADRs/*.md` on `origin/<default>` (`git ls-tree -r --name-only
+   origin/<default> -- docs/ADRs/`), its status line read first. `**Status: pending**`, no status line, or any status line other than
    the folded one below (an older ADR's `Status: Accepted`, say) → read in full as pending: it is
    product truth beside the PRD, and where it changes what the PRD says, the ADR is the later decision and wins (note
    the PRD sections it names, for the fold). `**Status: folded into the PRD on <yyyy-mm-dd>**` → already in the PRD,
-   not read again. Only ADRs on `main` count: one in an open pull request is not yet approved.
+   not read again. Only ADRs on the default branch count: one in an open pull request is not yet
+   approved.
 6. **The issues.** `gh issue list --state all --limit 500 --json number,title,state,labels,assignees,body,closedAt,
    updatedAt` (page past 500 with `--search` on `created:` ranges when the list is cut), the open epics'
    sub-issue lists (`gh api repos/{owner}/{repo}/issues/<epic>/sub_issues --jq 'map(.number)'`), and for every open
@@ -188,9 +192,9 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
      request changed the product in a way neither the PRD nor a pending ADR records. (c) One row per pending ADR: its
      file, its date, the PRD sections it changes, and whether the PRD already says what it decided (then only its
      status line is behind). Quote the PRD line and the issue or ADR line that disagree. No essay."
-   - `code-check-<slug>`: "for every story closed since the bookmark: does its seam exist on `main`, does a test cover
+   - `code-check-<slug>`: "for every story closed since the bookmark: does its seam exist on the default branch, does a test cover
      its acceptance criteria (name the test file), was its pull request merged (`gh pr list --state merged --search
-     '<N>'`)? For every open story: does `main` already hold what it asks for? For every do-not-build item in the
+     '<N>'`)? For every open story: does the default branch already hold what it asks for? For every do-not-build item in the
      PRDs: is it in the code (`git grep`)? For the commands table in `CLAUDE.md`: any `TBD` row a closed scaffold
      story should have filled? One line per finding, nothing per non-finding."
 2. **Judge every line yourself** before showing anything: open the PRD section and the issue the line names and
@@ -220,14 +224,14 @@ same plain words ("Fix the story", "Update the PRD", "Fold it into the PRD", "Fi
      under `### References`; the tier the PRD gives that section; `needs-human` unless nothing is left to ask), native
      sub-issue of the matching epic, both blocker forms. Several uncovered items in one PRD area are **one** story
      when one developer would build them in one session, else one each.
-   - **Close a story** — `main` already holds the work, or the PRD dropped the need: closed with a comment saying
+   - **Close a story** — the default branch already holds the work, or the PRD dropped the need: closed with a comment saying
      why, never deleted.
    - **It is fine as it is** — recorded in `accepted` with the person's reason, so it is not shown again until the
      facts change. The recommendation for every finding rated "probably fine as it is".
    - **Not this time** — nothing written; the finding returns next run.
    The PRD wins on product, the issues track the work: when a PRD section and an open story disagree on **what** to
    build, the recommendation is to fix the story unless the person says the PRD is the stale one; when they disagree
-   on **whether it is done**, the code on `main` decides.
+   on **whether it is done**, the code on the default branch decides.
 7. **Write the explanation** for every group and finding in the shape of *Who you are talking to*.
 
 ## Phase 2 — Present and decide in waves (the touchpoint)
@@ -280,23 +284,23 @@ the person's to merge.
      skill may set `needs-human` (with the reason as the last comment), never remove it.
    - Removing a readiness label that should not be there (`agent-ready` beside `needs-human`) keeps `needs-human`.
 2. **Update the PRD** → the exact lines and sections the person agreed, applied by `reconcile-pr-<slug>` in the
-   worktree, never by this session and never on `main`. One pull request for the whole run.
+   worktree, never by this session and never on the default branch. One pull request for the whole run.
 3. **Fold into the PRD** → `reconcile-pr-<slug>`, in the same worktree and the same pull request as step 2: writes
    the ADR's decision into the PRD sections it names, in the words the person agreed (nothing when the PRD already
    says it), and in the same commit changes the ADR's status line, right under its title, from `**Status: pending**`
    to `**Status: folded into the PRD on <yyyy-mm-dd>**`. Any other status line an older ADR carries is **replaced**
    by the folded line, never kept beside it, so the ADR has exactly one status line; one with none gets the folded
    line added under its title. Nothing else in the ADR changes: it stays as the record of why. A fold and its status line never land in separate pull
-   requests, so the PRD and the ADR never disagree on `main`.
+   requests, so the PRD and the ADR never disagree on the default branch.
 4. **File a story** → exactly as `new-issue.md` says: every heading, `story` plus one readiness label and the tier
    the PRD gives that section (created first when missing, `new-issue.md` step 2), native sub-issue of its epic (the
    person picks when none fits), both blocker forms read back, the tier blocks of a story added to a tier later
    (`new-issue.md`, the tier chain), the PRD section or pending ADR under `### References` and `### Goal`,
    `### References` also naming this reconcile run (`reconcile of <date>`).
-5. **Close a story** → `gh issue close <N> --comment "<why, in plain words, and what covers it on main or which PRD
+5. **Close a story** → `gh issue close <N> --comment "<why, in plain words, and what covers it on the default branch or which PRD
    change dropped it>"`. Never an assigned or in-flight issue.
 6. **Write `docs/reconcile-state.json`** (in the worktree, part of the pull request): `reconciled_at` = the
-   `origin/main` commit read in phase 0; `last_reconcile` = today; `accepted` = every finding the person said is fine
+   `origin/<default>` commit read in phase 0; `last_reconcile` = today; `accepted` = every finding the person said is fine
    as it is, this run and earlier, minus those whose facts changed and were decided again. Only this skill writes the
    file.
 7. Add the run's own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; every pull request carries one; create
@@ -304,7 +308,7 @@ the person's to merge.
    build → lint → typecheck → full suite) in the worktree before the pull request opens; it opens only on green. Red →
    `reconcile-pr-<slug>` reports the failing command and stops, and this session names it first in the close-out for
    a person to fix (the pull request holds only PRD text, ADR status lines, the bookmark and a changelog file, so red
-   almost always means `main` itself is red). Then commit with Conventional Commits (`docs(prd): reconcile …` when
+   almost always means the default branch itself is red). Then commit with Conventional Commits (`docs(prd): reconcile …` when
    the PRD changed or an ADR was folded, else `chore(reconcile): …`), **never `git add -A`**, push and open the pull
    request with the table below. No file change at all (only issue edits) → still write the bookmark and open the
    pull request; it is what tells `/dev-next` the drift was looked at.
@@ -353,12 +357,12 @@ explicit word for that one pull request, once its checks are green.
 
 ## Rules that are not negotiable
 
-0. **Never push to `main`.** The PRD edits, the folds and the bookmark land as one pull request, merged as *Who
+0. **Never push to the default branch or the release branch.** The PRD edits, the folds and the bookmark land as one pull request, merged as *Who
    merges* says.
 1. **Never start from `/dev-next`.** It probes and prints one line; a person reconciles.
 2. **Nothing edited, filed, closed, accepted or dropped without the person's word.** Every destination is an answer
    given in a wave.
-3. **The PRD wins on what to build; `main` wins on what is done.** A story that contradicts its PRD section is fixed,
+3. **The PRD wins on what to build; the default branch wins on what is done.** A story that contradicts its PRD section is fixed,
    not the PRD, unless the person says the PRD is the stale one — then the PRD edit is the decision, recorded. A
    pending ADR is part of the PRD here: where it changes a PRD section, the ADR is the later decision and wins.
 4. **Never edit someone else's issue, an in-flight issue, or the last comment of a `needs-human` issue.** A comment

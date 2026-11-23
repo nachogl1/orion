@@ -220,7 +220,7 @@ behaviour.
 
 Steps: build the least that makes the choice visible, and tell the user it is meant to be thrown away; keep it in a
 scratch folder outside the repository, or, when others must see it, on a `feat/wayfinder-<ticket-slug>` branch in a
-worktree outside the project (Guardrails, *Git*) — never in the main checkout and never on `main`; show it and ask
+worktree outside the project (Guardrails, *Git*) — never in the main checkout and never on the default branch; show it and ask
 what the user thinks of it, not whether they approve it; write down what their reaction decided. The prototype is
 evidence for the decision, linked from the ticket, and may be deleted afterwards.
 
@@ -366,7 +366,8 @@ stops, with the person present:
 When the last ticket of an ADRS map closes and no fog is left, the session that closed it records the decisions
 before it stops, with the person present:
 
-1. **Dedupe first:** read `docs/ADRs/` on `origin/main` and the open pull requests that touch it. A decision an
+1. **Dedupe first:** read `docs/ADRs/` on `origin/<default>` (the default branch, looked up as the *Git*
+   guardrail below says) and the open pull requests that touch it. A decision an
    existing ADR already records is linked, not written again; one that changes an existing ADR gets a new ADR that
    says which one it replaces.
 2. **One ADR per decision** the map took (a research ticket that only found a fact feeds the ADR it supports), each
@@ -388,9 +389,9 @@ before it stops, with the person present:
 A PRD map files nothing: it ends with the decisions, and the order from there is fixed. Report it as numbered steps:
 
 1. The person writes or updates the PRD under `docs/PRDs/` from the map's decisions, and merges it.
-2. `/prd-to-tickets` checks the UX prototype on `main` first: when the PRD names screens it lacks, it drafts the
+2. `/prd-to-tickets` checks the UX prototype on the default branch first: when the PRD names screens it lacks, it drafts the
    missing screens, opens that pull request (a person merges it) and stops.
-3. Once the prototype is on `main`, the next `/prd-to-tickets` run cuts the PRD into stories.
+3. Once the prototype is on the default branch, the next `/prd-to-tickets` run cuts the PRD into stories.
 
 A TICKETS map's stories never pass through `/prd-to-tickets` and its gate, so it keeps its own "UX prototype for
 <screen>" story ([Filing the stories](#filing-the-stories-tickets-only)).
@@ -440,7 +441,7 @@ Before creating a map, a ticket, or *offering* to create one, confirm nothing al
 
 ## Guardrails
 
-- **Git.** Never commit to `main` and never work in the main checkout. Anything this skill writes into the repo (rare — usually only a prototype or a PRD edit) goes on a `feat/<slug>` branch (or the project's own branch pattern) in a worktree outside the project, at the worktree root the project's `CLAUDE.md` names: `git -C <main checkout> worktree add <wt root>/<slug> -b feat/<slug> origin/main`. Before the pull request opens, add the pull request's own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; every pull request carries one; create the folder with a `README.md` explaining the format if it does not exist), then run **the gate** — the gate commands the project's `CLAUDE.md` lists, build → lint → typecheck → full suite — and open the pull request only on green. Conventional Commit messages (`type(scope): summary`), never `git add -A`, and the pull request merged as [Who merges](#who-merges) says. Never force-push, never `--no-verify`, never merge on red or pending checks.
+- **Git.** Never commit to the default branch or the release branch, and never work in the main checkout. Anything this skill writes into the repo (rare — usually only a prototype or a PRD edit) goes on a `feat/<slug>` branch (or the project's own branch pattern) in a worktree outside the project, at the worktree root the project's `CLAUDE.md` names: `git -C <main checkout> worktree add <wt root>/<slug> -b feat/<slug> origin/<default>`, where `<default>` is the default branch (where daily work starts from and merges into), looked up and never assumed: `git symbolic-ref --short refs/remotes/origin/HEAD` prints `origin/<default>`; when it fails, `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`. Before the pull request opens, add the pull request's own changelog file, `docs/changelog/<YYYY-MM-DD>-<branch>.md` (one line; every pull request carries one; create the folder with a `README.md` explaining the format if it does not exist), then run **the gate** — the gate commands the project's `CLAUDE.md` lists, build → lint → typecheck → full suite — and open the pull request only on green. Conventional Commit messages (`type(scope): summary`), never `git add -A`, and the pull request merged as [Who merges](#who-merges) says. Never force-push, never `--no-verify`, never merge on red or pending checks.
 - **Sensitive data.** Everyone with access to the repository can read the map and every ticket under it. Never put passwords, tokens, personal data or absolute machine paths on them; say where something is kept, not what it is.
 - **Scope does not grow quietly.** If settling a ticket starts to turn into building the destination, stop and tell the user: that is the moment to hand over, not a licence to carry on.
 - **Nothing disappears without a yes.** Closing or deleting a ticket someone else wrote, or changing the destination, waits for the user's explicit agreement.

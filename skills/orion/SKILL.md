@@ -16,14 +16,14 @@ the outcome in the user's preferred shape. All commands work on Windows too, thr
 |---|---|---|
 | `status` (default) | `bash .claude/orion/orion.sh status` | Report version, update mode and skill count in one line each. |
 | `check` | `bash .claude/orion/orion.sh check --force` | Empty output means up to date — say so. JSON output means a newer orion exists — say so and offer `update`. |
-| `update` | `bash .claude/orion/orion.sh update` | Summarise the changed files from `git status --short`. If `.claude/orion/BASE_CLAUDE.md` changed (`git diff -- .claude/orion/BASE_CLAUDE.md`), read the project's `CLAUDE.md` against it and list any rule that now contradicts it, with a proposed rewrite; the two files must never disagree. Remind the user to commit on a branch (never straight to `main`) so the team gets the update by pulling. |
+| `update` | `bash .claude/orion/orion.sh update` | Summarise the changed files from `git status --short`. If `.claude/orion/BASE_CLAUDE.md` changed (`git diff -- .claude/orion/BASE_CLAUDE.md`), read the project's `CLAUDE.md` against it and list any rule that now contradicts it, with a proposed rewrite; the two files must never disagree. Remind the user to commit on a branch (never straight to the default branch) so the team gets the update by pulling. |
 | `uninstall` | **Ask first** with AskUserQuestion ("Remove everything orion owns from this repository? Your CLAUDE.md rules and your own skills stay."), then `bash .claude/orion/orion.sh uninstall --yes` | List what was removed. Remind the user to commit. |
 
 ## Rules
 
 - Run the script, do not re-implement it. If `.claude/orion/orion.sh` is missing, orion is not installed here: say so
   and say it is installed by running orion's `init` against this project, instead of inventing files.
-- `update` and `uninstall` change tracked files. Never commit for the user unless they ask; never commit to `main`.
+- `update` and `uninstall` change tracked files. Never commit for the user unless they ask; never commit to the default branch.
 - The update mode lives in `.claude/orion/config.json` (`updateMode`: `ask` = offer at session start, `auto` = update
   silently at session start, `off` = never check). When the user wants to change it, edit that one key and nothing else.
 - Keep the reply short: problems first, then the result, then exactly one next step.

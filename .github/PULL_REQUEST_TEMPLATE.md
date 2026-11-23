@@ -1,4 +1,4 @@
-<!-- Branch off `main`. Title: `scope: short imperative summary`. -->
+<!-- Branch off the default branch (`develop`). Title: `scope: short imperative summary`. -->
 
 ## Summary
 <!-- One line: what changed and why. -->

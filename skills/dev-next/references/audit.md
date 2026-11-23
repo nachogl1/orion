@@ -6,7 +6,7 @@ are saving time, and the only record the process can be improved from.
 
 ## Where it goes
 
-A branch of your own, never `main`: `audit/<your github login>`. It is the one branch exempt from the pull-request and
+A branch of your own, never the default branch: `audit/<your github login>`. It is the one branch exempt from the pull-request and
 `feat/` rules: pushed directly, never merged. Each run appends one file:
 
 ```
@@ -56,7 +56,7 @@ Your own branch means no two developers ever conflict, and it never touches the 
 The numbers in the example (issue, pull request, timestamps) are illustrative only.
 
 - `outcome` is one of `merged`, `needs-human` (stopped on a question for a person), `failed` (stopped on a technical
-  failure, still `agent-ready` and assigned to the runner), `inherited-red` (the gate was already red on `main`; the
+  failure, still `agent-ready` and assigned to the runner), `inherited-red` (the gate was already red on the default branch; the
   story was stopped without blame and a `bug` issue opened — `SKILL.md` phase 3).
 - `summary` is one or two sentences: what the issue was about and what shipped. Written for someone who never read the issue.
 - `lessons_learned` is what the next run should do differently or know up front — about the code, the domain or the
@@ -81,13 +81,13 @@ line that does not change what someone does next is a cost, not a record.
 
 All three lists are the **only** pile `/harvest` reads (the QA record below is `/harvest-qa`'s, and the two never cross); it decides with a person where each item goes — a fix, a
 ticket, a rule, or nowhere. Nothing here is harvested automatically. Which run each branch has been harvested through
-is kept in `docs/harvest-state.json` on `main`, written only by the harvest.
+is kept in `docs/harvest-state.json` on the default branch, written only by the harvest.
 
 ## The QA record — `qa-<N>.json`, beside the run report
 
 A merged story also leaves one QA record on the same branch, `runs/<run id>/qa-<N>.json`, written by the orchestrator
 from the dev agent's `QA checks` blocks and story (`dev-agent.md`). It is the only file `/harvest-qa` reads, and
-`/harvest` never reads it; the two skills keep separate bookmarks on `main` (`docs/harvest-qa-state.json` and
+`/harvest` never reads it; the two skills keep separate bookmarks on the default branch (`docs/harvest-qa-state.json` and
 `docs/harvest-state.json`). Only a `merged` outcome gets one.
 
 ```json
@@ -98,7 +98,7 @@ from the dev agent's `QA checks` blocks and story (`dev-agent.md`). It is the on
   "login": "<login>",
   "pr": 47,
   "merged_at": "2025-01-06T15:04:02Z",
-  "merge_commit": "<sha of main after the merge>",
+  "merge_commit": "<sha of the default branch after the merge>",
   "seam": "src/<Area>/",
   "story": "Before this story the importer ignored the settings section of an input file. It now reads the section into the model and shows its values on the import summary screen; an empty section shows 'no settings' where the screen used to be blank.",
   "checks": [

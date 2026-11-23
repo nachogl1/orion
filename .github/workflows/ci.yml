@@ -3,9 +3,9 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [develop, main]
 
-# A newer push to a pull request cancels its older run; every run on main gets a group of its own, so none is cancelled.
+# A newer push to a pull request cancels its older run; every push run (develop or main) gets a group of its own, so none is cancelled.
 concurrency:
   group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
