@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 236,
+  "title": "Default branch: the rules and skills say the default branch for daily work, and a release keeps a merge commit",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 255,
+  "merged_at": "2026-11-23T23:07:02Z",
+  "merge_commit": "abb1fe0ff1da0a3cc8d54cf33eeacecc3c70ecae",
+  "seam": "daily-branch lines of baselines/BASE_CLAUDE.md, baselines/global/GLOBAL_CLAUDE.md, the skill files, .github/workflows/ci.yml, .github/PULL_REQUEST_TEMPLATE.md, CLAUDE.md",
+  "story": "orion's rules and skills used to say main wherever they meant the branch daily work starts from. They now say the default branch and look it up, so a project can work on a develop branch and release to main; projects that only use main see no change.",
+  "checks": [],
+  "no_qa_reason": "Rules and skill wording only; nothing a user drives."
+}

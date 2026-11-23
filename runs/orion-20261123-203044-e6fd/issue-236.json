@@ -1,0 +1,43 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 236,
+  "title": "Default branch: the rules and skills say the default branch for daily work, and a release keeps a merge commit",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T22:35:00Z",
+  "finished_at": "2026-11-23T23:07:02Z",
+  "outcome": "merged",
+  "pr": 255,
+  "summary": "orion's rules and skills now say 'the default branch' for daily work and look it up at run time instead of typing main; a release pull request keeps a merge commit, and orion's own CLAUDE.md names develop as default and main as release (main is both until develop exists).",
+  "agents": [
+    {
+      "name": "dev-236",
+      "model": "opus",
+      "tokens_total": 258640
+    },
+    {
+      "name": "review-236-r1",
+      "model": "opus",
+      "tokens_total": 202102
+    },
+    {
+      "name": "review-236-r2",
+      "model": "opus",
+      "tokens_total": 158492
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1506,
+    "review_seconds": 432,
+    "ci_seconds": 100
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [
+    "A rule that names a branch which does not exist yet needs an 'until it exists' clause, or agents reading CLAUDE.md as overriding the skill's lookup will target the missing branch."
+  ],
+  "deferred": []
+}
