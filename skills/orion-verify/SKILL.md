@@ -86,7 +86,7 @@ Read `CLAUDE.md` and `.claude/orion/BASE_CLAUDE.md` in full (follow any other `@
 Then judge the project's file against the mandatory one:
 
 1. **Contradictions** — a project rule that permits what the mandatory rules forbid or forbids what they require
-   (examples: "commit straight to main", "skip the tests when in a hurry", "ask before every decision", a different
+   (examples: "commit straight to the default branch", "skip the tests when in a hurry", "ask before every decision", a different
    merge style, a tracker other than the one the rules name). Each is **needs a yes**: quote the project line, name the
    mandatory rule it collides with, and propose the rewrite (usually: delete the line, since the mandatory file wins on a
    contradiction anyway and a dead rule misleads readers).
@@ -116,7 +116,7 @@ Read `~/.claude/CLAUDE.md` if it exists (the person's own rules for every projec
 `@import`s). Judge it against `BASE_CLAUDE.md` and the instructions of every skill under `.claude/skills/`:
 
 - **A clash** — a personal rule that forbids what those require or requires what they forbid (examples: "always
-  rebase", "commit straight to main", "never merge a pull request yourself" against a skill that merges on green).
+  rebase", "commit straight to the default branch", "never merge a pull request yourself" against a skill that merges on green).
   A preference that only adds to the rules (shorter replies, a greeting, a label on every line) is not a clash. Each
   clash is **needs a yes**, asked as `BASE_CLAUDE.md` says: quote both rules and say where each lives, then offer to
   edit the person's own file (with the exact rewrite), to propose the change to orion instead (the exact rewrite of
@@ -131,7 +131,7 @@ The file is personal: quote it only in the chat, never in the project, a commit,
 For every folder under `.claude/skills/` (orion-managed ones carry an `.orion-managed` marker; the others are the
 project's own), and for every folder under `~/.claude/skills/` whose name matches a project skill, read `SKILL.md`:
 
-- **A project skill that contradicts the mandatory rules** — it instructs the agent to push to `main`, force-push,
+- **A project skill that contradicts the mandatory rules** — it instructs the agent to push to the default branch, force-push,
   bypass hooks, auto-merge, skip or delete tests, commit secrets, or work outside a worktree where the rules require
   one. **Needs a yes**: quote the instruction, name the rule, propose the rewrite. Never edit a project skill without
   the yes.

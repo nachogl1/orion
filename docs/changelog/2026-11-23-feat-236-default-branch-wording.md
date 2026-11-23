@@ -1,0 +1,1 @@
+The rules and skills now say "the default branch" for daily work and look it up instead of assuming `main`, so a project whose default branch has another name works unchanged; a release pull request into the release branch keeps a merge commit.

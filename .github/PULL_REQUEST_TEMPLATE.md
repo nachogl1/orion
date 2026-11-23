@@ -1,4 +1,4 @@
-<!-- Branch off `main`. Title: `scope: short imperative summary`. -->
+<!-- Branch off the default branch (`develop`; until `develop` exists on the remote, `main` is both the default and the release branch). Title: `scope: short imperative summary`. -->
 
 ## Summary
 <!-- One line: what changed and why. -->
