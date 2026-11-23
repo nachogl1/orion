@@ -160,34 +160,42 @@ PY
 check "in-flight.md shows every field the Control Tower mod reads, in its shape" in_flight_shows_what_control_tower_reads
 # A sub-agent the Agent tool reports no figure for (an agent-team teammate) is counted from its own transcript: every
 # response once (one response may span several entries with one message id), input + output + cache-write, no cache
-# reads; found by agent id or by the name its meta file describes, only since the run started; else null with a reason.
+# reads; found by agent id or by the name its meta file describes, only since the run started, also under a config
+# folder whose path holds brackets and in files that start with a byte-order mark; else null with a reason, and the
+# script exits 0 every time, wrong arguments and a malformed transcript included.
 agent_tokens_counts_the_transcript() {
-    local script="$REPO/skills/dev-next/scripts/agent_tokens.py" root="$SB/agent-tokens" sub out
+    local script="$REPO/skills/dev-next/scripts/agent_tokens.py" root="$SB/agent[tokens]" sub out code args
     sub="$root/projects/example-project/example-session/subagents"
     mkdir -p "$sub" "$root/projects/example-project/other-session/subagents"
-    cat > "$sub/agent-a1.jsonl" <<'EOF'
+    # Git Bash leaves a path that holds brackets unconverted for a Windows Python: hand it a Windows path there.
+    if command -v cygpath >/dev/null 2>&1; then root="$(cygpath -m "$root")" sub="$(cygpath -m "$sub")"; fi
+    { printf '\357\273\277'; cat <<'EOF'
+{"type":"assistant","message":{"id":"msg_2","usage":{"input_tokens":3,"output_tokens":40,"cache_read_input_tokens":9100}}}
 {"type":"user","message":{"role":"user","content":"made-up brief"}}
 {"type":"assistant","message":{"id":"msg_1","usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":9000}}}
 {"type":"assistant","message":{"id":"msg_1","usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":9000}}}
 not json
-{"type":"assistant","message":{"id":"msg_2","usage":{"input_tokens":3,"output_tokens":40,"cache_read_input_tokens":9100}}}
 {"type":"attachment","message":{"usage":{"input_tokens":999999}}}
 EOF
-    printf '{"description":"dev-31","toolUseId":"toolu_made_up"}\n' > "$sub/agent-a1.meta.json"
+    } > "$sub/agent-a1.jsonl"
+    printf '\357\273\277{"description":"dev-31","toolUseId":"toolu_made_up"}\n' > "$sub/agent-a1.meta.json"
     printf '{"type":"user","message":{"role":"user","content":"no usage here"}}\n' > "$root/projects/example-project/other-session/subagents/agent-b2.jsonl"
+    printf '{"type":"assistant","message":{"id":["made-up"],"usage":{"input_tokens":[1]}}}\n' > "$root/projects/example-project/other-session/subagents/agent-c3.jsonl"
     out="$("$PY" "$script" "$sub/agent-a1.jsonl")"
     [ "$out" = '{"tokens_total": 158, "tokens_source": "transcript"}' ] || { echo "  by path: $out"; return 1; }
     out="$("$PY" "$script" --root "$root" --agent a1)"
     [ "$out" = '{"tokens_total": 158, "tokens_source": "transcript"}' ] || { echo "  by id: $out"; return 1; }
     out="$("$PY" "$script" --root "$root" --name dev-31 --since 2000-01-01T00:00:00Z)"
     [ "$out" = '{"tokens_total": 158, "tokens_source": "transcript"}' ] || { echo "  by name: $out"; return 1; }
-    for args in "--name dev-31 --since 2999-01-01T00:00:00Z" "--name review-31-r1" "--agent b2"; do
+    for args in "--name dev-31 --since 2999-01-01T00:00:00Z" "--name review-31-r1" "--agent b2" "--agent c3" \
+                "--bogus" "--name"; do
         # shellcheck disable=SC2086
-        out="$("$PY" "$script" --root "$root" $args)"
+        out="$("$PY" "$script" --root "$root" $args 2>/dev/null)"; code=$?
+        [ "$code" = 0 ] || { echo "  $args: exit $code"; return 1; }
         case "$out" in '{"tokens_total": null, "tokens_source": "none", "tokens_reason": "'?*'"}') ;; *) echo "  $args: $out"; return 1 ;; esac
     done
 }
-check "a sub-agent with no tool-reported figure is counted from its own transcript, or null with a reason" agent_tokens_counts_the_transcript
+check "a sub-agent with no tool-reported figure is counted from its own transcript, or null with a reason, always exit 0" agent_tokens_counts_the_transcript
 
 echo "planning interview"
 # /prd-to-tickets and /wayfinder follow one shared interview file beside new-issue.md; neither skill holds its rules itself.

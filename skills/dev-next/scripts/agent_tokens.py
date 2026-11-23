@@ -1,7 +1,8 @@
 """Count one sub-agent's tokens from its own Claude Code transcript, for the audit's `tokens_total`.
 
 Used only when the Agent tool reported no figure for a sub-agent (as happens when it ran as an agent-team
-teammate). Prints one JSON line and always exits 0, so the audit never blocks on it:
+teammate). Prints one JSON line and always exits 0, so the audit never blocks on it (wrong arguments or a
+transcript it cannot read give the `null` line too, with the usage on stderr):
 
     {"tokens_total": 163400, "tokens_source": "transcript"}
     {"tokens_total": null, "tokens_source": "none", "tokens_reason": "<why>"}
@@ -37,7 +38,7 @@ USAGE = (
 def count(path):
     """Input + output + cache-write tokens over the distinct responses of one transcript, or None with no usage."""
     by_response = {}
-    with open(path, encoding="utf-8", errors="replace") as f:
+    with open(path, encoding="utf-8-sig", errors="replace") as f:
         for n, line in enumerate(f):
             try:
                 entry = json.loads(line)
@@ -67,7 +68,7 @@ def since_epoch(text):
 
 def find(root, agent_id, name, since):
     """The one transcript of this agent, or (None, reason)."""
-    folders = glob.glob(os.path.join(root, "projects", "*", "*", "subagents"))
+    folders = glob.glob(os.path.join(glob.escape(root), "projects", "*", "*", "subagents"))
     fresh = lambda p: since is None or os.path.getmtime(p) >= since
     if agent_id:
         stem = agent_id if agent_id.startswith("agent-") else "agent-" + agent_id
@@ -78,12 +79,12 @@ def find(root, agent_id, name, since):
             return None, "%d transcripts match agent id %s" % (len(hits), agent_id)
     if name:
         hits = []
-        for meta in (m for d in folders for m in glob.glob(os.path.join(d, "agent-*.meta.json"))):
+        for meta in (m for d in folders for m in glob.glob(os.path.join(glob.escape(d), "agent-*.meta.json"))):
             transcript = meta[: -len(".meta.json")] + ".jsonl"
             if not os.path.isfile(transcript) or not fresh(transcript):
                 continue
             try:
-                with open(meta, encoding="utf-8") as f:
+                with open(meta, encoding="utf-8-sig") as f:
                     described = json.load(f).get("description")
             except (OSError, ValueError, AttributeError):
                 continue
@@ -96,38 +97,48 @@ def find(root, agent_id, name, since):
     return None, "no transcript found for %s where Claude Code keeps sub-agent transcripts" % (agent_id or name)
 
 
-def main(argv):
+def none_line(reason):
+    return json.dumps({"tokens_total": None, "tokens_source": "none", "tokens_reason": reason})
+
+
+def parse(argv):
+    """(path, options), or None when the arguments are wrong."""
     opts, rest = {}, []
     it = iter(argv)
     for arg in it:
         if arg in ("--agent", "--name", "--since", "--root"):
             opts[arg[2:]] = next(it, None)
             if opts[arg[2:]] is None:
-                print(USAGE, file=sys.stderr)
-                return 2
+                return None
         elif arg.startswith("--"):
-            print(USAGE, file=sys.stderr)
-            return 2
+            return None
         else:
             rest.append(arg)
     if len(rest) > 1 or (rest and opts) or not (rest or opts.get("agent") or opts.get("name")):
+        return None
+    return (rest[0] if rest else None), opts
+
+
+def main(argv):
+    parsed = parse(argv)
+    if parsed is None:
         print(USAGE, file=sys.stderr)
-        return 2
+        print(none_line("agent_tokens.py was called with wrong arguments"))
+        return 0
+    path, opts = parsed
     try:
-        if rest:
-            path, reason = rest[0], None
-        else:
+        reason = None
+        if path is None:
             root = opts.get("root") or os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(os.path.expanduser("~"), ".claude")
             path, reason = find(root, opts.get("agent"), opts.get("name"), since_epoch(opts.get("since")))
         total = count(path) if path else None
         if path and total is None:
             reason = "the transcript holds no token usage"
-    except (OSError, ValueError) as e:
-        total, reason = None, "could not read the transcript: %s" % (getattr(e, "strerror", None) or type(e).__name__)
-    if total is None:
-        print(json.dumps({"tokens_total": None, "tokens_source": "none", "tokens_reason": reason}))
-    else:
-        print(json.dumps({"tokens_total": total, "tokens_source": "transcript"}))
+    except OSError as e:
+        total, reason = None, "could not read the transcript: %s" % (e.strerror or type(e).__name__)
+    except Exception as e:  # the audit never blocks: anything unexpected is a null figure with its reason
+        total, reason = None, "could not count the transcript: %s" % type(e).__name__
+    print(none_line(reason) if total is None else json.dumps({"tokens_total": total, "tokens_source": "transcript"}))
     return 0
 
 
