@@ -610,6 +610,58 @@ fi
 IMPORT='Mandatory rules, owned and refreshed by orion (never edit the copy): @.claude/orion/BASE_CLAUDE.md'
 tools="$PY"; command -v jq >/dev/null 2>&1 && tools="jq $tools"; command -v powershell.exe >/dev/null 2>&1 && tools="$tools powershell"
 [ "$WINDOWS_ONLY" = 1 ] && check "the Windows run has PowerShell to test" eval 'command -v powershell.exe >/dev/null 2>&1'
+# Installing Control Tower binds Ctrl+X then P in the person's own keybindings file, through the same editors: a
+# computer of its own per editor and a stub `claude` first on the path, so the real plugin command is never run.
+mkdir -p "$SB/keys-bin"; printf '#!/usr/bin/env bash\nexit 0\n' > "$SB/keys-bin/claude"; chmod +x "$SB/keys-bin/claude"
+KEY_CHORD='ctrl+x p' KEY_ACTION='command:control-tower'
+keys_cmd() { HOME="$KBH" PATH="$SB/keys-bin:$FAKEPATH" bash "$P/.claude/orion/orion.sh" mod "$@" control-tower --project "$P" >"$SB/out" 2>&1; }
+# How many times a keybindings file binds a key to an action, in any context.
+keys_count() {  # file key action
+    "$PY" -c 'import json, sys; d = json.load(open(sys.argv[1], encoding="utf-8-sig")); print(sum(1 for c in d.get("bindings", []) for k, v in (c.get("bindings") or {}).items() if k == sys.argv[2] and v == sys.argv[3]))' "$@" 2>/dev/null | tr -d '\r'
+}
+keys_own() {  # file: the person's own bindings, every one in its own context
+    [ "$(keys_count "$1" ctrl+e chat:externalEditor)" = 1 ] && [ "$(keys_count "$1" ctrl+k app:toggleTodos)" = 1 ] \
+        && "$PY" -c 'import json, sys; d = json.load(open(sys.argv[1], encoding="utf-8-sig")); c = [b["context"] for b in d["bindings"]]; assert c == ["Chat", "Global"], c; assert d["bindings"][0]["bindings"]["ctrl+s"] is None' "$1" 2>/dev/null
+}
+keybinding_cases() {
+    KBH="$SB/home-keys-$tool"; KF="$KBH/.claude/keybindings.json"; mkdir -p "$KBH"
+    check "mod install with no keybindings file creates it with Ctrl+X then P" eval 'keys_cmd install && json_ok "$KF" && [ "$(keys_count "$KF" "$KEY_CHORD" "$KEY_ACTION")" = 1 ] && grep -qF "Ctrl+X then P" "$SB/out"'
+    rm -rf "$KBH/.claude/orion-mods/control-tower"
+    check "a second install binds it once, not twice" eval 'keys_cmd install && [ "$(keys_count "$KF" "$KEY_CHORD" "$KEY_ACTION")" = 1 ] && [ "$(grep -o "\"$KEY_CHORD\"" "$KF" | wc -l | tr -d " ")" = 1 ]'
+    check "mod remove takes the binding away, and the file orion made with it" eval 'keys_cmd remove && [ ! -e "$KF" ]'
+    printf '\357\273\277{"bindings":[{"context":"Chat","bindings":{"ctrl+e":"chat:externalEditor","ctrl+s":null}},{"context":"Global","bindings":{"ctrl+k":"app:toggleTodos"}}]}\n' > "$KF"
+    check "mod install on a file with a BOM and bindings of its own adds it and keeps every one" eval 'keys_cmd install && json_ok "$KF" && [ "$(keys_count "$KF" "$KEY_CHORD" "$KEY_ACTION")" = 1 ] && keys_own "$KF"'
+    check "mod remove takes away only that binding" eval 'keys_cmd remove && [ "$(keys_count "$KF" "$KEY_CHORD" "$KEY_ACTION")" = 0 ] && keys_own "$KF"'
+    printf '\357\273\277{"bindings":[{"context":"Chat","bindings":{"ctrl+x p":"chat:modelPicker"}}]}\n' > "$KF"; cp "$KF" "$SB/keys-before"
+    check "a chord taken by another binding: install keeps the file byte for byte and says so in one line" eval 'keys_cmd install && cmp -s "$SB/keys-before" "$KF" && [ "$(grep -c "chat:modelPicker" "$SB/out")" = 1 ] && grep "chat:modelPicker" "$SB/out" | grep -qF "$KEY_ACTION" && [ -d "$KBH/.claude/orion-mods/control-tower" ]'
+    check "and mod remove leaves that binding alone" eval 'keys_cmd remove && cmp -s "$SB/keys-before" "$KF"'
+    check "every editor gives the same answer on a malformed file: left byte for byte with one warning, or bound where the shape allows it" keys_malformed
+}
+# Each shape, then what every editor must do with it: "bad" leaves the file byte for byte and warns in one line,
+# "added" binds the key; never a traceback or an error of the editor's own shown to the person.
+KEY_SHAPES='bad	not json
+bad	[]
+bad	{"bindings":{}}
+bad	{"bindings":""}
+bad	{"bindings":0}
+bad	{"bindings":false}
+bad	{"bindings":[{"context":"Global","bindings":["keep-me"]}]}
+added	{"bindings":null}
+added	{"bindings":[{"context":"Global","bindings":null}]}'
+keys_malformed() {
+    local want shape
+    while IFS="$(printf '\t')" read -r want shape; do
+        printf '%s\n' "$shape" > "$KF"; cp "$KF" "$SB/keys-before"; rm -rf "$KBH/.claude/orion-mods/control-tower"
+        keys_cmd install || { echo "  install failed on: $shape"; return 1; }
+        ! grep -qiE "traceback|error|exception" "$SB/out" || { echo "  editor error shown on: $shape"; sed 's/^/    /' "$SB/out"; return 1; }
+        case "$want" in
+            bad) { cmp -s "$SB/keys-before" "$KF" && [ "$(grep -c "could not be read as a keybindings file" "$SB/out")" = 1 ]; } \
+                    || { echo "  not left alone with one warning: $shape"; return 1; } ;;
+            added) { json_ok "$KF" && [ "$(keys_count "$KF" "$KEY_CHORD" "$KEY_ACTION")" = 1 ]; } \
+                    || { echo "  not bound: $shape"; return 1; } ;;
+        esac
+    done <<< "$KEY_SHAPES"
+}
 for tool in $tools; do
     echo "settings edits with $tool"
     newproj; mkdir -p "$P/.claude"
@@ -630,6 +682,7 @@ for tool in $tools; do
     check "status sees the hook" eval 'bash "$ORION" status --project "$P" | grep -q "update check installed"'
     check "verify passes" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1'
     init ask; check "a second init adds no second hook" eval 'grep -cF "orion.sh\\\" check" "$P/.claude/settings.json" | grep -qx 1'
+    keybinding_cases
     check "uninstall with a CLAUDE.md of only the import line" eval 'bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1'
     check "uninstall removed the hook and kept the rest" eval '! grep -qF "orion.sh\\\" check" "$P/.claude/settings.json" && grep -qF "echo own" "$P/.claude/settings.json" && grep -qF "orion.sh status" "$P/.claude/settings.json" && json_ok "$P/.claude/settings.json"'
     check "uninstall removed the import line" eval '[ -f "$P/CLAUDE.md" ] && ! grep -qF "$IMPORT" "$P/CLAUDE.md" && [ ! -e "$P/.claude/orion" ]'
@@ -1571,6 +1624,6 @@ rm -rf "$P/.claude/orion/mods"
 check "update at the same commit brings back the mods an older orion.sh did not copy, listed in the manifest" eval 'HOME="$MDH" PATH="$MODPATH" bash "$ORION" update --project "$P" >"$SB/out" 2>&1 && mods_copied_and_listed'
 rm -rf "$MKT/$MOD"
 check "mod remove takes a record whose copy was deleted by hand" eval ': > "$CALLS" && HOME="$MDH" PATH="$MODPATH" bash "$ORION" mod remove "$MOD" >"$SB/out" 2>&1 && grep -qxF "plugin uninstall $MOD@orion-mods --scope user" "$CALLS" && [ ! -e "$MKT" ]'
-check "the guide page says how mods are installed, offered, skipped and removed" eval 'grep -qF -- "--mods" "$GUIDE" && grep -qF "mod install" "$GUIDE" && grep -qF "mod skip" "$GUIDE" && grep -qF "mod remove" "$GUIDE" && grep -qF "~/.claude/orion-mods" "$GUIDE" && grep -qF "/control-tower" "$GUIDE"'
+check "the guide page says how mods are installed, offered, skipped and removed, and the shortcut Control Tower binds" eval 'grep -qF -- "--mods" "$GUIDE" && grep -qF "mod install" "$GUIDE" && grep -qF "mod skip" "$GUIDE" && grep -qF "mod remove" "$GUIDE" && grep -qF "~/.claude/orion-mods" "$GUIDE" && grep -qF "/control-tower" "$GUIDE" && grep -qF "Ctrl+X then P to your own <code>~/.claude/keybindings.json</code>" "$GUIDE"'
 
 summary

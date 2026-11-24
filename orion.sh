@@ -579,6 +579,119 @@ PY
     say "statusLine configured in $f"
 }
 
+# One key binding in Claude Code's keybindings file ({"bindings": [{"context": ..., "bindings": {key: action}}]}),
+# keys compared without case. bind adds key -> action to the first Global block (a new one when there is none)
+# only when no block binds that key yet; unbind deletes key -> action wherever it sits and drops a block it left
+# empty. The file is rewritten only when something changes. Prints the outcome: bind -> added | present |
+# taken<TAB><the action already there>; unbind -> removed | removed-empty (nothing is left but orion's empty
+# starter) | none; either -> bad when the file is not a keybindings file: not an object, a top-level "bindings"
+# that is neither a list nor null (or missing), or, for bind, a first Global block whose "bindings" is neither an
+# object nor null (or missing). The three editors give the same answer for every shape. Native Windows tools end
+# it with \r.
+keys_edit() { keys_edit_raw "$@" | tr -d '\r'; }
+keys_edit_raw() {  # bind|unbind file key action
+    local op="$1" f="$2" k="$3" a="$4" tool
+    tool=$(json_tool)
+    case "$tool" in
+        jq)
+            local tmp sel state
+            jq -e 'type == "object" and ((.bindings | type) as $t | $t == "array" or $t == "null")' "$f" >/dev/null 2>&1 || { echo bad; return; }
+            sel='.bindings[]? | objects | (.bindings // {}) | objects | to_entries[] | select((.key | ascii_downcase) == $k)'
+            tmp=$(mktemp)
+            if [ "$op" = bind ]; then
+                state=$(jq -r --arg k "$k" --arg a "$a" "[$sel | .value] as \$v | if (\$v | index(\$a)) != null then \"present\" elif (\$v | length) > 0 then \"taken\t\" + (\$v[0] | if type == \"string\" then . else tojson end) elif ([.bindings[]? | objects | select(.context == \"Global\")][0].bindings | type) as \$t | \$t == \"object\" or \$t == \"null\" then \"free\" else \"bad\" end" "$f" 2>/dev/null | tr -d '\r')
+                [ "$state" = free ] || { rm -f "$tmp"; echo "$state"; return; }
+                jq --arg k "$k" --arg a "$a" '((.bindings // []) | map(type == "object" and .context == "Global") | index(true)) as $i
+                    | if $i == null then .bindings = ((.bindings // []) + [{context: "Global", bindings: {($k): $a}}])
+                      else .bindings[$i].bindings = ((.bindings[$i].bindings // {}) + {($k): $a}) end' "$f" > "$tmp" && mv "$tmp" "$f" && echo added
+            else
+                state=$(jq -r --arg k "$k" --arg a "$a" "[$sel | select(.value == \$a)] | length" "$f" 2>/dev/null | tr -d '\r')
+                [ "$state" != 0 ] || { rm -f "$tmp"; echo none; return; }
+                jq --arg k "$k" --arg a "$a" '.bindings |= map(
+                        if type == "object" and ((.bindings | type) == "object") and (.bindings | to_entries | any((.key | ascii_downcase) == $k and .value == $a))
+                        then (.bindings |= with_entries(select(((.key | ascii_downcase) == $k and .value == $a) | not))) | select((.bindings | length) > 0)
+                        else . end)' "$f" > "$tmp" && mv "$tmp" "$f" || return
+                jq -r 'if ((keys - ["$schema", "$docs", "bindings"]) | length) == 0 and ((.bindings // []) | length) == 0 then "removed-empty" else "removed" end' "$f"
+            fi ;;
+        python3|python)
+            "$tool" - "$op" "$f" "$k" "$a" 2>/dev/null <<'PY'
+import json, sys
+op, f, k, a = sys.argv[1:5]
+try:
+    d = json.load(open(f, encoding="utf-8-sig"))
+except Exception:
+    d = None
+if not isinstance(d, dict) or not isinstance([] if d.get("bindings") is None else d["bindings"], list):
+    print("bad"); sys.exit()
+if d.get("bindings") is None: d["bindings"] = []
+blocks = d["bindings"]
+owned = [b for b in blocks if isinstance(b, dict) and isinstance(b.get("bindings"), dict)]
+def save():
+    open(f, "w", encoding="utf-8").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+if op == "bind":
+    vals = [v for b in owned for key, v in b["bindings"].items() if key.lower() == k]
+    if a in vals: print("present")
+    elif vals: print("taken\t" + (vals[0] if isinstance(vals[0], str) else json.dumps(vals[0])))
+    else:
+        g = next((b for b in blocks if isinstance(b, dict) and b.get("context") == "Global"), None)
+        if g is None: blocks.append({"context": "Global", "bindings": {k: a}})
+        elif g.get("bindings") is None: g["bindings"] = {k: a}
+        elif isinstance(g["bindings"], dict): g["bindings"][k] = a
+        else: print("bad"); sys.exit()
+        save(); print("added")
+else:
+    hit = [b for b in owned if any(key.lower() == k and v == a for key, v in b["bindings"].items())]
+    if not hit: print("none"); sys.exit()
+    for b in hit:
+        b["bindings"] = {key: v for key, v in b["bindings"].items() if not (key.lower() == k and v == a)}
+    d["bindings"] = [b for b in blocks if not (any(b is h for h in hit) and not b["bindings"])]
+    save()
+    print("removed-empty" if not d["bindings"] and not set(d) - {"$schema", "$docs", "bindings"} else "removed")
+PY
+            ;;
+        powershell)
+            powershell.exe -NoProfile -NonInteractive -Command "
+                \$f = '$(cygpath -w "$f" 2>/dev/null || printf '%s' "$f")'; \$k = '$k'; \$a = '$a'
+                try { \$d = Get-Content -Raw -Encoding UTF8 \$f | ConvertFrom-Json } catch { 'bad'; exit }
+                if (-not (\$d -is [Management.Automation.PSCustomObject])) { 'bad'; exit }
+                \$has = [bool]\$d.PSObject.Properties['bindings']
+                if (\$has -and \$null -ne \$d.bindings -and -not (\$d.bindings -is [array])) { 'bad'; exit }
+                \$blocks = @(); if (\$has -and \$null -ne \$d.bindings) { \$blocks = @(\$d.bindings) }
+                function Get-Own(\$b) { (\$b -is [Management.Automation.PSCustomObject]) -and (\$b.bindings -is [Management.Automation.PSCustomObject]) }
+                function Save-Keys { [IO.File]::WriteAllText(\$f, (\$d | ConvertTo-Json -Depth 10) + [Environment]::NewLine) }
+                if ('$op' -eq 'bind') {
+                    \$vals = @(); foreach (\$b in \$blocks) { if (Get-Own \$b) { foreach (\$p in @(\$b.bindings.PSObject.Properties)) { if (\$p.Name -eq \$k) { \$vals += ,\$p.Value } } } }
+                    if (\$vals -ccontains \$a) { 'present'; exit }
+                    if (\$vals.Count -gt 0) { if (\$null -eq \$vals[0]) { \"taken\`tnull\" } else { \"taken\`t\" + \$vals[0] }; exit }
+                    \$g = \$null; foreach (\$b in \$blocks) { if ((\$b -is [Management.Automation.PSCustomObject]) -and \$b.context -ceq 'Global') { \$g = \$b; break } }
+                    if (\$null -eq \$g) {
+                        \$entry = [PSCustomObject]@{ context = 'Global'; bindings = [PSCustomObject]@{ \$k = \$a } }
+                        if (\$has) { \$d.bindings = @(\$blocks) + @(\$entry) } else { \$d | Add-Member -NotePropertyName bindings -NotePropertyValue @(\$entry) }
+                    } else {
+                        if (\$null -eq \$g.bindings) { \$g | Add-Member -Force -NotePropertyName bindings -NotePropertyValue (New-Object PSObject) }
+                        elseif (-not (\$g.bindings -is [Management.Automation.PSCustomObject])) { 'bad'; exit }
+                        \$g.bindings | Add-Member -NotePropertyName \$k -NotePropertyValue \$a
+                    }
+                    Save-Keys; 'added'
+                } else {
+                    \$n = 0; \$keep = @()
+                    foreach (\$b in \$blocks) {
+                        \$hit = \$false
+                        if (Get-Own \$b) { foreach (\$p in @(\$b.bindings.PSObject.Properties)) { if (\$p.Name -eq \$k -and \$p.Value -is [string] -and \$p.Value -ceq \$a) { \$b.bindings.PSObject.Properties.Remove(\$p.Name); \$hit = \$true; \$n++ } } }
+                        if (\$hit -and @(\$b.bindings.PSObject.Properties).Count -eq 0) { continue }
+                        \$keep += ,\$b
+                    }
+                    if (\$n -eq 0) { 'none'; exit }
+                    \$d.bindings = \$keep
+                    Save-Keys
+                    \$others = @(\$d.PSObject.Properties | Where-Object { @('\$schema', '\$docs', 'bindings') -notcontains \$_.Name })
+                    if (\$keep.Count -eq 0 -and \$others.Count -eq 0) { 'removed-empty' } else { 'removed' }
+                }
+            " 2>/dev/null ;;
+        *) echo none-tool ;;
+    esac
+}
+
 # --------------------------------------------------------------------------
 # apply: copy everything orion owns from SRC_DIR into the project
 # --------------------------------------------------------------------------
@@ -962,6 +1075,55 @@ mod_sync() {  # name
     fi
 }
 
+# The shortcut a mod's README names, which installing the mod binds in the person's own keybindings file:
+# key, action and how a person reads the key, tab-separated; nothing for a mod with none.
+mod_shortcut() {  # name
+    case "$1" in
+        control-tower) printf 'ctrl+x p\tcommand:control-tower\tCtrl+X then P' ;;
+    esac
+}
+mod_keys_file() { printf '%s' "$HOME/.claude/keybindings.json"; }
+# A key already bound to something else stays as it is, and the person is told how to bind the mod by hand.
+mod_bind_keys() {  # name
+    local name="$1" sc k a human f state
+    sc="$(mod_shortcut "$name")"; [ -n "$sc" ] || return 0
+    IFS="$(printf '\t')" read -r k a human <<< "$sc"
+    f="$(mod_keys_file)"
+    if [ "$(json_tool)" = none ]; then
+        warn "no jq/python/powershell found - to show and hide mod $name with $human, add \"$k\": \"$a\" to a \"Global\" block of $f by hand"
+        return 0
+    fi
+    if [ ! -f "$f" ]; then
+        mkdir -p "$(dirname "$f")"
+        printf '{\n  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",\n  "$docs": "https://code.claude.com/docs/en/keybindings",\n  "bindings": []\n}\n' > "$f"
+    fi
+    state="$(keys_edit bind "$f" "$k" "$a")"
+    case "$state" in
+        added) say "mod $name: $human now shows and hides it (added to ~/.claude/keybindings.json)" ;;
+        present) say "mod $name: $human already shows and hides it" ;;
+        taken*) warn "mod $name: $human ($k) is already bound to ${state#*$(printf '\t')} in ~/.claude/keybindings.json, so it was left as it is; to bind the pane by hand, add \"<your key>\": \"$a\" to a \"Global\" block there" ;;
+        *) warn "mod $name: ~/.claude/keybindings.json could not be read as a keybindings file, so it was left as it is; to bind the pane by hand, add \"$k\": \"$a\" to a \"Global\" block there" ;;
+    esac
+}
+# Takes the mod's key away only while it still runs the mod's action.
+mod_unbind_keys() {  # name
+    local name="$1" sc k a human f
+    sc="$(mod_shortcut "$name")"; [ -n "$sc" ] || return 0
+    IFS="$(printf '\t')" read -r k a human <<< "$sc"
+    f="$(mod_keys_file)"
+    [ -f "$f" ] || return 0
+    if [ "$(json_tool)" = none ]; then
+        warn "no jq/python/powershell found - remove \"$k\": \"$a\" from $f by hand"
+        return 0
+    fi
+    case "$(keys_edit unbind "$f" "$k" "$a")" in
+        removed) say "mod $name: $human taken out of ~/.claude/keybindings.json" ;;
+        removed-empty) rm -f "$f"; say "mod $name: $human taken out, and ~/.claude/keybindings.json, empty without it, deleted" ;;
+        none) ;;
+        *) warn "mod $name: ~/.claude/keybindings.json could not be read as a keybindings file; if it still binds \"$k\" to \"$a\", remove that by hand" ;;
+    esac
+}
+
 mod_write_market() {
     local dir name sep=""; dir="$(mod_home)"
     mkdir -p "$dir/.claude-plugin"
@@ -997,6 +1159,7 @@ mod_install() {  # name
         || { warn "Claude Code could not install mod $name (its message is above): run 'orion.sh mod install $name' again once that is fixed"; return 1; }
     mod_mark "$name" "$t"
     say "mod $name: installed for this computer from ~/.claude/$MOD_MARKET; Claude Code loads it in its next session"
+    mod_bind_keys "$name"
 }
 
 mod_skip() {  # name
@@ -1017,6 +1180,7 @@ mod_remove() {  # name
     claude plugin uninstall "$name@$MOD_MARKET" --scope user \
         || warn "Claude Code could not uninstall mod $name (its message is above); its copy is deleted all the same"
     rm -rf "${dir:?}/$name"; rm -f "$(mod_stamp "$name")"
+    mod_unbind_keys "$name"
     if [ -n "$(mod_copies)" ]; then
         mod_write_market
     else
