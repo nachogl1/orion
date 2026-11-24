@@ -568,7 +568,7 @@ const NODES = {
 
   verify:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Health check", title:"/orion-verify", cmd:"/orion-verify",
     sub:"Checks that your rules, orion's rules, the skills and the settings fit together.",
-    what:["Runs the mechanical checks and fixes what is mechanical.","Reviews CLAUDE.md, your skills and your personal rules file against orion's rules for gaps, duplicates and contradictions.","Proposes the build and test commands it finds in your project for every blank one, so /dev-next can run.","Offers to move a folder the rules expect (such as docs/PRDs/) that your project keeps elsewhere.","Offers the exact .gitignore lines when orion's files would not reach your team.","Reports the rest in a few lines."],
+    what:["Runs the mechanical checks and fixes what is mechanical.","Reviews CLAUDE.md, your skills and your personal rules file against orion's rules for gaps, duplicates and contradictions.","Proposes the build and test commands it finds in your project for every blank or missing one, so /dev-next can run.","Offers to move a folder the rules expect (such as docs/PRDs/) that your project keeps elsewhere.","Offers the exact .gitignore lines when orion's files would not reach your team.","Reports the rest in a few lines."],
     you:["Approve any change to something you own."], out:["A consistent setup."],
     rules:["Asks before touching anything the project or you own."]},
 

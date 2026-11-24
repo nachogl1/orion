@@ -32,3 +32,12 @@ What a person sees orion do in a project, and what to do about it.
 ## During install
 
 - The update-mode question now reads `auto - an agent ships it through its own pull request without asking`.
+
+## When `/orion-verify` checks the commands table
+
+- `orion.sh verify` prints one `WARN  claude-md-row` line for each commands-table row the rules rely on that your
+  `CLAUDE.md` lacks (build, full suite, one file, one test, typecheck, lint, test copies). A row counts as present when
+  its label holds the row's key word in any case (`copies` for the test-copies row), so a reworded label still counts.
+- `/orion-verify` then works out the command from your CI workflow, build files or README and proposes the row with
+  its source; it adds the row only on your yes. When the row is there under a label the key word misses, it offers to
+  rename that label to orion's wording and keeps your command.
