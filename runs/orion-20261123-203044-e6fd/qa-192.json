@@ -1,0 +1,28 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 192,
+  "title": "Mods: bind Ctrl+X then P to the Control Tower pane when the mod is installed",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 254,
+  "merged_at": "2026-11-24T09:11:23Z",
+  "merge_commit": "c3277ab479257f8ad0f44a087ac3771a58e115e9",
+  "seam": "orion.sh (mod install|remove), tests/run.sh (mods section), docs/guide/index.html (mods section)",
+  "story": "When you say yes to Control Tower, Ctrl+X then P now shows and hides it without any setup. If you already use that keystroke, orion leaves it alone and tells you how to pick your own. Removing the mod takes the shortcut away again and leaves your other shortcuts as they were.",
+  "checks": [
+    {
+      "key": "mods/control-tower-shortcut-new",
+      "do": "Install the Control Tower mod on a computer with no keybindings file.",
+      "expect": "The file appears with one binding of ctrl+x p to the pane, and that keystroke shows and hides it."
+    },
+    {
+      "key": "mods/control-tower-shortcut-keep",
+      "do": "Start from a keybindings file with your own entries (for example ctrl+e in Chat and ctrl+k in Global); install, then remove the mod.",
+      "expect": "Your entries survive both steps; the shortcut is added and then taken away."
+    },
+    {
+      "key": "mods/control-tower-shortcut-taken",
+      "do": "Bind ctrl+x p to chat:modelPicker, then install and remove the mod.",
+      "expect": "The file stays exactly as it was, and the install prints one warning line naming that action."
+    }
+  ]
+}

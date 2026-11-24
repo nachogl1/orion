@@ -1,0 +1,60 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 192,
+  "title": "Mods: bind Ctrl+X then P to the Control Tower pane when the mod is installed",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-23T22:33:06Z",
+  "finished_at": "2026-11-24T09:11:23Z",
+  "outcome": "merged",
+  "pr": 254,
+  "summary": "Installing the Control Tower mod now adds a Ctrl+X then P shortcut to the person's own keybindings file (created if missing, other bindings kept), leaves a chord already in use alone with one warning line, and removing the mod takes the shortcut away; the file is edited with jq, python or PowerShell, whichever exists, and all three agree.",
+  "agents": [
+    {
+      "name": "dev-192",
+      "model": "opus",
+      "tokens_total": 197745
+    },
+    {
+      "name": "review-192-r1",
+      "model": "opus",
+      "tokens_total": 150529
+    },
+    {
+      "name": "review-192-r2",
+      "model": "opus",
+      "tokens_total": 133900
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1549,
+    "review_seconds": 36412,
+    "ci_seconds": 220
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 2
+  },
+  "friction": [
+    "The confirming review (review-192-r2) reported a wall time of about ten hours for 19 tool calls, so the story sat idle overnight; the cause was not found."
+  ],
+  "lessons_learned": [
+    "Three file editors (jq, python, PowerShell) for one JSON edit triple the edge cases; the first review found they disagreed on malformed files, so test every editor over one shared list of broken shapes from the start."
+  ],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "CLAUDE.md",
+      "what": "The Boundaries list of what orion touches outside a project does not name the person's keybindings file, which mod install and remove now edit, so a later agent reads the boundary as narrower than the code.",
+      "why": "CLAUDE.md changes only on the person's word and a person merges it.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "low",
+      "area": "orion.sh (mod shortcut)",
+      "what": "The taken-chord check ignores letter case but not alternate spellings such as control+x p, so a binding spelled that way is not seen as taken.",
+      "why": "Outside the acceptance criteria; Claude Code's accepted spellings are not documented here.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}
