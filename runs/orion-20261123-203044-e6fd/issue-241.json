@@ -1,0 +1,49 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 241,
+  "title": "orion-verify: warn about a commands-table row the project's CLAUDE.md lacks, and offer to add it",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-24T10:36:16Z",
+  "finished_at": "2026-11-24T11:27:05Z",
+  "outcome": "merged",
+  "pr": 260,
+  "summary": "orion.sh verify now warns once for each required commands-table row a project's CLAUDE.md lacks, matching labels by one key word and skipping the table's header row, and /orion-verify proposes the missing row with the command's source, writing it only on a yes.",
+  "agents": [
+    {
+      "name": "dev-241",
+      "model": "opus",
+      "tokens_total": 198876
+    },
+    {
+      "name": "review-241-r1",
+      "model": "opus",
+      "tokens_total": 133989
+    },
+    {
+      "name": "review-241-r2",
+      "model": "opus",
+      "tokens_total": 121974
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 2433,
+    "review_seconds": 540,
+    "ci_seconds": 190
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 2
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "orion.sh verify (missing-row check)",
+      "what": "A project whose test-copies row is labelled without the word 'copies' (for example 'Pass the copy count to the full suite') gets a false missing-row warning on every verify until it accepts the rename.",
+      "why": "Kept by the agreed one-key-word design.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}

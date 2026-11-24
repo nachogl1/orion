@@ -1,0 +1,33 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 241,
+  "title": "orion-verify: warn about a commands-table row the project's CLAUDE.md lacks, and offer to add it",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 260,
+  "merged_at": "2026-11-24T11:27:05Z",
+  "merge_commit": "c0ab8e76c97ad3ed469d0e17c9b3b2dab777afb7",
+  "seam": "orion.sh verify, tests/run.sh verify section, skills/orion-verify/",
+  "story": "orion.sh verify used to flag only TBD and leftover starter placeholders, so a commands-table row that was never written went unnoticed. Now verify warns once per missing required row, matching labels loosely and skipping the table's header row; /orion-verify proposes the row with the command's source and adds it only on a yes, or offers to rename a label that is there under other wording.",
+  "checks": [
+    {
+      "key": "orion-verify/missing-command-row",
+      "do": "Run bash orion.sh init --project <tmp> --yes --no-statusline, delete the '| Test copies' line from <tmp>/CLAUDE.md, then run bash orion.sh verify --project <tmp>.",
+      "expect": "Exactly one 'WARN  claude-md-row' line naming orion's Test copies row and the word copies, ending 'verify: 0 fail', exit 0."
+    },
+    {
+      "key": "orion-verify/header-is-no-row",
+      "do": "In a fresh starter CLAUDE.md, change the commands table header to '| Type | Command |', delete the Typecheck / static analysis row, then run verify.",
+      "expect": "One claude-md-row warning naming the word type."
+    },
+    {
+      "key": "orion-verify/reworded-command-row",
+      "do": "In a fresh starter, relabel the rows to 'Run a single file', 'Whole test suite', 'Type checks' and 'Parallel copies', then run verify.",
+      "expect": "No claude-md-row line, and 'ok    claude-md-rows'."
+    },
+    {
+      "key": "orion-verify/propose-missing-row",
+      "do": "In a project missing the Lint row that has a lint script in its build file, run /orion-verify and answer Leave it.",
+      "expect": "One question naming the row, the command and the file and line it came from; CLAUDE.md is unchanged."
+    }
+  ]
+}
