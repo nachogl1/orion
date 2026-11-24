@@ -67,7 +67,7 @@ HOOK_TIMEOUT=60
 CHECK_INTERVAL_SECONDS=86400
 # How the agent ships orion's files: never in the folder the session opens in, always through a pull request of
 # their own. The steps live in the orion skill; check's messages point there.
-SHIP_STEPS="Ship it through its own pull request, following the 'Ship an update' steps of the /orion skill (.claude/skills/orion/SKILL.md) exactly as written: a worktree at the project's worktree root on feat/orion-update-v<new> from the default branch, 'bash .claude/orion/orion.sh update' there and never in this folder, the project's changelog file and gate, a pull request titled 'chore(orion): update orion from <old> to <new>' merged on green under the project's merge bar ('no checks reported' counts as red), then 'git pull --ff-only' in this folder. A failed run reports, stops and leaves its worktree for /clear-git-resources."
+SHIP_STEPS="Ship it through its own pull request, following the 'Ship an update' steps of the /orion skill (.claude/skills/orion/SKILL.md) exactly as written: a worktree at the project's worktree root on feat/orion-update-v<new> from the default branch, 'bash .claude/orion/orion.sh update' there and never in this folder, the project's changelog file and gate, a pull request titled 'chore(orion): update orion from <old> to <new>' merged on green under the project's merge bar ('no checks reported' counts as red), then 'git pull --ff-only' in this folder. A run that cannot finish reports, stops and leaves its worktree for /clear-git-resources."
 # The time this orion.sh pins in global-offered once the personal rules were offered (2100-01-01 UTC): an older
 # orion.sh offers when that time is a day old, so a time in the future keeps it quiet for good.
 GLOBAL_OFFER_PIN=4102444800

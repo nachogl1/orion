@@ -93,6 +93,9 @@ run_check() {  # extra env assignments go before the call: runs the INSTALLED co
     env PATH="$FAKEPATH" TMPDIR="$SB/tmp" bash "$P/.claude/orion/orion.sh" check --project "$P" "$@" >"$SB/hook" 2>"$SB/hook-err"
 }
 consume_marker() { bash "$ORION" verify --project "$P" >/dev/null 2>&1 || true; }   # verify clears the one-shot marker
+# For a check about something else in a git repository: orion's files stay out of its history, so the offer to ship
+# orion files left uncommitted stays quiet.
+keep_orion_out_of_git() { printf '/.claude/\n/CLAUDE.md\n' >> "$P/.git/info/exclude"; }
 nothing_left_in_tmp() { [ -z "$(ls -A "$SB/tmp" 2>/dev/null)" ]; }
 # A personal rules file whose ORION GLOBAL section has seen every clause, so the personal rules offer stays quiet
 # in the checks that expect silence; the personal rules section below uses a HOME of its own.
@@ -1190,7 +1193,7 @@ for b in b1 b2 b3; do "$REAL_GIT" -C "$P" branch "$b"; done
 "$REAL_GIT" -C "$P" remote add origin https://example.invalid/a.git; "$REAL_GIT" -C "$P" remote add other https://example.invalid/b.git
 for r in origin/main origin/f1 other/f2; do "$REAL_GIT" -C "$P" update-ref "refs/remotes/$r" HEAD; done
 "$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
-init off; consume_marker; set_cfg branchLimit 7
+init off; consume_marker; keep_orion_out_of_git; set_cfg branchLimit 7
 check "the hook offers the tidy-up at 7 branches" eval 'run_check --force && grep -q "has 7 git branches" "$SB/hook" && hook_out_ok "$SB/hook"'
 check "the scanner counts 7 too" eval 'bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt" --limit 7 | grep -q "total=7 limit=7 .*over=yes"'
 check "status shows the branch count" eval 'bash "$ORION" status --project "$P" | grep -q "branches now: 7"'
@@ -1248,7 +1251,7 @@ echo "check pulls the branch the session opens on (fast-forward only, every sess
 R="$SB/remote.git"; "$REAL_GIT" init -q --bare "$R"
 "$REAL_GIT" clone -q "$R" "$SB/peer" 2>/dev/null; "$REAL_GIT" -C "$SB/peer" checkout -q -b main
 "$REAL_GIT" -C "$SB/peer" commit -q --allow-empty -m one && "$REAL_GIT" -C "$SB/peer" push -q -u origin main 2>/dev/null
-newproj; rmdir "$P"; "$REAL_GIT" clone -q -b main "$R" "$P"; init off; consume_marker
+newproj; rmdir "$P"; "$REAL_GIT" clone -q -b main "$R" "$P"; init off; consume_marker; keep_orion_out_of_git
 "$REAL_GIT" -C "$SB/peer" commit -q --allow-empty -m two && "$REAL_GIT" -C "$SB/peer" push -q 2>/dev/null
 check "a new commit on the remote is pulled, silently" eval 'run_check && [ ! -s "$SB/hook" ] && [ "$("$REAL_GIT" -C "$P" rev-parse HEAD)" = "$("$REAL_GIT" -C "$R" rev-parse main)" ]'
 "$REAL_GIT" -C "$P" commit -q --allow-empty -m local; LOCAL="$("$REAL_GIT" -C "$P" rev-parse HEAD)"
