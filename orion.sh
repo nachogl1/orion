@@ -825,6 +825,53 @@ starter_slots() {
     rm -f "$tmp"
 }
 
+# The commands-table rows the mandatory rules rely on, one key word each, in lower case. A row of the project's table
+# whose label holds the word counts as that row, so a reworded label still does. A note in brackets is left out of a
+# label first, so the test-copies row's "(how the full suite takes ...)" never reads as the full suite. The starter's
+# rows marked "(if ...)" are optional and have no key word. The suite checks every key word is in exactly one starter
+# row and every other starter row has one.
+COMMAND_ROW_KEYS=(build suite file "one test" type lint copies)
+
+# One line per row of the commands table in a CLAUDE.md: the label in lower case without bold marks or notes in
+# brackets, a tab, then the label as written without bold marks. The table is the one under the first heading that
+# names commands (up to the next heading of its level or higher), or every table in the file when no heading does.
+# Lines inside a code block are skipped.
+command_row_labels() {  # file
+    awk '
+        /^[ \t]*(```|~~~)/ { fence = !fence; next }
+        fence { next }
+        /^#+[ \t]/ {
+            lvl = match($0, /[^#]/) - 1
+            if (in_sec && lvl <= sec_lvl) { in_sec = 0; done = 1 }
+            if (!done && !in_sec && tolower($0) ~ /command/) { in_sec = 1; found = 1; sec_lvl = lvl }
+            next
+        }
+        /^[ \t]*\|/ {
+            split($0, cell, "|"); raw = cell[2]
+            gsub(/\*/, "", raw); gsub(/^[ \t]+|[ \t]+$/, "", raw)
+            if (raw == "" || raw ~ /^[-: ]+$/) next
+            key = tolower(raw); gsub(/\([^)]*\)/, "", key); gsub(/[ \t]+/, " ", key)
+            all[++na] = key "\t" raw
+            if (in_sec) sec[++ns] = key "\t" raw
+        }
+        END { if (found) for (i = 1; i <= ns; i++) print sec[i]; else for (i = 1; i <= na; i++) print all[i] }
+    ' "$1"
+}
+
+# One WARN per commands-table row the rules rely on that the project's CLAUDE.md lacks, naming the starter's row.
+verify_command_rows() {  # CLAUDE.md
+    local tmp starter labels key row missing=0
+    tmp=$(mktemp); write_claude_md_starter "$tmp"; starter="$(command_row_labels "$tmp")"; rm -f "$tmp"
+    labels="$(command_row_labels "$1")"
+    for key in "${COMMAND_ROW_KEYS[@]}"; do
+        awk -F'\t' -v k="$key" 'index($1, k) { hit = 1 } END { exit !hit }' <<< "$labels" && continue
+        row="$(awk -F'\t' -v k="$key" '!row && index($1, k) { row = $2 } END { print row }' <<< "$starter")"
+        v_warn claude-md-row "CLAUDE.md's commands table has no row for \"$row\" (no row label holds the word '$key'); /orion-verify works out the command from the project's files and proposes the row"
+        missing=$((missing+1))
+    done
+    [ "$missing" -gt 0 ] || v_ok claude-md-rows "CLAUDE.md's commands table has every row the rules rely on"
+}
+
 apply_claude_md() {
     local f="$PROJECT/CLAUDE.md" tmp
     if [ ! -f "$f" ]; then
@@ -1854,6 +1901,7 @@ cmd_verify() {
         grep -qxF "$OLD_IMPORT_LINE" "$claude" && v_fail claude-md-old-import "CLAUDE.md still imports the retired ORION.md (fix: delete that line; the BASE_CLAUDE.md import replaces it)"
         slots=$(grep -cF -e '`TBD`' -f <(starter_slots) "$claude" || true)
         [ "$slots" -gt 0 ] 2>/dev/null && v_warn claude-md-slots "CLAUDE.md has $slots line(s) with an unfilled slot (TBD or a starter <placeholder>); the rules that rely on them cannot run until they are filled"
+        verify_command_rows "$claude"
         while IFS= read -r p; do
             [ -n "$p" ] && [ ! -e "$PROJECT/$p" ] && v_warn claude-md-reference "CLAUDE.md refers to $p, which does not exist"
         done <<< "$(grep -oE '\.claude/skills/[A-Za-z0-9_./-]+' "$claude" 2>/dev/null | sed 's/[.]*$//' | sort -u || true)"

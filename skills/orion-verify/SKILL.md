@@ -61,8 +61,8 @@ project wrote:
 `changelog-missing`, fixed **without asking** since it only adds a file (create `docs/changelog/README.md` holding a
 `# Changelog` heading, a blank line and `One file per pull request, named <YYYY-MM-DD>-<branch>.md (the branch name
 with / turned into -), holding one line: what changed and why it matters. Newest first: sort the names in reverse.`;
-an old single-file changelog stays where it is, as the history before the folder), and these two, which **need a
-yes**:
+an old single-file changelog stays where it is, as the history before the folder), `claude-md-row`, handled with
+the blank commands in step 2, and these two, which **need a yes**:
 
 - `git-ignored` — teammates would not get orion with a clone. Read `.gitignore` (and any nested one the files sit
   under), then propose the exact lines that make every listed file tracked, and show them as a before/after. Git
@@ -97,14 +97,21 @@ Then judge the project's file against the mandatory one:
    as present when the file states its facts anywhere, under any heading. A section that is **absent** is **needs a
    yes**: propose adding it with its slots. A section present but incomplete, or still holding `TBD` or
    `<placeholder>` values, is **reported** as still to fill — that is the user's homework, not a breach — except the
-   commands below.
-4. **The blank commands** — every row of the commands table that still reads `TBD` stops the skills that rely on it
-   (`/dev-next` cannot run with one in its gate). For each, work out the real command from the project's own files,
-   in this order: the CI workflow (the gate must run the same chain as CI), then the package or build files
-   (`package.json` scripts, a `Makefile`, `*.csproj` / `*.sln`, `pyproject.toml`, `Cargo.toml`, `go.mod`, …), then
-   the README. Each is **needs a yes**: the row, the proposed command, and the file and line it came from. Fill the
-   ones accepted; leave a row as `TBD` when nothing in the project tells the command, and say so. Never run a
-   proposed command to test it.
+   commands below. Only the commands table is also checked by the script (`claude-md-row`); the sentence sections
+   (stack and layout, worktrees, boundaries, pending questions) are judged by reading alone.
+4. **The blank and missing commands** — every row of the commands table that still reads `TBD`, and every row a
+   `claude-md-row` warning says the table lacks, stops the skills that rely on it (`/dev-next` cannot run with one
+   missing from its gate). For each, work out the real command from the project's own files, in this order: the CI
+   workflow (the gate must run the same chain as CI), then the package or build files (`package.json` scripts, a
+   `Makefile`, `*.csproj` / `*.sln`, `pyproject.toml`, `Cargo.toml`, `go.mod`, …), then the README. Each is **needs
+   a yes**: the row, the proposed command, and the file and line it came from. A missing row is proposed whole, in
+   orion's wording (the label the warning quotes), as a new line of the commands table, and is added only on a yes;
+   when nothing in the project tells its command, propose it as `TBD` and say so. Fill the blank ones accepted;
+   leave a row as `TBD` when nothing in the project tells the command, and say so. Never run a proposed command to
+   test it.
+   **A false warning** — the row is there, under a label that lacks the word the warning names (a test-copies row
+   labelled "Parallel workers", say): never propose a second row. Offer instead, as **needs a yes**, to rename
+   that row's label to orion's wording, keeping the project's command as it is, so the warning stops for good.
 5. **Stale references** — a path, command or file the project's `CLAUDE.md` names that does not exist in the project.
    **Reported**.
 
