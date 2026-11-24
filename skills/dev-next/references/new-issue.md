@@ -1,7 +1,7 @@
 # Writing a new issue
 
 The checklist for every issue this skill files — a `Critical:` finding (`SKILL.md` phase 4) or the `bug` for a red
-gate on `main` (`SKILL.md` phase 3, `merge-and-ci.md` *After the merge*) — and the shape it expects
+gate on the default branch (`SKILL.md` phase 3, `merge-and-ci.md` *After the merge*) — and the shape it expects
 of every issue it takes, whoever filed it: a harvest ticket (`/harvest`), a story cut by a planning process, a
 ticket a person writes by hand, or one an agent files from a chat request with no skill running ("file this bug")
 (this file **is** the shape; there is no separate issue template to keep in step with it). Where the project's
@@ -28,7 +28,7 @@ Copy the shape of the existing stories. Headings, in this order:
 **A family of sibling stories that each extend one shared contract** (a shared type, a shared project file, a shared
 threshold or configuration file) gets the shared contract as **its own first story**, and every sibling is blocked by
 it. Filed without it, the siblings cost review rounds and merge conflicts. **Check what the ticket names against
-`main`**: every folder under `### Seam` exists (`ls`), and every file the ticket says to delete still exists.
+the default branch**: every folder under `### Seam` exists (`ls`), and every file the ticket says to delete still exists.
 
 End with a process footer:
 
@@ -50,7 +50,7 @@ about, never only its number.
 | Touches a repository this team does not own (has an `### External reference`) | `story`, `outside-change`, `needs-human` | Last comment, as above. `outside-change` never travels alone. |
 
 `agent-ready` and `needs-human` never sit on one issue together. An issue filed mid-run — a `Critical:` finding or the
-`bug` for a red `main` — is `needs-human` by default: nobody has yet checked that nothing is left to ask. Pass the labels on creation
+`bug` for a red default branch — is `needs-human` by default: nobody has yet checked that nothing is left to ask. Pass the labels on creation
 (`gh issue create --label story --label needs-human --label tier:<name> …`); `bug` is added when the issue reports a defect.
 
 **Every story also carries exactly one tier label, `tier:<name>`**: what the story is for, so anyone reading the list
@@ -59,7 +59,7 @@ sees it. An epic never carries one. The first line that fits decides:
 | The story | Tier |
 |---|---|
 | Was cut from a PRD (by `/prd-to-tickets`, `/reconcile` or a person writing PRD work) | The tier the PRD gives that work, lowercase with spaces as hyphens: `tier:mvp`, `tier:stretch`, `tier:stretch-2`. A PRD that gives that work no tier → ask the person, `mvp` recommended. |
-| Reports or fixes a defect (a red `main`, a QA failure, a defect found anywhere else) | `tier:bug` |
+| Reports or fixes a defect (a red default branch, a QA failure, a defect found anywhere else) | `tier:bug` |
 | Was filed by a skill for any other reason | The skill's name: `tier:dev-quick`, `tier:harvest`, `tier:wayfinder`, `tier:dev-next` (a `Critical:` finding that is not a defect) |
 | Was written by a person, outside any PRD, or asked for in chat with no skill running | `tier:manual` |
 
@@ -116,6 +116,6 @@ ticket, not a tolerance.
   nobody can tell later when or why it was filed. No pull request open yet → add the link to its body when it opens.
 - A session with a person present that keeps a requirements document asks once, after its batch of tickets: **"Should
   we update the PRD with this too?"**, one line per change naming the PRD section it touches. The dev skill's
-  `Critical:` and red-`main` filing runs unattended and never asks.
+  `Critical:` and red-default-branch filing runs unattended and never asks.
 - The issue map (`/issue-map`) draws the new issue, its epic link and its blockers on its next run; a body section
   and a native relation that disagree show up in the map's footer as a mismatch.

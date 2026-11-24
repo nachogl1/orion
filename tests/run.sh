@@ -107,6 +107,7 @@ check "tests/wsl.sh parses" bash -n "$REPO/tests/wsl.sh"
 check "clear-git-resources scan.sh parses" bash -n "$REPO/skills/clear-git-resources/scripts/scan.sh"
 check "issue_map.py compiles" "$PY" -m py_compile "$REPO/skills/issue-map/scripts/issue_map.py"
 check "build_docx.py compiles" "$PY" -m py_compile "$REPO/skills/generate-project-writeup/assets/build_docx.py"
+check "agent_tokens.py compiles" "$PY" -m py_compile "$REPO/skills/dev-next/scripts/agent_tokens.py"
 
 echo "labels"
 # The baseline promises that /dev-next's preflight creates every label of its Labels line; the skill's Labels row must list each one.
@@ -157,6 +158,44 @@ for e in entries:
 PY
 }
 check "in-flight.md shows every field the Control Tower mod reads, in its shape" in_flight_shows_what_control_tower_reads
+# A sub-agent the Agent tool reports no figure for (an agent-team teammate) is counted from its own transcript: every
+# response once (one response may span several entries with one message id), input + output + cache-write, no cache
+# reads; found by agent id or by the name its meta file describes, only since the run started, also under a config
+# folder whose path holds brackets and in files that start with a byte-order mark; else null with a reason, and the
+# script exits 0 every time, wrong arguments and a malformed transcript included.
+agent_tokens_counts_the_transcript() {
+    local script="$REPO/skills/dev-next/scripts/agent_tokens.py" root="$SB/agent[tokens]" sub out code args
+    sub="$root/projects/example-project/example-session/subagents"
+    mkdir -p "$sub" "$root/projects/example-project/other-session/subagents"
+    # Git Bash leaves a path that holds brackets unconverted for a Windows Python: hand it a Windows path there.
+    if command -v cygpath >/dev/null 2>&1; then root="$(cygpath -m "$root")" sub="$(cygpath -m "$sub")"; fi
+    { printf '\357\273\277'; cat <<'EOF'
+{"type":"assistant","message":{"id":"msg_2","usage":{"input_tokens":3,"output_tokens":40,"cache_read_input_tokens":9100}}}
+{"type":"user","message":{"role":"user","content":"made-up brief"}}
+{"type":"assistant","message":{"id":"msg_1","usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":9000}}}
+{"type":"assistant","message":{"id":"msg_1","usage":{"input_tokens":10,"output_tokens":5,"cache_creation_input_tokens":100,"cache_read_input_tokens":9000}}}
+not json
+{"type":"attachment","message":{"usage":{"input_tokens":999999}}}
+EOF
+    } > "$sub/agent-a1.jsonl"
+    printf '\357\273\277{"description":"dev-31","toolUseId":"toolu_made_up"}\n' > "$sub/agent-a1.meta.json"
+    printf '{"type":"user","message":{"role":"user","content":"no usage here"}}\n' > "$root/projects/example-project/other-session/subagents/agent-b2.jsonl"
+    printf '{"type":"assistant","message":{"id":["made-up"],"usage":{"input_tokens":[1]}}}\n' > "$root/projects/example-project/other-session/subagents/agent-c3.jsonl"
+    out="$("$PY" "$script" "$sub/agent-a1.jsonl")"
+    [ "$out" = '{"tokens_total": 158, "tokens_source": "transcript"}' ] || { echo "  by path: $out"; return 1; }
+    out="$("$PY" "$script" --root "$root" --agent a1)"
+    [ "$out" = '{"tokens_total": 158, "tokens_source": "transcript"}' ] || { echo "  by id: $out"; return 1; }
+    out="$("$PY" "$script" --root "$root" --name dev-31 --since 2000-01-01T00:00:00Z)"
+    [ "$out" = '{"tokens_total": 158, "tokens_source": "transcript"}' ] || { echo "  by name: $out"; return 1; }
+    for args in "--name dev-31 --since 2999-01-01T00:00:00Z" "--name review-31-r1" "--agent b2" "--agent c3" \
+                "--bogus" "--name"; do
+        # shellcheck disable=SC2086
+        out="$("$PY" "$script" --root "$root" $args 2>/dev/null)"; code=$?
+        [ "$code" = 0 ] || { echo "  $args: exit $code"; return 1; }
+        case "$out" in '{"tokens_total": null, "tokens_source": "none", "tokens_reason": "'?*'"}') ;; *) echo "  $args: $out"; return 1 ;; esac
+    done
+}
+check "a sub-agent with no tool-reported figure is counted from its own transcript, or null with a reason, always exit 0" agent_tokens_counts_the_transcript
 
 echo "planning interview"
 # /prd-to-tickets and /wayfinder follow one shared interview file beside new-issue.md; neither skill holds its rules itself.
@@ -301,7 +340,8 @@ rc_section() { awk -v h="## $1" 'index($0, h) == 1 {on=1; print; next} on && /^#
 # asks for is no longer "a story the PRD does not ask for".
 reconcile_reads_pending_adrs() {
     rc_section 'Phase 0' | grep -F 'docs/ADRs/' | grep -qF '**Status: pending**' || { echo "  phase 0 does not read the pending ADRs by their status line"; return 1; }
-    rc_section 'Phase 0' | grep -qF 'any status line other than' || { echo "  phase 0 does not read an ADR with another status line as pending"; return 1; }
+    rc_section 'Phase 0' | grep -qF '**An unknown status line**' && ! rc_section 'Phase 0' | grep -qF 'any status line other than' \
+        || { echo "  phase 0 still reads an ADR with an unknown status line as pending instead of asking"; return 1; }
     rc_section 'The four lenses' | grep -qF 'a story a pending ADR asks for is **not** a story the PRD does not ask for' \
         || { echo "  a story a pending ADR asks for is still reported as unasked-for"; return 1; }
     grep -qF 'docs/ADRs/' "$REPO/skills/reconcile/VERIFY.md" || { echo "  VERIFY.md does not cover the ADRs it reads"; return 1; }
@@ -333,6 +373,31 @@ reconcile_fold_changes_the_status_line() {
     printf '%s' "$p3" | grep -qF 'Any other status line an older ADR carries is **replaced**'         || { echo "  a fold does not replace an older ADR's other status line"; return 1; }
 }
 check "reconcile's fold changes the ADR's status line in the same pull request" reconcile_fold_changes_the_status_line
+# An ADR's status line is one of three, spelled the same in the baseline and in every skill that reads ADRs; each
+# reading skill stops and asks about an unknown line instead of guessing, and orion-verify changes one only on a yes.
+adr_status_lines_agree() {
+    local f line
+    for f in baselines/BASE_CLAUDE.md skills/reconcile/SKILL.md skills/prd-to-tickets/SKILL.md \
+             skills/wayfinder/SKILL.md skills/orion-verify/SKILL.md; do
+        for line in '`**Status: pending**`' '`**Status: folded into the PRD on <yyyy-mm-dd>**`' \
+                    '`**Status: replaced by <newer ADR> on <yyyy-mm-dd>**`'; do
+            grep -qF "$line" "$REPO/$f" || { echo "  $f does not name the status line $line"; return 1; }
+        done
+    done
+    for f in baselines/BASE_CLAUDE.md skills/reconcile/SKILL.md skills/prd-to-tickets/SKILL.md skills/wayfinder/SKILL.md; do
+        tr '\n' ' ' <"$REPO/$f" | tr -s ' ' | grep -qF 'is never read as pending and never skipped silently' \
+            || { echo "  $f does not say an unknown status line is never read as pending nor skipped"; return 1; }
+    done
+    for f in skills/reconcile/SKILL.md skills/prd-to-tickets/SKILL.md skills/wayfinder/SKILL.md; do
+        tr '\n' ' ' <"$REPO/$f" | tr -s ' ' | grep -qF 'Stop at that ADR' \
+            || tr '\n' ' ' <"$REPO/$f" | tr -s ' ' | grep -qF 'stop at that ADR' \
+            || { echo "  $f does not stop at an ADR with an unknown status line and ask"; return 1; }
+    done
+    ! grep -qF 'is read as pending' "$RC" || { echo "  reconcile still reads an unknown status line as pending"; return 1; }
+    tr '\n' ' ' <"$REPO/skills/orion-verify/SKILL.md" | tr -s ' ' | grep -qF "changes only on the person's yes" \
+        || { echo "  orion-verify does not change an ADR's status line only on a yes"; return 1; }
+}
+check "the three ADR status lines read the same everywhere, and an unknown one is asked about" adr_status_lines_agree
 # The run's bookmark-only pull request merges on green; the docs(prd) one is the person's, by the baseline's list.
 reconcile_merges_by_the_baseline_list() {
     local section

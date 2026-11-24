@@ -86,7 +86,7 @@ Read `CLAUDE.md` and `.claude/orion/BASE_CLAUDE.md` in full (follow any other `@
 Then judge the project's file against the mandatory one:
 
 1. **Contradictions** — a project rule that permits what the mandatory rules forbid or forbids what they require
-   (examples: "commit straight to main", "skip the tests when in a hurry", "ask before every decision", a different
+   (examples: "commit straight to the default branch", "skip the tests when in a hurry", "ask before every decision", a different
    merge style, a tracker other than the one the rules name). Each is **needs a yes**: quote the project line, name the
    mandatory rule it collides with, and propose the rewrite (usually: delete the line, since the mandatory file wins on a
    contradiction anyway and a dead rule misleads readers).
@@ -116,7 +116,7 @@ Read `~/.claude/CLAUDE.md` if it exists (the person's own rules for every projec
 `@import`s). Judge it against `BASE_CLAUDE.md` and the instructions of every skill under `.claude/skills/`:
 
 - **A clash** — a personal rule that forbids what those require or requires what they forbid (examples: "always
-  rebase", "commit straight to main", "never merge a pull request yourself" against a skill that merges on green).
+  rebase", "commit straight to the default branch", "never merge a pull request yourself" against a skill that merges on green).
   A preference that only adds to the rules (shorter replies, a greeting, a label on every line) is not a clash. Each
   clash is **needs a yes**, asked as `BASE_CLAUDE.md` says: quote both rules and say where each lives, then offer to
   edit the person's own file (with the exact rewrite), to propose the change to orion instead (the exact rewrite of
@@ -126,12 +126,31 @@ Read `~/.claude/CLAUDE.md` if it exists (the person's own rules for every projec
 
 The file is personal: quote it only in the chat, never in the project, a commit, an issue or a report.
 
+### The ADRs' status lines
+
+Read every `docs/ADRs/*.md` in the project, if any (the project's decision records). Right under its title, each must
+carry exactly one of three status lines:
+
+- `**Status: pending**` — not yet folded into the PRD: read beside the PRD as product truth.
+- `**Status: folded into the PRD on <yyyy-mm-dd>**` — already in the PRD: not read again.
+- `**Status: replaced by <newer ADR> on <yyyy-mm-dd>**` — a later ADR (named by its file name) overrides it: every
+  skill skips it and none folds it into the PRD.
+
+Any other line, or none at all (`proposed`, `Status: Accepted`, `approved by the owner on <date>`, …), is
+**unknown**: the planning and checking skills never guess at it, they stop and ask. List every ADR with an unknown
+line (its file and the line it carries now), and make each one **needs a yes**: which of the three it is. The ADR is
+the project's own file, so it changes only on the person's yes: the chosen line replaces the old one right under the
+title (or is added there when there was none), and nothing else in the file changes. Leaving it is fine: the next
+skill that reads it asks the same question. No `docs/ADRs/` folder, or every line known → nothing to report. A
+skill's `VERIFY.md` that checks the same lines (step 3) adds no second line for the same ADR: each is listed once,
+here.
+
 ## Step 3 — the skills
 
 For every folder under `.claude/skills/` (orion-managed ones carry an `.orion-managed` marker; the others are the
 project's own), and for every folder under `~/.claude/skills/` whose name matches a project skill, read `SKILL.md`:
 
-- **A project skill that contradicts the mandatory rules** — it instructs the agent to push to `main`, force-push,
+- **A project skill that contradicts the mandatory rules** — it instructs the agent to push to the default branch, force-push,
   bypass hooks, auto-merge, skip or delete tests, commit secrets, or work outside a worktree where the rules require
   one. **Needs a yes**: quote the instruction, name the rule, propose the rewrite. Never edit a project skill without
   the yes.
@@ -178,8 +197,9 @@ Put every **needs a yes** item into **one** AskUserQuestion call, one question p
 call for the rest), phrased for someone who has never seen these files: what is wrong, what the fix changes, with
 "Apply the fix" as the recommended option and "Leave it" as the other. A clash with the person's own rules file has
 three options instead: edit their file, propose the change to orion, or leave it; recommend editing their file unless
-orion's rule is clearly wrong for every project. Apply exactly what was accepted. No questions
-when nothing needs one.
+orion's rule is clearly wrong for every project. An ADR's unknown status line has four: the three status lines, in
+plain words, and "Leave it"; recommend the line its text suggests (for a replaced one, ask which ADR replaced it).
+Apply exactly what was accepted. No questions when nothing needs one.
 
 ## Step 6 — report
 
