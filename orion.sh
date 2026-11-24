@@ -15,8 +15,9 @@
 #                                       # --yes goes on without asking (needed where there is no terminal)
 #   orion.sh update    [--force]        # fetch the latest orion and re-copy the files orion owns
 #   orion.sh update    --skip           # decline the newest orion: the hook stays quiet until a newer one
-#   orion.sh check     [--force]        # session-start hook: pull the branch and look for a newer orion (every
-#                                       # session); too many branches or worktrees? (once a day each)
+#   orion.sh check     [--force]        # session-start hook: pull the branch, look for a newer orion and for
+#                                       # orion files left uncommitted (every session); too many branches or
+#                                       # worktrees? (once a day each)
 #   orion.sh verify                     # mechanical post-install checks, one line per finding, no fixes
 #   orion.sh status                     # what is installed, which version, which update mode
 #   orion.sh uninstall [--yes]          # remove everything orion owns, keep everything yours
@@ -59,11 +60,14 @@ IMPORT_LINE="Mandatory rules, owned and refreshed by orion (never edit the copy)
 OLD_IMPORT_LINE="@.claude/orion/ORION.md"   # what orion wrote before the rules moved to BASE_CLAUDE.md
 HOOK_NEEDLE="/.claude/orion/orion.sh"
 HOOK_CMD='bash "${CLAUDE_PROJECT_DIR}/.claude/orion/orion.sh" check'
-# The session-start hook's time budget in seconds: 8 s pull fetch + 8 s update check + 10 s fetch + copying the
-# files, which under Git Bash on Windows alone can take over 10 s. Installs that carry a lower value are raised
-# on update.
+# The session-start hook's time budget in seconds: 8 s pull fetch + 8 s update check, with room to spare. It was
+# sized when the hook still ran the update itself and is kept, so no install's limit goes down. Installs that
+# carry a lower value are raised on update.
 HOOK_TIMEOUT=60
 CHECK_INTERVAL_SECONDS=86400
+# How the agent ships orion's files: never in the folder the session opens in, always through a pull request of
+# their own. The steps live in the orion skill; check's messages point there.
+SHIP_STEPS="Ship it through its own pull request, following the 'Ship an update' steps of the /orion skill (.claude/skills/orion/SKILL.md) exactly as written: a worktree at the project's worktree root on feat/orion-update-v<new> from the default branch, 'bash .claude/orion/orion.sh update' there and never in this folder, the project's changelog file and gate, a pull request titled 'chore(orion): update orion from <old> to <new>' merged on green under the project's merge bar ('no checks reported' counts as red), then 'git pull --ff-only' in this folder. A failed run reports, stops and leaves its worktree for /clear-git-resources."
 # The time this orion.sh pins in global-offered once the personal rules were offered (2100-01-01 UTC): an older
 # orion.sh offers when that time is a day old, so a time in the future keeps it quiet for good.
 GLOBAL_OFFER_PIN=4102444800
@@ -298,15 +302,8 @@ fetch_source() {  # source ref
     TMP_DIR="$(mktemp -d)"
     say "fetching orion ($2) from $1 ..."
     latest_remote "$1" "$2"
-    # ORION_FETCH_SECONDS (set by the session-start hook) time-limits the network fetch only, never the copy
-    # that follows: a copy cut short half-way would leave the project with a half-updated orion.
-    if [ -n "${ORION_FETCH_SECONDS:-}" ]; then
-        limited "$ORION_FETCH_SECONDS" git clone --quiet --depth 1 --branch "$2" "$1" "$TMP_DIR/orion" 2>/dev/null \
-            || die "could not fetch orion from $1 (ref $2) within $ORION_FETCH_SECONDS s"
-    else
-        git clone --quiet --depth 1 --branch "$2" "$1" "$TMP_DIR/orion" 2>/dev/null \
-            || die "could not fetch orion from $1 (ref $2)"
-    fi
+    git clone --quiet --depth 1 --branch "$2" "$1" "$TMP_DIR/orion" 2>/dev/null \
+        || die "could not fetch orion from $1 (ref $2)"
     SRC_DIR="$TMP_DIR/orion"
     SRC_SHA="$(git -C "$SRC_DIR" rev-parse HEAD)"
     SRC_TIME="$(git -C "$SRC_DIR" log -1 --format=%ct 2>/dev/null || printf '0')"
@@ -1279,7 +1276,7 @@ cmd_init() {
     if [ -z "$mode" ] && [ ! -f "$cfg" ] && is_tty; then
         say "When a newer orion exists, what should happen at session start?"
         say "  1) ask   - offer the update and let you say yes or no (default)"
-        say "  2) auto  - update by itself and tell you in one line"
+        say "  2) auto  - an agent ships it through its own pull request without asking"
         say "  3) off   - never check"
         ask "Choose [1/2/3] (Enter = ask): "
         case "$resp" in 2|auto) mode=auto ;; 3|off) mode=off ;; *) mode=ask ;; esac
@@ -1381,7 +1378,7 @@ cmd_update() {
     fi
     current="$(version_sha "$dir/VERSION")"
     fetch_source "$source" "$ref"
-    # the hint is printed only without --quiet, so an auto-update (capped at 10 s on older hooks) skips the cost
+    # the hint is printed only without --quiet, which then skips its cost
     local rules_before=""; [ "$quiet" = "1" ] || rules_before="$(rules_sum)"
     # an update run by an older orion.sh left out the status line, the personal rules or the mods: redo it once
     { [ -d "$dir/statusline" ] && [ -d "$dir/global" ] && { [ -d "$dir/mods" ] || [ ! -d "$SRC_DIR/mods" ]; }; } || force=1
@@ -1447,7 +1444,7 @@ cmd_check() {
     fi
     now=$(date +%s)
     ctx="$(check_update_ctx "$force")"
-    for tidy in "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_mods_ctx)" "$(check_global_ctx "$force" "$now")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
+    for tidy in "$(check_uncommitted_ctx)" "$(check_rules_ctx)" "$(check_statusline_ctx)" "$(check_mods_ctx)" "$(check_global_ctx "$force" "$now")" "$(check_branches_ctx "$force" "$now")" "$pulled"; do
         [ -n "$tidy" ] || continue
         if [ -n "$ctx" ]; then ctx="$ctx After that: $tidy"; else ctx="$tidy"; fi
     done
@@ -1457,15 +1454,13 @@ cmd_check() {
 
 # The update check, every session. Prints the context for Claude Code, or nothing when there is nothing to say.
 check_update_ctx() {  # force
-    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest hook
+    local cfg="$PROJECT/.claude/orion/config.json" dir="$PROJECT/.claude/orion" mode source ref current latest
     local installed newer=0
     mode="$(config_get "$cfg" updateMode ask)"
     [ "$mode" = "off" ] && return 0
     # An update run by an older orion.sh cannot raise the hook's time limit (bash had already read the old
-    # script), so the first check by the new script heals it, silently. Claude Code read the limit when this
-    # session started, so this run still goes by the value from BEFORE the heal: "0 <n>" with n > 0 means
-    # every orion hook already had HOOK_TIMEOUT; anything else (a lower limit, no hook, no JSON tool) does not.
-    hook=$(raise_hook_timeout "$PROJECT/.claude/settings.json" 2>/dev/null | tr -d '\r' || true)
+    # script), so the first check by the new script heals it, silently.
+    raise_hook_timeout "$PROJECT/.claude/settings.json" >/dev/null 2>&1 || true
     source="$(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"; ref="$(config_get "$cfg" ref "$ORION_DEFAULT_REF")"
     current="$(version_sha "$dir/VERSION")"; installed="$(version_number "$dir/VERSION")"
     latest_remote "$source" "$ref"
@@ -1486,21 +1481,12 @@ check_update_ctx() {  # force
     [ "$newer" = 1 ] || return 0
     # declined with `update --skip`: quiet until a newer orion, unless the person asked for the check (--force)
     [ "$mode" = "auto" ] || [ "$1" = "1" ] || [ "$(cat "$(cache_file update-skipped)" 2>/dev/null)" != "$(latest_key "$installed" "$ref")" ] || return 0
+    # Never updated in the folder the session opens in: the agent ships it through its own pull request
     case "$mode" in
         auto)
-            # A process of its own: a failed fetch ends only that process (this hook still answers and
-            # exits 0), and its own exit trap removes the temporary clone. With the full HOOK_TIMEOUT only the
-            # fetch is time-limited (10 s): the copy always runs to the end, so the project is never left
-            # half-updated, and 8 s check + 10 s fetch + the copy fit in it. While this session's hook still
-            # has a lower limit (an install from before the raise), the whole update stays capped at 10 s as
-            # before, so the session's own kill cannot land in the middle of the copy instead.
-            if run_auto_update "$hook" >/dev/null 2>&1 </dev/null; then
-                printf '%s' "orion (the repo-level utility framework in .claude/orion) was updated automatically from $current to $latest, as the project's updateMode is 'auto'. Tell the user in one line, and remind them to review 'git status' and commit the changed orion files on a branch."
-            else
-                printf '%s' "orion tried to update itself automatically ($current -> $latest) and failed. Tell the user in one line that running 'bash .claude/orion/orion.sh update' by hand will show the error."
-            fi ;;
+            printf '%s' "A newer orion is available for this project ($current -> $latest) and the project's updateMode is 'auto', so do not ask the user. $SHIP_STEPS Tell the user in one line when it has merged, or what stopped it." ;;
         *)
-            printf '%s' "A newer orion is available for this project ($current -> $latest). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes, run 'bash .claude/orion/orion.sh update' from the project root, summarise the changed files in one line, and remind them to commit on a branch. If they say no, run 'bash .claude/orion/orion.sh update --skip' from the project root, so this version is not offered again on this computer, and continue with their request." ;;
+            printf '%s' "A newer orion is available for this project ($current -> $latest). Before anything else, ask the user with the AskUserQuestion tool whether to update orion now (options: 'Update now' recommended, 'Not now'). If they say yes: $SHIP_STEPS If they say no, run 'bash .claude/orion/orion.sh update --skip' from the project root, so this version is not offered again on this computer, and continue with their request." ;;
     esac
 }
 
@@ -1523,11 +1509,44 @@ check_rules_ctx() {
     printf '%s' "orion's rules (.claude/orion/BASE_CLAUDE.md) or the instructions of its skills have changed since they were last checked on this computer, after an update or a pull that brought one. Before anything else, ask the user with the AskUserQuestion tool whether to check now that they still fit with the project's CLAUDE.md, the project's own skills and the user's own rules file (options: 'Check now' recommended, 'Not now'). If they say yes, run the /orion-verify skill (.claude/skills/orion-verify/SKILL.md) exactly as written. If they say no, continue with their request: it is not asked again until the rules change, and /orion-verify runs the check any time."
 }
 
-run_auto_update() {  # hook-timeout-state from raise_hook_timeout
-    case "$1" in
-        "0 "[1-9]*) ORION_FETCH_SECONDS=10 bash "${BASH_SOURCE[0]:-$0}" update --project "$PROJECT" --quiet ;;
-        *) limited 10 bash "${BASH_SOURCE[0]:-$0}" update --project "$PROJECT" --quiet ;;
-    esac
+# 0 when $PROJECT sits in a repository's main checkout, not in a linked worktree (an agent's own copy).
+in_main_checkout() {
+    local g c
+    g="$(git -C "$PROJECT" rev-parse --git-dir 2>/dev/null)" && c="$(git -C "$PROJECT" rev-parse --git-common-dir 2>/dev/null)" || return 1
+    g="$(cd "$PROJECT" && cd "$g" && pwd -P)" && c="$(cd "$PROJECT" && cd "$c" && pwd -P)" || return 1
+    [ "$g" = "$c" ]
+}
+
+# Every path orion owns in the project, one per line: each manifest line under .claude/orion/ and each orion skill's
+# folder, on disk or in git's index (a skill removed from the folder still counts). A manifest line that names no
+# file of its own (blank, only slashes, or a . or .. part) is left out: it could name the whole folder, the
+# project's own config.json included, or climb out of the repository and make git refuse the whole list.
+orion_paths() {
+    local f entry
+    while IFS= read -r f || [ -n "$f" ]; do
+        f="${f%$'\r'}"
+        [ -n "${f//\//}" ] || continue
+        case "/$f/" in */../*|*/./*) continue ;; esac
+        printf '.claude/orion/%s\n' "$f"
+    done < <(cat "$PROJECT/.claude/orion/.orion-manifest" 2>/dev/null || true)
+    for entry in "$PROJECT"/.claude/skills/*/; do
+        [ -f "${entry%/}/$MARKER" ] && printf '.claude/skills/%s/\n' "$(basename "$entry")"
+    done
+    git -C "$PROJECT" ls-files -- ".claude/skills/*/$MARKER" 2>/dev/null | sed 's|[^/]*$||' || true
+}
+
+# Every session, local only (no network): orion's own files in the main checkout that differ from the last commit
+# (an install or update not committed yet, or someone's own edits) are offered for shipping, never discarded.
+# Prints the context or nothing.
+check_uncommitted_ctx() {
+    local f n paths=()
+    have git && in_main_checkout || return 0
+    while IFS= read -r f; do paths+=("$f"); done < <(orion_paths)
+    [ ${#paths[@]} -gt 0 ] || return 0
+    # literal pathspecs: a manifest line with a wildcard or pathspec magic names only itself
+    n="$(git --literal-pathspecs -C "$PROJECT" status --porcelain --untracked-files=all -- "${paths[@]}" 2>/dev/null | wc -l | tr -d ' ')" || return 0
+    [ "${n:-0}" -gt 0 ] || return 0
+    printf '%s' "orion's own files in this folder differ from the last commit ($n changed, added or removed among the orion skills under .claude/skills and the files .claude/orion/.orion-manifest lists): an install or update not committed yet, or someone's own edits. Tell the user in one line, then ask with the AskUserQuestion tool whether to ship them through their own pull request (options: 'Ship them' recommended, 'Not now'). If they say yes, follow the 'Ship an update' steps of the /orion skill (.claude/skills/orion/SKILL.md) for files left uncommitted, exactly as written. Never discard, reset, stash or check out these files to get rid of them: they may hold the user's own edits. If they say no, continue with their request; this is asked again at the next session start while they still differ."
 }
 
 # Every session, local only: a newer status line in the project is offered, never taken on its own, in every

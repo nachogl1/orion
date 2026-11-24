@@ -259,7 +259,7 @@ aside.drawer.on{transform:none}
         <ul class="plain small">
           <li>Want the optional status bar? Add <code>--statusline</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks.</li>
           <li>Want the optional mods? Add <code>--mods</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks; later, <code>bash .claude/orion/orion.sh mod install control-tower</code> adds one. They need Claude Code's <code>claude</code> command.</li>
-          <li>Want updates applied without being asked? Choose <i>auto</i> when the installer asks, or add <code>--update-mode auto</code>.</li>
+          <li>Want updates shipped without being asked? Choose <i>auto</i> when the installer asks, or add <code>--update-mode auto</code>.</li>
           <li>Installing with no terminal to answer in (a script)? Add <code>--yes</code> to say yes to the notice up front.</li>
         </ul>
       </li>
@@ -299,7 +299,7 @@ aside.drawer.on{transform:none}
       <p>Nothing changes without your say-so. The update mode and the tidy-up limits live in <code>.claude/orion/config.json</code>.</p>
     </div>
     <div class="grid3">
-      <div class="tile"><h3>Updates</h3><p>Every session start compares the orion version number your project has with the newest release, and offers an update only when there is a higher one; "Not now" keeps it quiet until the next release. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes, then commit the result as usual.</p></div>
+      <div class="tile"><h3>Updates</h3><p>Every session start compares the orion version number your project has with the newest release, and offers an update only when there is a higher one; "Not now" keeps it quiet until the next release. <code>updateMode</code> decides what happens: <code>ask</code> (the default), <code>auto</code> or <code>off</code>. Say yes (or choose <code>auto</code>) and an agent ships the update through its own pull request, merged once the checks are green, then brings your folder up to date. orion files left uncommitted in your folder are offered for shipping the same way, never thrown away.</p></div>
       <div class="tile"><h3>Your personal rules</h3><p>orion offers rules for your own <code>~/.claude/CLAUDE.md</code> once, and again only when it adds or changes one. You accept, skip or reword each one; nothing is written without your yes, and the rest of your file is never touched.</p></div>
       <div class="tile"><h3>A tidy repository</h3><p>Once the project reaches <code>branchLimit</code> or <code>worktreeLimit</code> (20 each by default), the session start offers <code>/clear-git-resources</code>. Set them higher, or to <code>off</code>.</p></div>
     </div>
@@ -551,6 +551,7 @@ const NODES = {
     what:[
       "Pulls the latest commits of your branch, only when that needs no merge.",
       "Checks for a newer orion (your updateMode: ask, auto or off).",
+      "Offers to ship orion files left uncommitted in your folder, and never throws them away.",
       "Offers /orion-verify after install, whenever orion's rules change, and once on a computer new to the project.",
       "Offers new personal rules for your own ~/.claude/CLAUDE.md, once per new rule version.",
       "Offers /clear-git-resources once branches or worktrees reach their limit (20 each by default)."
@@ -562,7 +563,7 @@ const NODES = {
   orion:{phase:"D", actor:"agent", touch:"none", kicker:"Install", title:"/orion", cmd:"/orion status | check | update | uninstall",
     sub:"Shows what is installed, checks for a newer orion, updates or uninstalls.",
     what:["Status: installed version and skills.","Check and update: fetches the newest orion and refreshes only what orion owns.","Uninstall: removes everything orion owns and leaves your CLAUDE.md and own skills alone."],
-    you:["Commit the result so teammates get it."], out:["An up-to-date installation."],
+    you:["Say yes to an update; an agent ships it through its own pull request."], out:["An up-to-date installation."],
     rules:["Never touches the project's own CLAUDE.md, unmarked skills or other settings."]},
 
   verify:{phase:"D", actor:"agent", touch:"sometimes", kicker:"Health check", title:"/orion-verify", cmd:"/orion-verify",

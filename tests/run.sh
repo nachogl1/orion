@@ -1064,8 +1064,9 @@ restore; mkdir -p "$P/.claude/skills/own"; printf 'own\n' > "$P/.claude/skills/o
 printf 'more\n' >> "$P/.claude/skills/own/SKILL.md"; set_cfg branchLimit 30
 check "files that are the project's own (config.json, a skill without the marker): silent" eval 'uc_check && [ ! -s "$SB/hook" ]'
 restore
-# odd manifest lines: blank, a Windows line ending, outside the project, absolute, wildcards and pathspec magic
-printf '\n../../outside\n/abs/path\n*\n:(glob)**\norion.sh\r\n.claude\n' > "$P/.claude/orion/.orion-manifest"
+# odd manifest lines: blank, a Windows line ending, outside the project, absolute, the folder itself, wildcards and
+# pathspec magic
+printf '\n../../../../outside\n/abs/path\n/\n.\n./\n*\n:(glob)**\norion.sh\r\n.claude\n' > "$P/.claude/orion/.orion-manifest"
 "$REAL_GIT" -C "$P" -c core.autocrlf=false commit -qam "odd manifest"
 set_cfg branchLimit 30
 check "odd manifest lines: no wildcard reaches a file of the project's own, exit 0, silent" eval 'uc_check && [ ! -s "$SB/hook" ]'
@@ -1076,7 +1077,7 @@ for shape in empty missing; do
     if [ "$shape" = empty ]; then : > "$P/.claude/orion/.orion-manifest"; else rm "$P/.claude/orion/.orion-manifest"; fi
     "$REAL_GIT" -C "$P" -c core.autocrlf=false commit -qam "$shape manifest"
     printf '\nmine\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"
-    check "an $shape manifest: the skills are still checked, exit 0" eval 'uc_check && offered_files'
+    check "a manifest that is $shape: the skills are still checked, exit 0" eval 'uc_check && offered_files'
     restore
 done
 "$REAL_GIT" -C "$P" worktree add -q "$SB/uc-wt" -b uc-second 2>/dev/null

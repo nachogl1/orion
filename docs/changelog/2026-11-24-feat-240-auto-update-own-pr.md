@@ -1,0 +1,1 @@
+An accepted orion update, or any update under `auto`, now ships through its own pull request merged on green instead of changing your folder at session start, and orion files left uncommitted there are offered for shipping, never thrown away.
