@@ -1373,6 +1373,45 @@ check "init --dev-branch on an existing install runs it: keys added and GitHub's
     eval 'br_init --dev-branch develop && key_is developBranch develop && key_is releaseBranch trunk && grep -q "^repo edit example-owner/example-repo --default-branch develop$" "$SB/gh-br.log"'
 check "branches refuses a name git would refuse, and changes nothing" \
     eval 'cp "$P/.claude/orion/config.json" "$SB/cfg-keep" && ! env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev "bad..name" --release trunk >"$SB/out" 2>&1 && cmp -s "$SB/cfg-keep" "$P/.claude/orion/config.json"'
+# Only github.com as the host counts as a GitHub remote: a mirror whose path or user part holds github.com, or a host
+# that only starts with it, gets the manual step and no write anywhere. Each origin is rewritten to the local remote.
+br_origin_case() {  # url: a fresh clone whose origin reads url, then init --dev-branch develop
+    br_clone; "$REAL_GIT" -C "$P" config --unset "url.$BR.insteadOf"
+    "$REAL_GIT" -C "$P" remote set-url origin "$1"; "$REAL_GIT" -C "$P" config "url.$BR.insteadOf" "$1"
+    br_init --dev-branch develop
+}
+github_host_only() {
+    local url
+    for url in "https://git.example.invalid/mirror/github.com/acme/app.git" "https://git.example.invalid/x@github.com/acme/app.git" \
+        "git@git.example.invalid:mirror/github.com/acme/app.git" "https://github.com.example.invalid/acme/app.git" \
+        "ssh://git@github.com.example.invalid/acme/app.git" "https://example.invalid/github.com:acme/app.git"; do
+        br_origin_case "$url" && grep -q "no GitHub remote" "$SB/out" && no_gh_call && ! remote_has develop \
+            || { echo "    counted as GitHub: $url"; return 1; }
+    done
+    for url in "git@github.com:example-owner/example-repo.git" "github.com:example-owner/example-repo" \
+        "ssh://git@github.com:22/example-owner/example-repo.git" "https://user@github.com/example-owner/example-repo"; do
+        br_origin_case "$url" && grep -q "^repo edit example-owner/example-repo --default-branch develop$" "$SB/gh-br.log" \
+            || { echo "    not counted as GitHub: $url"; return 1; }
+    done
+}
+check "only github.com as the host is a GitHub remote: a mirror path, a user part or a look-alike host gets the manual step and no write" github_host_only
+# No origin/HEAD (a repository made with git init and git push): the default branch is asked of the remote, never
+# guessed from the branch checked out; when the remote cannot tell, nothing is pushed or switched.
+br_no_head() {  # a clone with no origin/HEAD, on a pushed branch holding a commit trunk lacks
+    br_clone; "$REAL_GIT" -C "$P" symbolic-ref --delete refs/remotes/origin/HEAD
+    "$REAL_GIT" -C "$P" checkout -q -b feature && "$REAL_GIT" -C "$P" commit -q --allow-empty -m unmerged
+    "$REAL_GIT" -C "$P" push -q -u origin feature 2>/dev/null; rm -f "$SB/gh-br.log"
+}
+br_no_head
+check "no origin/HEAD: it is asked of the remote first, so develop starts from trunk, not from the branch checked out" \
+    eval 'br_init --dev-branch develop && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && key_is releaseBranch trunk && grep -q "(was .trunk.)" "$SB/out" && ! grep -q "feature" "$P/.claude/orion/config.json"'
+br_no_head; "$REAL_GIT" --git-dir="$BR" symbolic-ref HEAD refs/heads/no-such-branch
+check "no origin/HEAD and the remote cannot tell its default: exit 0, the manual step, nothing pushed or switched, no guessed name stored" \
+    eval 'br_init --dev-branch develop && grep -q "could not tell GitHub.s default branch" "$SB/out" && no_gh_call && ! remote_has develop && key_is developBranch develop && ! grep -q "feature" "$P/.claude/orion/config.json"'
+# update writes a lost CLAUDE.md from the starter with the declared names, not main.
+br_clone; br_init --dev-branch develop --release-branch release; rm -f "$P/CLAUDE.md"
+check "update rewrites a lost CLAUDE.md naming the declared development and release branches" \
+    eval 'env PATH="$GHPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && grep -qF "from the release branch \`release\`." "$P/CLAUDE.md" && grep -qF "merges into it): \`develop\`." "$P/CLAUDE.md"'
 check "update and uninstall make no gh call" \
     eval 'rm -f "$SB/gh-br.log" && env PATH="$GHPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && env PATH="$GHPATH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && no_gh_call'
 

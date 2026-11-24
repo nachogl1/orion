@@ -1317,12 +1317,25 @@ current_default_branch() {
     printf 'main'
 }
 
-# origin's owner/name when origin is on github.com (read as written, before any insteadOf rewrite), else nothing.
+# origin's owner/name when origin's host is github.com (read as written, before any insteadOf rewrite), else nothing.
+# Only <scheme>://[user@]github.com[:port]/<owner>/<name> or [user@]github.com:<owner>/<name> counts: a mirror whose
+# path or user part holds github.com, or a host that only starts with it, is no GitHub remote.
 github_repo() {
-    local url slug
+    local url host slug
     url="$(git -C "$PROJECT" config --get remote.origin.url 2>/dev/null)" || return 0
-    case "$url" in github.com[:/]*|*[/@]github.com[:/]*) ;; *) return 0 ;; esac
-    slug="${url#*github.com[:/]}"; slug="${slug%/}"; slug="${slug%.git}"
+    case "$url" in
+        *://*)
+            case "${url%%://*}" in ""|*[!a-z+]*) return 0 ;; esac
+            slug="${url#*://}"; host="${slug%%/*}"; [ "$host" != "$slug" ] || return 0
+            slug="${slug#*/}"; host="${host##*@}"
+            case "$host" in github.com) ;; github.com:*) case "${host#github.com:}" in ""|*[!0-9]*) return 0 ;; esac ;; *) return 0 ;; esac ;;
+        *:*)
+            host="${url%%:*}"; slug="${url#*:}"
+            case "$host" in */*) return 0 ;; esac
+            [ "${host##*@}" = github.com ] || return 0 ;;
+        *) return 0 ;;
+    esac
+    slug="${slug%/}"; slug="${slug%.git}"
     case "$slug" in ""|/*|*/|*/*/*|*[!A-Za-z0-9._/-]*) return 0 ;; */*) printf '%s' "$slug" ;; esac
 }
 
@@ -1331,19 +1344,50 @@ branch_name_ok() { case "$1" in ""|-*) return 1 ;; esac; git check-ref-format --
 # A step orion could not take: the one thing the person does by hand. Never fails the install.
 branches_manual() { say "  !    $1"; }
 
+# The default branch origin/HEAD records, or nothing when this clone has none.
+origin_head_branch() {
+    local b
+    b="$(git -C "$PROJECT" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)" || return 0
+    printf '%s' "${b#origin/}"
+}
+
+# The branch names the starter CLAUDE.md writes: the declared ones, else the current default branch.
+starter_branches() {
+    local cfg="$PROJECT/.claude/orion/config.json" cur
+    cur="$(current_default_branch)"
+    STARTER_DEVELOP="$(config_get "$cfg" developBranch "$cur")" STARTER_RELEASE="$(config_get "$cfg" releaseBranch "$cur")"
+}
+
 # The only writer of developBranch and releaseBranch, and the only code that changes GitHub: stores both names,
 # creates a declared branch the remote lacks (from the current default branch), and makes the development branch
-# GitHub's default, then refreshes origin/HEAD. Acts on GitHub only when a name differs from the current default.
+# GitHub's default, then refreshes origin/HEAD. A name left empty is not named: it is taken from config.json, else
+# the current default branch. With no name at all it only stores them, with no network call. Before any write to
+# GitHub the current default branch is the one the remote names (a missing origin/HEAD is refreshed first), never a
+# guess from the branch checked out; when the remote cannot tell, nothing is pushed or switched.
 apply_branches() {  # dev release
-    local dev="$1" rel="$2" cfg="$PROJECT/.claude/orion/config.json" cur slug b rc
-    if config_put "$cfg" developBranch "$dev" && config_put "$cfg" releaseBranch "$rel"; then
-        say "  ~    .claude/orion/config.json: developBranch '$dev', releaseBranch '$rel'$([ "$dev" = "$rel" ] && printf ' (one branch: no release pull request)')"
-    else
-        warn "could not write the branch names into .claude/orion/config.json; add \"developBranch\": \"$dev\" and \"releaseBranch\": \"$rel\" there by hand"
-    fi
-    cur="$(current_default_branch)"
-    [ "$dev" = "$cur" ] && [ "$rel" = "$cur" ] && return 0
+    local dev="$1" rel="$2" named="$1$2" cfg="$PROJECT/.claude/orion/config.json" cur slug b rc key val
     slug="$(github_repo)"
+    if [ -n "$named" ] && [ -n "$slug" ]; then
+        [ -n "$(origin_head_branch)" ] || limited 15 git -C "$PROJECT" remote set-head origin --auto </dev/null >/dev/null 2>&1 || true
+        cur="$(origin_head_branch)"
+    else
+        cur="$(current_default_branch)"
+    fi
+    [ -n "$dev" ] || dev="$(config_get "$cfg" developBranch "$cur")"
+    [ -n "$rel" ] || rel="$(config_get "$cfg" releaseBranch "$cur")"
+    for key in developBranch releaseBranch; do
+        if [ "$key" = developBranch ]; then val="$dev"; else val="$rel"; fi
+        [ -n "$val" ] || continue
+        if config_put "$cfg" "$key" "$val"; then say "  ~    .claude/orion/config.json: $key '$val'"
+        else warn "could not write $key into .claude/orion/config.json; add \"$key\": \"$val\" there by hand"; fi
+    done
+    [ -n "$dev" ] && [ "$dev" = "$rel" ] && say "       (one branch for both: no release pull request)"
+    [ -n "$named" ] || return 0
+    if [ -z "$cur" ]; then
+        branches_manual "could not tell GitHub's default branch (this clone has no origin/HEAD and git remote set-head origin --auto could not read it), so nothing was pushed or switched: run git remote set-head origin --auto, then bash .claude/orion/orion.sh branches --dev ${dev:-<development branch>} --release ${rel:-<release branch>}"
+        return 0
+    fi
+    [ "$dev" = "$cur" ] && [ "$rel" = "$cur" ] && return 0
     if [ -z "$slug" ]; then
         branches_manual "no GitHub remote (origin), so GitHub was not changed: create the branches '$dev' and '$rel' if they are missing and make '$dev' the repository's default branch by hand"
         return 0
@@ -1440,24 +1484,22 @@ cmd_init() {
     if [ "$first" = 1 ] && [ -z "$dev$rel" ] && is_tty; then
         say "Which branch does daily work start from and merge into (the development branch)?"
         ask "Development branch (Enter = $cur): " || resp=""
-        dev="${resp:-$cur}"; branch_name_ok "$dev" || die "not a valid branch name: $dev"
+        dev="$resp"; [ -z "$dev" ] || branch_name_ok "$dev" || die "not a valid branch name: $dev"
         say "Which branch does the project deploy from (the release branch)? The same name means one branch."
         ask "Release branch (Enter = $cur): " || resp=""
-        rel="${resp:-$cur}"; branch_name_ok "$rel" || die "not a valid branch name: $rel"
+        rel="$resp"; [ -z "$rel" ] || branch_name_ok "$rel" || die "not a valid branch name: $rel"
     fi
     # orion.sh branches runs on a first install, and on an existing one only when a branch flag asks for it.
     local run_branches=0
     { [ "$first" = 1 ] || [ -n "$dev$rel" ]; } && run_branches=1
-    [ -n "$dev" ] || dev="$(config_get "$cfg" developBranch "$cur")"
-    [ -n "$rel" ] || rel="$(config_get "$cfg" releaseBranch "$cur")"
-    STARTER_DEVELOP="$dev" STARTER_RELEASE="$rel"
     fetch_source "$source" "$ref"
     retire_user_level_copies
     apply_skills init "$force"
     apply_core "$source" "$ref" "${mode:-ask}"
+    [ "$run_branches" = 1 ] && apply_branches "$dev" "$rel"
+    starter_branches
     apply_claude_md
     settings_add_hook "$PROJECT/.claude/settings.json"
-    [ "$run_branches" = 1 ] && apply_branches "$dev" "$rel"
     if [ "$statusline" = "prompt" ]; then
         statusline=no
         if is_tty; then
@@ -1567,6 +1609,7 @@ cmd_update() {
     say "orion update $(short "$current") -> $(short "$SRC_SHA") in $PROJECT"
     apply_skills update 0
     apply_core "$source" "$ref"
+    starter_branches
     apply_claude_md
     settings_add_hook "$PROJECT/.claude/settings.json"
     case "$(statusline_sync)" in
@@ -1892,7 +1935,7 @@ check_branches_ctx() {  # force now
 }
 
 cmd_branches() {
-    local project="" dev="" rel="" cur
+    local project="" dev="" rel=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --dev) dev="${2:-}"; branch_name_ok "$dev" || die "--dev needs a valid branch name (got: $dev)"; shift 2 ;;
@@ -1905,9 +1948,6 @@ cmd_branches() {
     [ -n "$dev$rel" ] || die "usage: orion.sh branches --dev <name> --release <name>"
     PROJECT="$(resolve_project "$project")"
     [ -f "$PROJECT/.claude/orion/config.json" ] || die "orion is not installed in $PROJECT (no .claude/orion/config.json): run init first"
-    cur="$(current_default_branch)"
-    [ -n "$dev" ] || dev="$(config_get "$PROJECT/.claude/orion/config.json" developBranch "$cur")"
-    [ -n "$rel" ] || rel="$(config_get "$PROJECT/.claude/orion/config.json" releaseBranch "$cur")"
     say "orion branches -> $PROJECT"
     apply_branches "$dev" "$rel"
 }
