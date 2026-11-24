@@ -34,9 +34,11 @@ merged on green. The folder the session opened in is never updated or committed 
    uncommitted files are a first install nobody saved: there is no `<old>`, and steps 4, 8 and 9 say what changes.
 3. **Make the worktree, or pick up the one a stopped run left.** `git fetch origin`. When the branch
    `feat/orion-update-v<new>` already exists (`git branch --list` and `git ls-remote --heads origin` show it), never
-   make a second one; look for its pull request with `gh pr list --head feat/orion-update-v<new> --state all`:
+   make a second one; look for its pull request with `gh pr list --head feat/orion-update-v<new> --state all` (the
+   newest, when there are several):
    - open: report its link and state in one line; when its checks are green carry on from step 9, otherwise stop;
-   - merged: carry on from step 10;
+   - merged: carry on from step 10, which removes this stale worktree and branch and ends the run only when the
+     files no longer differ;
    - closed without a merge: report its link and stop; the user decides whether it is tried again;
    - none: carry on in its worktree (`git worktree list`; `git worktree add <worktree root>/orion-update-v<new>
      feat/orion-update-v<new>` when the folder is gone) from step 4.
@@ -77,7 +79,11 @@ merged on green. The folder the session opened in is never updated or committed 
     one with `git show origin/<default branch>:<path> | cmp -s - <path>`. Only when every one is identical are they
     already on the default branch: restore the tracked ones (`git checkout -- <path>`), remove the untracked ones and
     pull again. If any differs, stop and name them to the user. Never discard a file that differs from what merged.
-    When the main folder is on another branch, leave it there and say so.
+    When the main folder is on another branch, leave it there and say so. After a merged pull request picked up at
+    step 3, remove its worktree and its branch, locally and on the remote (`git worktree remove`, `git branch -D`,
+    `git push origin --delete`). Then, if orion's files in the main folder still differ from the last commit (edits
+    made after that pull request, at the same version), it did not carry them: go back to step 3, which now finds no
+    branch and makes a new one.
 11. **A failed run reports and stops.** Say which step failed and the exact error, change nothing else, and leave the
     worktree and branch for `/clear-git-resources` (or for the next run, which picks them up at step 3). Never fall
     back to updating the main folder.
