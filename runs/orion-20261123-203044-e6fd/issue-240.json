@@ -1,0 +1,63 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 240,
+  "title": "Auto-update: an accepted update ships through its own pull request, and uncommitted orion files are offered for shipping",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-24T09:13:16Z",
+  "finished_at": "2026-11-24T10:35:05Z",
+  "outcome": "merged",
+  "pr": 259,
+  "summary": "orion's session-start check no longer writes an update into the main folder: under auto, or on a yes under ask, it asks the agent to ship the update through its own worktree and pull request, merged on green and then pulled; a new local check offers to ship orion files left uncommitted (a first install included, with its hook, config and rules import), never discarding them.",
+  "agents": [
+    {
+      "name": "dev-240",
+      "model": "opus",
+      "tokens_total": 271458
+    },
+    {
+      "name": "review-240-r1",
+      "model": "opus",
+      "tokens_total": 164470
+    },
+    {
+      "name": "review-240-r2",
+      "model": "opus",
+      "tokens_total": 181782
+    },
+    {
+      "name": "review-240-r3",
+      "model": "opus",
+      "tokens_total": 150261
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 3521,
+    "review_seconds": 1273,
+    "ci_seconds": 190
+  },
+  "rounds": {
+    "review": 3,
+    "ci": 3
+  },
+  "friction": [],
+  "lessons_learned": [
+    "A skill that ships files from the main folder must handle a first install nobody committed: the hook, config and rules-import files sit outside the manifest, and round 1 caught that they were left out."
+  ],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "CLAUDE.md",
+      "what": "The suite row still says the suite proves a failing and a working auto-update, the check paragraphs omit the uncommitted-files offer and say an auto update is seen in the same session, so the next agent changing check or its tests is pointed at behaviour that no longer exists.",
+      "why": "CLAUDE.md changes only on the person's word and a person merges it.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": "skills/orion/SKILL.md (steps 3 and 10)",
+      "what": "Nothing checks whether the default branch already carries the new version: with the main folder on a branch cut before an update merged, auto asks to ship at every session start and each run merges a pull request holding only a changelog line, and uncommitted files copied from that branch can undo the update's change to them.",
+      "why": "Raised on the confirming review after an approval, so recorded instead of fixed.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 240,
+  "title": "Auto-update: an accepted update ships through its own pull request, and uncommitted orion files are offered for shipping",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 259,
+  "merged_at": "2026-11-24T10:35:05Z",
+  "merge_commit": "995f99a110e66a8008fe4fe4ce75595d0e354a62",
+  "seam": "orion.sh check (update offer, auto, uncommitted-files check), skills/orion/, tests/run.sh check section, README.md updates paragraphs, docs/guide/index.html Updates tile, docs/runbook.md",
+  "story": "Saying yes to an orion update, or turning on auto, no longer leaves changed files in the project folder to commit by hand: the agent updates orion in its own worktree, runs the project's checks, merges once they are green and brings the folder up to date. Orion files left uncommitted, a first install included, are offered for shipping the same way at each session start and are never thrown away; a stale finished update branch is cleaned away instead of blocking the next ship.",
+  "checks": [
+    {
+      "key": "orion/auto-update-ships-via-pr",
+      "do": "Install orion into a new empty git folder demo-app with --update-mode auto and commit everything; change line 1 of .claude/orion/VERSION to forty zeros; start a Claude Code session there.",
+      "expect": "The session asks the agent to ship the update through its own pull request on branch feat/orion-update-v<new>, while git status shows only the VERSION edit."
+    },
+    {
+      "key": "orion/uncommitted-files-offer",
+      "do": "In the committed demo-app, start a session and confirm nothing is said about uncommitted files; add the line '# note' to .claude/skills/issue-map/scripts/issue_map.py and start a new session.",
+      "expect": "A question whether to ship orion's files through their own pull request (Ship them / Not now); the '# note' line is still in the file afterwards."
+    },
+    {
+      "key": "orion/docs-wording",
+      "do": "Open the README section on keeping orion up to date and the guide's Updates tile.",
+      "expect": "Both say an agent ships the update through its own pull request, and that uncommitted orion files are offered for shipping, never thrown away."
+    },
+    {
+      "key": "orion/first-install-ship",
+      "do": "git init an empty folder demo-app, install orion there without committing, start two sessions and say Ship them when asked.",
+      "expect": "A pull request titled chore(orion): install orion <version> that includes .claude/settings.json, .claude/orion/config.json and CLAUDE.md; the agent stops there and says a person merges it."
+    },
+    {
+      "key": "orion/ship-after-merged-same-version",
+      "do": "In demo-app, let a first install ship and merge its pull request by hand; add '# note' to .claude/skills/issue-map/scripts/issue_map.py; start a session and say Ship them.",
+      "expect": "The old feat/orion-update-v<X> worktree and branch are removed and a new pull request carrying the edit is opened; the offer does not return after it merges."
+    }
+  ]
+}
