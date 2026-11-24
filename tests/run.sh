@@ -40,11 +40,12 @@ export HOME="$SB/home" XDG_CACHE_HOME="$SB/cache"
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.invalid GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.invalid
 
 # The fake git: `ls-remote` answers $FAKE_LS_SHA when set, with a release tag v<N> for each number in $FAKE_LS_TAGS,
-# `clone` fails when $FAKE_CLONE_FAIL=1 and hangs when $FAKE_CLONE_HANG=1; all else is real git. The fake cp: the
-# first copy sleeps $FAKE_CP_SLEEP seconds when set, so a copy is slower than the hook's fetch limit without racing
-# a wall clock.
+# `clone` fails when $FAKE_CLONE_FAIL=1 and hangs when $FAKE_CLONE_HANG=1; all else is real git. Every call is logged
+# to $FAKE_GIT_LOG when set, one line of arguments each, so a check can prove it reached no network. The fake cp: the
+# first copy sleeps $FAKE_CP_SLEEP seconds when set and leaves $SB/cp-slept behind, so a check can tell a copy ran.
 cat > "$SB/bin/git" <<EOF
 #!/usr/bin/env bash
+[ -z "\${FAKE_GIT_LOG:-}" ] || printf '%s\n' "\$*" >> "\$FAKE_GIT_LOG"
 if [ "\${1:-}" = ls-remote ] && [ -n "\${FAKE_LS_SHA:-}" ]; then
     printf '%s\t%s\n' "\$FAKE_LS_SHA" "\${3:-refs/heads/main}"
     for t in \${FAKE_LS_TAGS:-}; do printf '%s\trefs/tags/v%s\n' "\$FAKE_LS_SHA" "\$t"; done
@@ -920,28 +921,31 @@ check "declined with update --skip: quiet until a newer orion, which is offered 
 set_cfg updateMode '"off"'
 check "off mode: silent, exit 0" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && [ ! -s "$SB/hook" ]'
 set_cfg updateMode '"auto"'
-check "failing auto-update: exit 0" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_CLONE_FAIL=1 run_check --force'
-check "failing auto-update: says it failed, in one JSON line" eval 'grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"'
-check "failing auto-update: no temporary clone left behind" nothing_left_in_tmp
-if command -v timeout >/dev/null 2>&1 || command -v gtimeout >/dev/null 2>&1; then
-    t0=$(date +%s)
-    check "hanging auto-update: exit 0, says it failed" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_CLONE_HANG=1 run_check --force && grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"'
-    check "hanging auto-update: ends soon after the 10 s fetch limit" eval '[ $(( $(date +%s) - t0 )) -lt 20 ]'
-    check "hanging auto-update: no temporary clone left behind" nothing_left_in_tmp
-fi
-# a working auto-update, from a local source repository
+# auto never updates the folder the session opens in: it asks the agent to ship the update through its own pull request
+project_state() { ( cd "$P" && find . -type f -exec cksum {} + | LC_ALL=C sort ); }
+auto_asks_to_ship() { grep -q "newer orion.*updateMode is 'auto'.*through its own pull request" "$SB/hook" && ! grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"; }
+run_update() {  # the update the agent runs in its own worktree: the installed copy, from a sandboxed temporary folder
+    mkdir -p "$SB/tmp"; rm -rf "$SB/tmp"/*
+    env PATH="$FAKEPATH" TMPDIR="$SB/tmp" bash "$P/.claude/orion/orion.sh" update --project "$P" "$@" >"$SB/out" 2>&1
+}
+project_state > "$SB/state-before"; rm -f "$SB/cp-slept"
+check "auto mode: exit 0, and asks the agent to ship the update through its own pull request, in one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_CLONE_FAIL=1 FAKE_CP_SLEEP=11 run_check --force && auto_asks_to_ship'
+check "auto mode writes nothing into the project and copies nothing" eval 'project_state | cmp -s - "$SB/state-before" && [ ! -e "$SB/cp-slept" ]'
+check "auto mode: no temporary clone left behind" nothing_left_in_tmp
+t0=$(date +%s)
+check "auto mode never fetches orion: a clone that would hang does not slow the hook" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 FAKE_CLONE_HANG=1 run_check --force && auto_asks_to_ship && [ $(( $(date +%s) - t0 )) -lt 10 ]'
+check "auto mode asks again at the next session start, until the update ships" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && auto_asks_to_ship && project_state | cmp -s - "$SB/state-before"'
+# a newer orion in a local source repository
 SRC="$SB/src"; mkdir -p "$SRC"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$SRC/"
 "$REAL_GIT" -C "$SRC" init -q -b main && "$REAL_GIT" -C "$SRC" -c core.autocrlf=false add . && "$REAL_GIT" -C "$SRC" commit -qm src
 SRC_SHA="$("$REAL_GIT" -C "$SRC" rev-parse HEAD)"
 bash "$ORION" init --project "$P" --yes --source "$SRC" --no-statusline >"$SB/out" 2>&1; cp "$SB/out" "$SB/out-reinit"; consume_marker
 check "re-init with a new --source changes config.json and says so" eval 'grep -q "source changed" "$SB/out-reinit" && bash "$ORION" status --project "$P" | grep -qF "$SRC"'
-# The first copy sleeps 11 s, longer than the 10 s fetch limit: only the fetch may be time-limited, never the copy.
-rm -f "$SB/cp-slept"
-check "working auto-update with a copy slower than the fetch limit: exit 0 and says so" eval 'FAKE_CP_SLEEP=11 run_check --force && grep -q "updated automatically" "$SB/hook" && hook_out_ok "$SB/hook"'
-check "working auto-update: the slow copy really ran" eval '[ -e "$SB/cp-slept" ]'
-check "working auto-update: every file of every skill was copied" eval '[ "$(cd "$SRC/skills" && find . -mindepth 2 -type f | grep -v /__pycache__/ | sort)" = "$(cd "$P/.claude/skills" && find . -mindepth 2 -type f ! -name .orion-managed | sort)" ]'
-check "working auto-update: the project is now at the source commit" eval '[ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
-check "working auto-update: no temporary clone left behind" nothing_left_in_tmp
+project_state > "$SB/state-before"
+check "auto mode with a newer source: asks to ship it and leaves the project as it was" eval 'run_check --force && auto_asks_to_ship && project_state | cmp -s - "$SB/state-before"'
+check "the update the agent runs in its worktree: every file of every skill is copied" eval 'run_update && [ "$(cd "$SRC/skills" && find . -mindepth 2 -type f | grep -v /__pycache__/ | sort)" = "$(cd "$P/.claude/skills" && find . -mindepth 2 -type f ! -name .orion-managed | sort)" ]'
+check "and the project is then at the source commit" eval '[ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
+check "and no temporary clone is left behind" nothing_left_in_tmp
 
 echo "version number (three parts, from the release tags; an update is offered only when a release raised it)"
 # A source of its own whose commit carries an old whole-number tag and a three-part one: the three-part one wins.
@@ -1029,13 +1033,57 @@ bash "$OLD" init --project "$P" --yes --source "$SRC" --no-statusline --update-m
 check "the older script installs a 20 s hook" eval '[ "$(hook_timeouts "$P/.claude/settings.json")" = 20 ]'
 check "an update run by the older script leaves it at 20 s" eval 'bash "$OLD" update --project "$P" --force >"$SB/out" 2>&1 && [ "$(hook_timeouts "$P/.claude/settings.json")" = 20 ]'
 { printf '%s\n' 0000000000000000000000000000000000000000; sed -n '2,$p' "$P/.claude/orion/VERSION"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
-rm -f "$SB/cp-slept"
-check "on that 20 s session the whole auto-update stays capped at 10 s: exit 0, says it failed" eval 'FAKE_CP_SLEEP=11 run_check --force && grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"'
+check "on that 20 s session, auto mode asks to ship the update and leaves the files as they were" eval 'run_check --force && auto_asks_to_ship && [ "$(sed -n 1p "$P/.claude/orion/VERSION")" = 0000000000000000000000000000000000000000 ]'
 check "and that first check by the new script raised the hook to 60 s" eval '[ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
 check "and left no temporary clone behind" nothing_left_in_tmp
-check "the next session's auto-update runs to the end" eval 'run_check --force && grep -q "updated automatically" "$SB/hook" && [ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
+check "the update the agent then runs goes to the end" eval 'run_update && [ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$SRC_SHA" ]'
 set_old_hook_timeout "$P/.claude/settings.json"; set_cfg updateMode '"ask"'
 check "with nothing new, check heals a 20 s hook and stays silent" eval 'FAKE_LS_SHA="$SRC_SHA" run_check --force && [ ! -s "$SB/hook" ] && [ "$(hook_timeouts "$P/.claude/settings.json")" = 60 ]'
+
+echo "orion files left uncommitted (offered for shipping every session, local only, never discarded)"
+newproj; init off; consume_marker
+printf '\nmine\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"
+check "outside a git repository: silent" eval 'run_check --force && [ ! -s "$SB/hook" ]'
+"$REAL_GIT" -C "$P" init -q -b main && "$REAL_GIT" -C "$P" -c core.autocrlf=false add . && "$REAL_GIT" -C "$P" commit -qm init
+offered_files() { grep -q "orion's own files in this folder differ from the last commit" "$SB/hook" && hook_out_ok "$SB/hook"; }
+local_only() { ! grep -qE '(^| )(ls-remote|fetch|clone|pull|push)( |$)' "$SB/git.log"; }
+uc_check() { rm -f "$SB/git.log"; FAKE_GIT_LOG="$SB/git.log" run_check --force; }
+restore() { "$REAL_GIT" -C "$P" checkout -q -- . && "$REAL_GIT" -C "$P" clean -qfd; }
+check "a folder whose orion files match the last commit: silent, with no network call" eval 'uc_check && [ ! -s "$SB/hook" ] && [ -s "$SB/git.log" ] && local_only'
+printf '\nmine too\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"
+check "a changed file of an orion skill is offered for shipping, in one JSON line, with no network call" eval 'uc_check && offered_files && local_only'
+check "and the change is never discarded" eval 'tail -n 1 "$P/.claude/skills/issue-map/scripts/issue_map.py" | grep -qx "mine too"'
+restore; printf 'x\n' > "$P/.claude/skills/issue-map/new.txt"
+check "a new file in an orion skill is offered" eval 'uc_check && offered_files && [ -f "$P/.claude/skills/issue-map/new.txt" ]'
+restore; rm -rf "$P/.claude/skills/issue-map"
+check "a whole orion skill removed is offered" eval 'uc_check && offered_files'
+restore; rm "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
+check "a file the manifest lists, removed, is offered" eval 'uc_check && offered_files'
+restore; mkdir -p "$P/.claude/skills/own"; printf 'own\n' > "$P/.claude/skills/own/SKILL.md"
+"$REAL_GIT" -C "$P" add .claude/skills/own && "$REAL_GIT" -C "$P" commit -qm own
+printf 'more\n' >> "$P/.claude/skills/own/SKILL.md"; set_cfg branchLimit 30
+check "files that are the project's own (config.json, a skill without the marker): silent" eval 'uc_check && [ ! -s "$SB/hook" ]'
+restore
+# odd manifest lines: blank, a Windows line ending, outside the project, absolute, wildcards and pathspec magic
+printf '\n../../outside\n/abs/path\n*\n:(glob)**\norion.sh\r\n.claude\n' > "$P/.claude/orion/.orion-manifest"
+"$REAL_GIT" -C "$P" -c core.autocrlf=false commit -qam "odd manifest"
+set_cfg branchLimit 30
+check "odd manifest lines: no wildcard reaches a file of the project's own, exit 0, silent" eval 'uc_check && [ ! -s "$SB/hook" ]'
+printf '# mine\n' >> "$P/.claude/orion/orion.sh"
+check "and a line with a Windows line ending still names its file" eval 'uc_check && offered_files'
+restore
+for shape in empty missing; do
+    if [ "$shape" = empty ]; then : > "$P/.claude/orion/.orion-manifest"; else rm "$P/.claude/orion/.orion-manifest"; fi
+    "$REAL_GIT" -C "$P" -c core.autocrlf=false commit -qam "$shape manifest"
+    printf '\nmine\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"
+    check "an $shape manifest: the skills are still checked, exit 0" eval 'uc_check && offered_files'
+    restore
+done
+"$REAL_GIT" -C "$P" worktree add -q "$SB/uc-wt" -b uc-second 2>/dev/null
+printf '\nmine\n' >> "$SB/uc-wt/.claude/skills/issue-map/scripts/issue_map.py"
+check "a linked worktree (an agent's own copy), with orion files changed: silent" eval 'P="$SB/uc-wt" uc_check && [ ! -s "$SB/hook" ]'
+printf '\nmine\n' >> "$P/.claude/skills/issue-map/scripts/issue_map.py"; set_cfg updateMode '"auto"'
+check "with an update to ship too: both are asked for, in one JSON line" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && auto_asks_to_ship && offered_files'
 
 echo "the post-install marker waits for /orion-verify"
 newproj; XDG_CACHE_HOME="$SB/cache-marker" init ask; rm -rf "$P/.claude/skills/orion-verify"
@@ -1084,7 +1132,8 @@ printf '\n# a comment\n' >> "$SRC/skills/issue-map/scripts/issue_map.py"; "$REAL
 check "an update that leaves the rules alone does not" eval 'bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1 && grep -q "orion update" "$SB/out" && ! grep -q "run /orion-verify" "$SB/out"'
 printf '\n- the newest rule\n' >> "$SRC/baselines/BASE_CLAUDE.md"; "$REAL_GIT" -C "$SRC" -c core.autocrlf=false commit -qam rules2
 set_cfg updateMode '"auto"'
-check "an auto-update that changes the rules asks for /orion-verify in the same session, one JSON line" eval 'run_check --force && grep -q "updated automatically" "$SB/hook" && asked_rules && hook_out_ok "$SB/hook"'
+check "auto mode with newer rules: asks to ship them, and the rules question waits until they reach the project" eval 'run_check --force && auto_asks_to_ship && ! asked_rules'
+check "once the shipped update reaches the project, the next session asks for /orion-verify, in one JSON line" eval 'run_update && FAKE_LS_SHA="$("$REAL_GIT" -C "$SRC" rev-parse HEAD)" run_check --force && asked_rules && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 
 echo "one record per repository (every worktree of one clone shares what this computer recorded)"
 # Checked by an older orion first (its records are keyed on the folder), then the folder becomes a git repository.
