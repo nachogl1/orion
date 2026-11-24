@@ -1303,6 +1303,18 @@ sed -e 's/^| One file |/| Run a single file |/' -e 's/^| \*\*The full suite\*\* 
 check "reworded row labels and heading still count as present" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && ! grep -q "claude-md-row:" "$SB/out"'
 { printf '```\n# commands to try later\n```\n\n'; grep -v -e '^| Build' -e '^| Lint' "$SB/full.md"; printf '\n## Other notes\n\n| Build | `make` |\n| Lint | `make lint` |\n'; } > "$P/CLAUDE.md"
 check "a row outside the commands section or a heading in a code block does not count: a warning per missing row" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && [ "$(grep -c "WARN  claude-md-row:" "$SB/out")" -eq 2 ] && grep -q "\"Build\".*word .build." "$SB/out" && grep -q "\"Lint\".*word .lint." "$SB/out"'
+# A header cell holding a key word (| Type | Command |) is no row: the row it names, missing, still warns.
+header_is_no_row() {
+    local header row key
+    for pair in "Type|Typecheck / static analysis|type" "File|One file|file"; do
+        header="${pair%%|*}"; row="${pair#*|}"; key="${row#*|}"; row="${row%|*}"
+        sed -e "s/^| Purpose | Command |\$/| $header | Command |/" "$SB/full.md" | grep -vF "| $row |" > "$P/CLAUDE.md"
+        bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 \
+            && [ "$(grep -c "WARN  claude-md-row:" "$SB/out")" -eq 1 ] && grep -q "WARN  claude-md-row: .*word '$key'" "$SB/out" \
+            || { echo "    a '$header' header hid the missing '$row' row"; return 1; }
+    done
+}
+check "a header cell holding a key word does not count as the row: the missing row still warns" header_is_no_row
 cp "$SB/full.md" "$P/CLAUDE.md"
 # orion-verify's half: a missing row is proposed with its source and added only on a yes, a false warning becomes an
 # offer to rename the label, and the sentence sections stay a reading check.

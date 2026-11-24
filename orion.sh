@@ -835,7 +835,7 @@ COMMAND_ROW_KEYS=(build suite file "one test" type lint copies)
 # One line per row of the commands table in a CLAUDE.md: the label in lower case without bold marks or notes in
 # brackets, a tab, then the label as written without bold marks. The table is the one under the first heading that
 # names commands (up to the next heading of its level or higher), or every table in the file when no heading does.
-# Lines inside a code block are skipped.
+# A header row (the row right above a |---| separator) and lines inside a code block are skipped.
 command_row_labels() {  # file
     awk '
         /^[ \t]*(```|~~~)/ { fence = !fence; next }
@@ -849,10 +849,13 @@ command_row_labels() {  # file
         /^[ \t]*\|/ {
             split($0, cell, "|"); raw = cell[2]
             gsub(/\*/, "", raw); gsub(/^[ \t]+|[ \t]+$/, "", raw)
-            if (raw == "" || raw ~ /^[-: ]+$/) next
+            # a separator row: the row right above it was the header, not a command row
+            if (raw ~ /^[-: ]+$/) { if (last_nr == NR - 1) { na--; if (last_in_sec) ns-- }; next }
+            if (raw == "") next
             key = tolower(raw); gsub(/\([^)]*\)/, "", key); gsub(/[ \t]+/, " ", key)
             all[++na] = key "\t" raw
             if (in_sec) sec[++ns] = key "\t" raw
+            last_nr = NR; last_in_sec = in_sec
         }
         END { if (found) for (i = 1; i <= ns; i++) print sec[i]; else for (i = 1; i <= na; i++) print all[i] }
     ' "$1"
