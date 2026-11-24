@@ -1491,7 +1491,8 @@ check_update_ctx() {  # force
 }
 
 # Every session, local only: once each time orion's rules change on this computer (an update, or a pull that
-# brought one), ask for /orion-verify. Runs after the update check, so an auto-update is seen in the same session.
+# brought one), ask for /orion-verify. Runs after the session-start pull, so rules a pull brought are seen in the
+# same session.
 # A repository with no record on this computer (a fresh clone) is asked once too, worded as new, not as changed.
 check_rules_ctx() {
     local sum f
