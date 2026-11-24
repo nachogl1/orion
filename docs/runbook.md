@@ -32,6 +32,22 @@ What a person sees orion do in a project, and what to do about it.
 ## During install
 
 - The update-mode question now reads `auto - an agent ships it through its own pull request without asking`.
+- Two more questions follow it: the development branch (where daily work starts and merges) and the release branch
+  (where the project deploys from). Enter keeps the current default branch for both; the same name for both is a
+  one-branch project. Without a terminal, pass `--dev-branch <name>` and `--release-branch <name>`.
+- A development branch other than the current default becomes the repository's default branch on GitHub, and a
+  declared branch that does not exist yet is created from the current default. orion then says what it left alone:
+  open pull requests keep their old base (`gh pr edit <N> --base <development branch>`), a workflow that runs only on
+  a push to the old default gets no run, and a workflow started by hand or on a schedule runs on the new one.
+- When it cannot make the change (no `gh`, no GitHub remote, no admin right), it prints the one step to do by hand
+  and the install still finishes. Change the names later with `bash .claude/orion/orion.sh branches --dev <name>
+  --release <name>`.
+
+## At session start: GitHub's default branch is not the declared one
+
+- Every session refreshes this clone's idea of GitHub's default branch (`origin/HEAD`). When it differs from the
+  development branch in `.claude/orion/config.json`, the session says so once a day; `/orion-verify` offers the fix
+  and runs it only on your yes. Silent when the remote cannot be reached.
 
 ## When `/orion-verify` checks the commands table
 

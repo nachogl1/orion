@@ -73,6 +73,16 @@ EOF
 chmod +x "$SB/bin/date"
 # The fake npx: installing the status line warms a cost cache through npx, which would reach the network.
 printf '#!/usr/bin/env bash\nexit 1\n' > "$SB/bin/npx"; chmod +x "$SB/bin/npx"
+# No check ever reaches a real gh: one that refuses and logs to $SB/nogh.log comes first on the path everywhere; a
+# check that needs gh puts its own stand-in before it.
+mkdir -p "$SB/nogh"
+cat > "$SB/nogh/gh" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$SB/nogh.log"
+exit 1
+EOF
+chmod +x "$SB/nogh/gh"
+export PATH="$SB/nogh:$PATH"
 FAKEPATH="$SB/bin:$PATH"
 
 N=0
@@ -736,17 +746,21 @@ sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))
 ' "$@"
 }
 # Python on Windows has no pty module, and nothing else there lets a script type at a terminal (Git Bash's winpty
-# refuses a piped stdin), so under Git Bash these four checks cannot run at all: Linux, macOS and CI run them.
+# refuses a piped stdin), so under Git Bash these five checks cannot run at all: Linux, macOS and CI run them. Each
+# answer is one line: an empty one is an Enter, taking the question's default (the two branch questions come after
+# the notice's).
 if "$PY" -c 'import pty' >/dev/null 2>&1; then
     newproj
     check "an interactive init shows the notice and asks to continue" eval 'at_terminal n "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1; grep -qF "$NOTICE" "$SB/out" && grep -qF "[y/N]" "$SB/out"'
     check "a no at that question installs nothing" eval '[ -z "$(ls -A "$P")" ] && grep -q "aborted" "$SB/out"'
     newproj
-    check "a yes at that question installs orion" eval 'at_terminal y "$ORION" init --project "$P" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
+    check "a yes at that question installs orion" eval 'at_terminal $'"'"'y\n\n'"'"' "$ORION" init --project "$P" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/VERSION" ] && [ -f "$P/CLAUDE.md" ]'
     newproj
-    check "it then asks about each mod, and a no installs none on this computer" eval 'at_terminal "$(printf "y\nn")" "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && grep -qF "Also install the orion mod control-tower" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ] && [ ! -e "$HOME/.claude/orion-mods" ]'
+    check "it then asks about each mod, and a no installs none on this computer" eval 'at_terminal $'"'"'y\n\n\nn'"'"' "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && grep -qF "Also install the orion mod control-tower" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ] && [ ! -e "$HOME/.claude/orion-mods" ]'
+    newproj
+    check "it asks for the development and release branches, Enter taking the current default, and writes what was typed" eval 'at_terminal $'"'"'y\ndevelop\n'"'"' "$ORION" init --project "$P" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1 && grep -qF "Development branch (Enter = main)" "$SB/out" && grep -qF "Release branch (Enter = main)" "$SB/out" && grep -q "\"developBranch\": \"develop\"" "$P/.claude/orion/config.json" && grep -q "\"releaseBranch\": \"main\"" "$P/.claude/orion/config.json" && grep -q "no GitHub remote" "$SB/out"'
 else
-    echo "  note  not run here: these four checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
+    echo "  note  not run here: these five checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
 fi
 
 echo "a renamed skill (update swaps orion's old copy, never a project's own folder)"
@@ -1266,6 +1280,157 @@ printf 'mine
 check "a pull blocked by local changes is refused, never stashed (even with merge.autoStash set)" eval 'run_check && grep -q "git pull" "$SB/hook" && hook_out_ok "$SB/hook" && [ -z "$("$REAL_GIT" -C "$P" stash list)" ] && grep -qx mine "$P/f.txt"'
 "$REAL_GIT" -C "$P" checkout -q -b lone
 check "a branch with no remote copy: silent" eval 'run_check && [ ! -s "$SB/hook" ]'
+
+echo "declared branches (init asks for them, branches makes GitHub match: a stand-in gh and a local remote, no network)"
+# A local bare remote whose default branch is trunk, reached through a GitHub-looking origin URL that git rewrites
+# to it (insteadOf), so the code sees a GitHub remote and every push lands here. The stand-in gh logs every call to
+# $SB/gh-br.log; `repo edit <slug> --default-branch <b>` moves the remote's HEAD (as GitHub would) unless
+# $FAKE_GH_FAIL=1, `repo view` prints $FAKE_GH_DEFAULT when set and fails otherwise, anything else fails.
+rm -f "$SB/nogh.log"   # from here on, nothing may reach the refusing gh
+BR="$SB/branches-remote.git"; GH_URL="https://github.com/example-owner/example-repo.git"
+"$REAL_GIT" init -q --bare "$BR"; "$REAL_GIT" --git-dir="$BR" symbolic-ref HEAD refs/heads/trunk
+"$REAL_GIT" clone -q "$BR" "$SB/br-peer" 2>/dev/null; "$REAL_GIT" -C "$SB/br-peer" checkout -q -b trunk
+"$REAL_GIT" -C "$SB/br-peer" commit -q --allow-empty -m one && "$REAL_GIT" -C "$SB/br-peer" push -q origin trunk 2>/dev/null
+mkdir -p "$SB/ghbr"
+cat > "$SB/ghbr/gh" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' "\$*" >> "$SB/gh-br.log"; printf '%s\n' "\$*" >> "$SB/gh-br-all.log"
+case "\$1 \$2" in
+    "repo edit") [ "\${FAKE_GH_FAIL:-}" = 1 ] && exit 1
+        [ "\$4" = --default-branch ] && "$REAL_GIT" --git-dir="$BR" symbolic-ref HEAD "refs/heads/\$5" && exit 0 ;;
+    "repo view") [ -n "\${FAKE_GH_DEFAULT:-}" ] && { printf '%s\n' "\$FAKE_GH_DEFAULT"; exit 0; } ;;
+esac
+exit 1
+EOF
+chmod +x "$SB/ghbr/gh"
+GHPATH="$SB/ghbr:$PATH"
+# The path with no gh on it, so a check can run with no gh at all: a folder that holds one is replaced by a folder of
+# links to everything else in it.
+no_gh_path() {
+    local d f n out="" IFS=:
+    mkdir -p "$SB/path-nogh"
+    for d in $PATH; do
+        [ -n "$d" ] || continue
+        if [ -e "$d/gh" ] || [ -e "$d/gh.exe" ]; then
+            for f in "$d"/*; do
+                n="${f##*/}"; case "$n" in gh|gh.exe) continue ;; esac
+                [ -e "$SB/path-nogh/$n" ] || ln -s "$f" "$SB/path-nogh/$n"
+            done
+            d="$SB/path-nogh"
+        fi
+        out="${out:+$out:}$d"
+    done
+    printf '%s' "$out"
+}
+NOGHPATH="$(no_gh_path)"
+br_clone() {  # sets P: a fresh clone of the branches remote with a GitHub-looking origin, back to trunk alone
+    local r
+    "$REAL_GIT" --git-dir="$BR" symbolic-ref HEAD refs/heads/trunk
+    for r in $("$REAL_GIT" --git-dir="$BR" for-each-ref --format='%(refname)' refs/heads); do
+        [ "$r" = refs/heads/trunk ] || "$REAL_GIT" --git-dir="$BR" update-ref -d "$r"
+    done
+    newproj; rmdir "$P"; "$REAL_GIT" clone -q "$BR" "$P" 2>/dev/null
+    "$REAL_GIT" -C "$P" remote set-url origin "$GH_URL"; "$REAL_GIT" -C "$P" config "url.$BR.insteadOf" "$GH_URL"
+    rm -f "$SB/gh-br.log"
+}
+br_init() { env PATH="$GHPATH" bash "$ORION" init --project "$P" --yes --no-statusline --no-mods --update-mode off "$@" >"$SB/out" 2>&1; }
+key_is() { grep -q "^  \"$1\": \"$2\",\{0,1\}$" "$P/.claude/orion/config.json"; }
+remote_has() { "$REAL_GIT" --git-dir="$BR" rev-parse -q --verify "refs/heads/$1" >/dev/null; }
+origin_head() { "$REAL_GIT" -C "$P" symbolic-ref -q --short refs/remotes/origin/HEAD; }
+no_gh_call() { [ ! -s "$SB/gh-br.log" ]; }
+br_clone
+check "init naming neither branch writes both keys as the current default branch and makes no gh call" \
+    eval 'br_init && key_is developBranch trunk && key_is releaseBranch trunk && json_ok "$P/.claude/orion/config.json" && no_gh_call'
+check "and the starter CLAUDE.md names the release branch in its deploy line and the development branch" \
+    eval 'grep -qF "Deploys to: <environment>, from the release branch \`trunk\`." "$P/CLAUDE.md" && grep -qF "Development branch (daily work starts from it and merges into it): \`trunk\`." "$P/CLAUDE.md"'
+check "status prints the two names" eval 'bash "$ORION" status --project "$P" | grep -q "^branches:   development trunk, release trunk"'
+br_clone
+check "init --dev-branch develop --release-branch release creates both on the remote from trunk, sets GitHub's default, moves origin/HEAD and writes both keys" \
+    eval 'br_init --dev-branch develop --release-branch release && remote_has develop && remote_has release && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && [ "$(cat "$SB/gh-br.log")" = "repo edit example-owner/example-repo --default-branch develop" ] && [ "$(origin_head)" = origin/develop ] && key_is developBranch develop && key_is releaseBranch release'
+check "and it names the three things a switch does that orion leaves alone" \
+    eval 'grep -q "gh pr edit <N> --base develop" "$SB/out" && grep -q "only on a push to .trunk. gets no run" "$SB/out" && grep -q "started by hand or on a schedule now runs on .develop." "$SB/out"'
+check "and the starter names the release branch" eval 'grep -qF "from the release branch \`release\`." "$P/CLAUDE.md"'
+br_clone; "$REAL_GIT" -C "$SB/br-peer" push -q origin trunk:main 2>/dev/null
+check "a declared release branch that already exists is never pushed to, and the default branch alone is set" \
+    eval 'before="$("$REAL_GIT" --git-dir="$BR" rev-parse main)" && br_init --dev-branch develop --release-branch main && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse main)" = "$before" ] && ! grep -q "branch .main. created" "$SB/out" && grep -q "branch .develop. created" "$SB/out"'
+br_clone
+check "with no gh at all: exit 0, both keys written, the manual step printed" \
+    eval 'env PATH="$NOGHPATH" bash "$ORION" init --project "$P" --yes --no-statusline --no-mods --update-mode off --dev-branch develop >"$SB/out" 2>&1 && key_is developBranch develop && key_is releaseBranch trunk && grep -q "gh is not installed.*make .develop. the default branch" "$SB/out" && [ "$(origin_head)" = origin/trunk ]'
+br_clone
+check "with gh failing (no right to change it): exit 0, both keys written, the manual step printed" \
+    eval 'FAKE_GH_FAIL=1 br_init --dev-branch develop && key_is developBranch develop && grep -q "gh could not make .develop. the default branch.*only a repository admin can" "$SB/out" && [ "$(origin_head)" = origin/trunk ]'
+br_clone; "$REAL_GIT" -C "$P" remote set-url origin "$BR"
+check "with no GitHub remote: exit 0, both keys written, the manual step printed, no gh call" \
+    eval 'br_init --dev-branch develop --release-branch release && key_is developBranch develop && key_is releaseBranch release && grep -q "no GitHub remote" "$SB/out" && no_gh_call && ! remote_has release'
+# An install from before the two keys: its config.json as an older orion wrote it.
+old_config() { printf '{\n  "updateMode": "off",\n  "source": "%s",\n  "ref": "main",\n  "branchLimit": 20,\n  "worktreeLimit": 20\n}\n' "$ORION_SRC" > "$P/.claude/orion/config.json"; }
+ORION_SRC="https://example.invalid/orion.git"
+br_clone; br_init; old_config; cp "$P/.claude/orion/config.json" "$SB/config-before.json"
+check "branches adds the two keys to a config.json that lacks them, keeping every other key, valid JSON" \
+    eval 'env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev trunk --release trunk >"$SB/out" 2>&1 && key_is developBranch trunk && key_is releaseBranch trunk && json_ok "$P/.claude/orion/config.json" && [ "$(grep -vE "developBranch|releaseBranch" "$P/.claude/orion/config.json" | tr -d ",")" = "$(tr -d "," < "$SB/config-before.json")" ] && no_gh_call'
+old_config
+check "init --dev-branch on an existing install runs it: keys added and GitHub's default set" \
+    eval 'br_init --dev-branch develop && key_is developBranch develop && key_is releaseBranch trunk && grep -q "^repo edit example-owner/example-repo --default-branch develop$" "$SB/gh-br.log"'
+check "branches refuses a name git would refuse, and changes nothing" \
+    eval 'cp "$P/.claude/orion/config.json" "$SB/cfg-keep" && ! env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev "bad..name" --release trunk >"$SB/out" 2>&1 && cmp -s "$SB/cfg-keep" "$P/.claude/orion/config.json"'
+check "update and uninstall make no gh call" \
+    eval 'rm -f "$SB/gh-br.log" && env PATH="$GHPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && env PATH="$GHPATH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && no_gh_call'
+
+# check: the session-start refresh of origin/HEAD.
+br_clone; br_init; env PATH="$GHPATH" bash "$ORION" verify --project "$P" >/dev/null 2>&1; keep_orion_out_of_git
+"$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/stale
+sed -e '/"developBranch"/d' -e '/"releaseBranch"/d' -e 's/"worktreeLimit": 20,/"worktreeLimit": 20/' "$P/.claude/orion/config.json" > "$SB/cfg" && mv "$SB/cfg" "$P/.claude/orion/config.json"
+"$REAL_GIT" -C "$P" checkout -q -b lone
+check "check refreshes origin/HEAD with no keys present, on a branch with no remote copy, silently" \
+    eval 'run_check && [ ! -s "$SB/hook" ] && [ "$(origin_head)" = origin/trunk ]'
+"$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/stale; "$REAL_GIT" -C "$P" checkout -q --detach
+check "and on no branch at all (a detached checkout)" eval 'run_check && [ ! -s "$SB/hook" ] && [ "$(origin_head)" = origin/trunk ]'
+"$REAL_GIT" -C "$P" checkout -q trunk
+env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev trunk --release trunk >/dev/null 2>&1
+check "the declared development branch is GitHub's default: silent" eval 'run_check && [ ! -s "$SB/hook" ]'
+"$REAL_GIT" -C "$SB/br-peer" push -q origin trunk:develop 2>/dev/null; "$REAL_GIT" --git-dir="$BR" symbolic-ref HEAD refs/heads/develop
+"$REAL_GIT" -C "$P" config "url.$SB/no-such-remote.git.insteadOf" "$GH_URL"; "$REAL_GIT" -C "$P" config --unset "url.$BR.insteadOf"
+said_branch() { grep -q "declares trunk as the development branch" "$SB/hook"; }
+check "GitHub's default changed but the remote cannot be reached: exit 0, silent, origin/HEAD left as it was" \
+    eval 'run_check && [ ! -s "$SB/hook" ] && [ "$(origin_head)" = origin/trunk ]'
+"$REAL_GIT" -C "$P" config --unset "url.$SB/no-such-remote.git.insteadOf"; "$REAL_GIT" -C "$P" config "url.$BR.insteadOf" "$GH_URL"
+T0=1900000000
+check "after a successful refresh that differs from the declared branch: says so, in one JSON line" \
+    eval 'FAKE_NOW=$T0 run_check && said_branch && hook_out_ok "$SB/hook" && [ "$(origin_head)" = origin/develop ]'
+check "at most once a day: the next session the same day is silent" eval 'FAKE_NOW=$((T0 + 3600)) run_check && [ ! -s "$SB/hook" ]'
+check "and a day later it says so again" eval 'FAKE_NOW=$((T0 + 86400)) run_check && said_branch && hook_out_ok "$SB/hook"'
+
+# verify: three warnings, never a FAIL.
+br_verify() { env PATH="$GHPATH" bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; }
+check "verify: GitHub's default is not the declared development branch: one warning, exit 0" \
+    eval 'FAKE_GH_DEFAULT=develop br_verify && grep -q "WARN  github-default: .*is .develop., not the declared development branch .trunk." "$SB/out"'
+check "verify: this checkout's origin/HEAD points elsewhere: one warning" eval 'br_verify && grep -q "WARN  origin-head: .*points at .develop., not the declared development branch .trunk." "$SB/out"'
+check "verify: gh cannot read it: the GitHub comparison is skipped, no warning" \
+    eval 'br_verify && ! grep -q "WARN  github-default" "$SB/out" && grep -q "ok    github-default: not compared" "$SB/out"'
+check "verify: GitHub's default and origin/HEAD both the declared one: no branch warning" \
+    eval 'env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev develop --release trunk >/dev/null 2>&1 && FAKE_GH_DEFAULT=develop br_verify && ! grep -qE "WARN  (github-default|origin-head|branches-undeclared)" "$SB/out" && grep -q "ok    github-default: GitHub" "$SB/out"'
+old_config
+check "verify: no keys (an older install): one warning, exit 0" eval 'br_verify && grep -q "WARN  branches-undeclared" "$SB/out"'
+rm -f "$P/.claude/orion/BASE_CLAUDE.md"
+check "verify still exits 1 only on a FAIL" eval '! br_verify && grep -q "FAIL  core-files" "$SB/out" && grep -q "WARN  branches-undeclared" "$SB/out"'
+check "no branch protection or any other repository setting: every gh call was a view or an edit of the default branch alone" \
+    eval '! grep -qi "protection" "$ORION" && [ -s "$SB/gh-br-all.log" ] && ! grep -vE "^repo (edit example-owner/example-repo --default-branch [^ ]+|view example-owner/example-repo --json defaultBranchRef --jq [.]defaultBranchRef[.]name)$" "$SB/gh-br-all.log"'
+check "no check of the declared branches reached a real gh: the refusing one first on the path was never called" eval '[ ! -s "$SB/nogh.log" ] || { sed "s/^/    gh called with: /" "$SB/nogh.log"; false; }'
+
+# The words: the baseline asks for both branches, orion-verify asks for the names and runs branches only on a yes,
+# the orion skill lists the sub-command and the guide's install steps name both flags.
+check "the baseline's list of what CLAUDE.md must state names the development and the release branch" \
+    eval 'sed -n "/^## What the project/,\$p" "$REPO/baselines/BASE_CLAUDE.md" | tr "\n" " " | grep -q "Boundaries\*\*: deploy target, the development branch and the release branch"'
+orion_verify_asks_for_branches() {
+    local s; s="$(tr '\n' ' ' <"$REPO/skills/orion-verify/SKILL.md" | tr -s ' ')"
+    for want in "\`branches-undeclared\`" "asks for the two names" "orion.sh branches --dev <development> --release <release>" \
+        "only on a yes" "\`releaseBranch\` in \`.claude/orion/config.json\`" "reports the disagreement"; do
+        case "$s" in *"$want"*) ;; *) echo "    orion-verify lacks: $want"; return 1 ;; esac
+    done
+}
+check "orion-verify asks for the names and runs branches only on a yes, and compares the release branch with CLAUDE.md's" orion_verify_asks_for_branches
+check "the orion skill lists the branches sub-command" eval 'grep -qF "bash .claude/orion/orion.sh branches --dev" "$REPO/skills/orion/SKILL.md"'
+check "the guide's install steps name both questions and their flags" eval 'grep -qF -- "--dev-branch" "$GUIDE" && grep -qF -- "--release-branch" "$GUIDE"'
 
 echo "verify"
 newproj; init ask
