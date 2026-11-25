@@ -78,20 +78,21 @@ fi
 BASE="refs/heads/$DEFAULT"
 [ -n "$REMOTE" ] && g show-ref --verify -q "refs/remotes/$REMOTE/$DEFAULT" 2>/dev/null && BASE="refs/remotes/$REMOTE/$DEFAULT"
 
-# The release branch (the one the project deploys from), read the way the project records it: the releaseBranch key
-# of its .claude/orion/config.json. An install from before that key: main, whenever the default branch is not main
-# and a main branch exists. No other name is guessed, and a file that cannot be read only leaves that fallback.
-RELEASE=$(sed -n 's/.*"releaseBranch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$MAIN/.claude/orion/config.json" 2>/dev/null | head -n1)
-if [ -z "$RELEASE" ] && [ "$DEFAULT" != main ]; then
-    if { [ -n "$REMOTE" ] && g show-ref --verify -q "refs/remotes/$REMOTE/main" 2>/dev/null; } || g show-ref --verify -q refs/heads/main 2>/dev/null; then RELEASE=main; fi
-fi
-[ "$RELEASE" = "$DEFAULT" ] && RELEASE=""   # a one-branch project: the default branch is protected already
-
 PRUNED=0 FETCHED=no
 if [ "$FETCH" = "1" ] && [ -n "$REMOTE" ]; then
     PRUNED=$(g fetch --prune "$REMOTE" 2>&1 | grep -c '\[deleted\]' || true)
     FETCHED=yes
 fi
+
+# The release branch (the one the project deploys from), read the way the project records it: the releaseBranch key
+# of its .claude/orion/config.json. An install from before that key: main, whenever the default branch is not main
+# and a main branch exists. No other name is guessed, and a file that cannot be read only leaves that fallback.
+# Decided after the fetch, so a main the fetch just brought in is protected too.
+RELEASE=$(sed -n 's/.*"releaseBranch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$MAIN/.claude/orion/config.json" 2>/dev/null | head -n1)
+if [ -z "$RELEASE" ] && [ "$DEFAULT" != main ]; then
+    if { [ -n "$REMOTE" ] && g show-ref --verify -q "refs/remotes/$REMOTE/main" 2>/dev/null; } || g show-ref --verify -q refs/heads/main 2>/dev/null; then RELEASE=main; fi
+fi
+[ "$RELEASE" = "$DEFAULT" ] && RELEASE=""   # a one-branch project: the default branch is protected already
 
 TMP=$(mktemp -d 2>/dev/null || mktemp -d -t clear-git); trap 'rm -rf "$TMP"' EXIT
 

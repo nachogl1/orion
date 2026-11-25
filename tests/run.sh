@@ -1315,8 +1315,16 @@ for b in main develop; do "$REAL_GIT" -C "$P" update-ref "refs/remotes/origin/$b
 "$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/develop
 scan_release() { bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt-release" > "$SB/scan"; }
 no_command_for() { ! awk -F'\t' -v n="$1" '$1=="ITEM" && $3==n && $6!=""' "$SB/scan" | grep -q .; }
+"$REAL_GIT" -C "$P" worktree add -q "$SB/wt-release/on-main" main
 scan_release
 check "no releaseBranch key, default branch develop: main, fully merged, is kept with no command, local and remote" eval 'item_is br-protected "^main$" keep && item_is rb-protected "^origin/main$" keep && no_command_for main && no_command_for origin/main'
+check "a worktree on the release branch is kept with no command" eval 'item_is wt-protected "on-main$" keep && ! grep -q "^ITEM	wt-[a-z-]*	[^	]*on-main	[^	]*	[^	]*	." "$SB/scan"'
+"$REAL_GIT" -C "$P" worktree remove "$SB/wt-release/on-main"
+# A clone that has not fetched main yet: the scan's own --fetch brings origin/main in, and it is still kept.
+R="$SB/release.git"; "$REAL_GIT" init -q --bare "$R" && "$REAL_GIT" -C "$P" push -q "$R" main develop && "$REAL_GIT" -C "$R" symbolic-ref HEAD refs/heads/develop
+"$REAL_GIT" clone -q "$R" "$SB/release-clone" && "$REAL_GIT" -C "$SB/release-clone" update-ref -d refs/remotes/origin/main
+bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$SB/release-clone" --wt-root "$SB/wt-release" --fetch > "$SB/scan"
+check "main not fetched yet, scanned with --fetch: origin/main is kept with no command" eval 'item_is rb-protected "^origin/main$" keep && no_command_for origin/main'
 mkdir -p "$P/.claude/orion" && printf '{\n  "developBranch": "develop",\n  "releaseBranch": "stable"\n}\n' > "$P/.claude/orion/config.json"
 "$REAL_GIT" -C "$P" branch stable main && "$REAL_GIT" -C "$P" update-ref refs/remotes/origin/stable stable
 scan_release
