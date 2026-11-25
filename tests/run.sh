@@ -758,7 +758,7 @@ if "$PY" -c 'import pty' >/dev/null 2>&1; then
     newproj
     check "it then asks about each mod, and a no installs none on this computer" eval 'at_terminal $'"'"'y\n\n\nn'"'"' "$ORION" init --project "$P" --no-statusline --update-mode ask >"$SB/out" 2>&1 && grep -qF "Also install the orion mod control-tower" "$SB/out" && [ -f "$P/.claude/orion/VERSION" ] && [ ! -e "$HOME/.claude/orion-mods" ]'
     newproj
-    check "it asks for the development and release branches, Enter taking the current default, and writes what was typed" eval 'at_terminal $'"'"'y\ndevelop\n'"'"' "$ORION" init --project "$P" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1 && grep -qF "Development branch (Enter = main)" "$SB/out" && grep -qF "Release branch (Enter = main)" "$SB/out" && grep -q "\"developBranch\": \"develop\"" "$P/.claude/orion/config.json" && grep -q "\"releaseBranch\": \"main\"" "$P/.claude/orion/config.json" && grep -q "no GitHub remote" "$SB/out"'
+    check "it asks for the development and release branches, Enter taking the current default, and writes what was typed" eval 'at_terminal $'"'"'y\ndevelop\n'"'"' "$ORION" init --project "$P" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1 && grep -qF "Development branch (Enter = main)" "$SB/out" && grep -qF "Release branch (Enter = main)" "$SB/out" && grep -qF "A name other than main is created on origin if it is missing and becomes the repository'"'"'s default branch on GitHub." "$SB/out" && grep -q "\"developBranch\": \"develop\"" "$P/.claude/orion/config.json" && grep -q "\"releaseBranch\": \"main\"" "$P/.claude/orion/config.json" && grep -q "no GitHub remote" "$SB/out"'
 else
     echo "  note  not run here: these five checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
 fi
@@ -1384,7 +1384,9 @@ github_host_only() {
     local url
     for url in "https://git.example.invalid/mirror/github.com/acme/app.git" "https://git.example.invalid/x@github.com/acme/app.git" \
         "git@git.example.invalid:mirror/github.com/acme/app.git" "https://github.com.example.invalid/acme/app.git" \
-        "ssh://git@github.com.example.invalid/acme/app.git" "https://example.invalid/github.com:acme/app.git"; do
+        "ssh://git@github.com.example.invalid/acme/app.git" "https://example.invalid/github.com:acme/app.git" \
+        "https://git.example.invalid?@github.com/acme/app.git" "https://git.example.invalid#@github.com/acme/app.git" \
+        "git.example.invalid?@github.com:acme/app.git"; do
         br_origin_case "$url" && grep -q "no GitHub remote" "$SB/out" && no_gh_call && ! remote_has develop \
             || { echo "    counted as GitHub: $url"; return 1; }
     done
@@ -1402,6 +1404,24 @@ br_no_head() {  # a clone with no origin/HEAD, on a pushed branch holding a comm
     "$REAL_GIT" -C "$P" checkout -q -b feature && "$REAL_GIT" -C "$P" commit -q --allow-empty -m unmerged
     "$REAL_GIT" -C "$P" push -q -u origin feature 2>/dev/null; rm -f "$SB/gh-br.log"
 }
+# A stale origin/HEAD (a clone made before GitHub's default moved from main to trunk) is refreshed before any write,
+# so it is never taken as GitHub's default; a refresh that fails pushes and switches nothing.
+br_stale_head() {  # a clone whose origin/HEAD still points at main, one commit behind the remote's default trunk
+    br_clone; "$REAL_GIT" -C "$P" push -q origin trunk:main 2>/dev/null
+    "$REAL_GIT" -C "$SB/br-peer" pull -q --ff-only origin trunk 2>/dev/null
+    "$REAL_GIT" -C "$SB/br-peer" commit -q --allow-empty -m newer && "$REAL_GIT" -C "$SB/br-peer" push -q origin trunk 2>/dev/null
+    "$REAL_GIT" -C "$P" fetch -q origin 2>/dev/null; "$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+    rm -f "$SB/gh-br.log"
+}
+br_stale_head
+check "a stale origin/HEAD is refreshed first: develop starts from trunk's newest commit and the old default is named trunk" \
+    eval 'br_init --dev-branch develop --release-branch trunk && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && grep -q "(was .trunk.)" "$SB/out" && ! grep -qF "'"'"'main'"'"'" "$SB/out" && [ "$(origin_head)" = origin/develop ]'
+br_stale_head
+check "a stale origin/HEAD naming the declared branch: GitHub's actual default still differs, so it is set" \
+    eval 'br_init --dev-branch main --release-branch main && [ "$(cat "$SB/gh-br.log")" = "repo edit example-owner/example-repo --default-branch main" ] && [ "$(origin_head)" = origin/main ]'
+br_clone; "$REAL_GIT" -C "$P" config --unset "url.$BR.insteadOf"; "$REAL_GIT" -C "$P" config "url.$SB/no-such-remote.git.insteadOf" "$GH_URL"
+check "names given and the refresh fails: the default counts as unknown, the manual step, nothing pushed or switched" \
+    eval 'br_init --dev-branch develop && grep -q "could not tell GitHub.s default branch" "$SB/out" && no_gh_call && ! remote_has develop && key_is developBranch develop && ! grep -q "releaseBranch" "$P/.claude/orion/config.json"'
 br_no_head
 check "no origin/HEAD: it is asked of the remote first, so develop starts from trunk, not from the branch checked out" \
     eval 'br_init --dev-branch develop && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && key_is releaseBranch trunk && grep -q "(was .trunk.)" "$SB/out" && ! grep -q "feature" "$P/.claude/orion/config.json"'

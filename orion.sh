@@ -1319,7 +1319,8 @@ current_default_branch() {
 
 # origin's owner/name when origin's host is github.com (read as written, before any insteadOf rewrite), else nothing.
 # Only <scheme>://[user@]github.com[:port]/<owner>/<name> or [user@]github.com:<owner>/<name> counts: a mirror whose
-# path or user part holds github.com, or a host that only starts with it, is no GitHub remote.
+# path or user part holds github.com, a host that only starts with it, or a user part holding ? or # (a URL that
+# reaches another host) is no GitHub remote.
 github_repo() {
     local url host slug
     url="$(git -C "$PROJECT" config --get remote.origin.url 2>/dev/null)" || return 0
@@ -1327,11 +1328,12 @@ github_repo() {
         *://*)
             case "${url%%://*}" in ""|*[!a-z+]*) return 0 ;; esac
             slug="${url#*://}"; host="${slug%%/*}"; [ "$host" != "$slug" ] || return 0
+            case "$host" in *[?#]*|*@*@*) return 0 ;; esac
             slug="${slug#*/}"; host="${host##*@}"
             case "$host" in github.com) ;; github.com:*) case "${host#github.com:}" in ""|*[!0-9]*) return 0 ;; esac ;; *) return 0 ;; esac ;;
         *:*)
             host="${url%%:*}"; slug="${url#*:}"
-            case "$host" in */*) return 0 ;; esac
+            case "$host" in */*|*[?#]*|*@*@*) return 0 ;; esac
             [ "${host##*@}" = github.com ] || return 0 ;;
         *) return 0 ;;
     esac
@@ -1362,14 +1364,15 @@ starter_branches() {
 # creates a declared branch the remote lacks (from the current default branch), and makes the development branch
 # GitHub's default, then refreshes origin/HEAD. A name left empty is not named: it is taken from config.json, else
 # the current default branch. With no name at all it only stores them, with no network call. Before any write to
-# GitHub the current default branch is the one the remote names (a missing origin/HEAD is refreshed first), never a
-# guess from the branch checked out; when the remote cannot tell, nothing is pushed or switched.
+# GitHub the current default branch is the one the remote names now (origin/HEAD is always refreshed first, so a
+# stale or missing one is never taken for it), never a guess from the branch checked out; when the refresh fails,
+# nothing is pushed or switched.
 apply_branches() {  # dev release
     local dev="$1" rel="$2" named="$1$2" cfg="$PROJECT/.claude/orion/config.json" cur slug b rc key val
     slug="$(github_repo)"
     if [ -n "$named" ] && [ -n "$slug" ]; then
-        [ -n "$(origin_head_branch)" ] || limited 15 git -C "$PROJECT" remote set-head origin --auto </dev/null >/dev/null 2>&1 || true
-        cur="$(origin_head_branch)"
+        cur=""
+        if limited 15 git -C "$PROJECT" remote set-head origin --auto </dev/null >/dev/null 2>&1; then cur="$(origin_head_branch)"; fi
     else
         cur="$(current_default_branch)"
     fi
@@ -1384,7 +1387,7 @@ apply_branches() {  # dev release
     [ -n "$dev" ] && [ "$dev" = "$rel" ] && say "       (one branch for both: no release pull request)"
     [ -n "$named" ] || return 0
     if [ -z "$cur" ]; then
-        branches_manual "could not tell GitHub's default branch (this clone has no origin/HEAD and git remote set-head origin --auto could not read it), so nothing was pushed or switched: run git remote set-head origin --auto, then bash .claude/orion/orion.sh branches --dev ${dev:-<development branch>} --release ${rel:-<release branch>}"
+        branches_manual "could not tell GitHub's default branch (git remote set-head origin --auto could not read it from origin), so nothing was pushed or switched: run git remote set-head origin --auto, then bash .claude/orion/orion.sh branches --dev ${dev:-<development branch>} --release ${rel:-<release branch>}"
         return 0
     fi
     [ "$dev" = "$cur" ] && [ "$rel" = "$cur" ] && return 0
@@ -1483,6 +1486,7 @@ cmd_init() {
     cur="$(current_default_branch)"
     if [ "$first" = 1 ] && [ -z "$dev$rel" ] && is_tty; then
         say "Which branch does daily work start from and merge into (the development branch)?"
+        say "A name other than $cur is created on origin if it is missing and becomes the repository's default branch on GitHub."
         ask "Development branch (Enter = $cur): " || resp=""
         dev="$resp"; [ -z "$dev" ] || branch_name_ok "$dev" || die "not a valid branch name: $dev"
         say "Which branch does the project deploy from (the release branch)? The same name means one branch."
