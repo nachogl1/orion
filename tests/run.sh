@@ -1326,6 +1326,15 @@ printf 'mine
 check "a pull blocked by local changes is refused, never stashed (even with merge.autoStash set)" eval 'run_check && grep -q "git pull" "$SB/hook" && hook_out_ok "$SB/hook" && [ -z "$("$REAL_GIT" -C "$P" stash list)" ] && grep -qx mine "$P/f.txt"'
 "$REAL_GIT" -C "$P" checkout -q -b lone
 check "a branch with no remote copy: silent" eval 'run_check && [ ! -s "$SB/hook" ]'
+# updateMode is read after the pull: a teammate who turned updates off is obeyed in the same session start.
+RM="$SB/remote-mode.git"; "$REAL_GIT" init -q --bare "$RM"
+newproj; rmdir "$P"; "$REAL_GIT" clone -q "$RM" "$P" 2>/dev/null; "$REAL_GIT" -C "$P" checkout -q -b main
+init auto; consume_marker
+"$REAL_GIT" -C "$P" -c core.autocrlf=false add -A && "$REAL_GIT" -C "$P" commit -qm orion && "$REAL_GIT" -C "$P" push -q -u origin main 2>/dev/null
+"$REAL_GIT" clone -q -b main "$RM" "$SB/mate-mode" 2>/dev/null
+sed 's|"updateMode": [^,}]*|"updateMode": "off"|' "$SB/mate-mode/.claude/orion/config.json" > "$SB/cfg" && mv "$SB/cfg" "$SB/mate-mode/.claude/orion/config.json"
+"$REAL_GIT" -C "$SB/mate-mode" commit -qam "updates off" && "$REAL_GIT" -C "$SB/mate-mode" push -q 2>/dev/null
+check "a pull that turns updateMode off: the same session start offers no update, even with a newer orion under auto" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && grep -q "\"updateMode\": \"off\"" "$P/.claude/orion/config.json" && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 
 echo "declared branches (init asks for them, branches makes GitHub match: a stand-in gh and a local remote, no network)"
 # A local bare remote whose default branch is trunk, reached through a GitHub-looking origin URL that git rewrites
