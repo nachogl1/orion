@@ -1,0 +1,13 @@
+{
+  "run_id": "orion-20261125-173717-5528",
+  "issue": 238,
+  "title": "Switch: move open pull requests to develop, refresh the clone and tell running agents",
+  "login": "nachogl1",
+  "pr": 267,
+  "merged_at": "2026-11-25T17:42:37Z",
+  "merge_commit": "0b9e8c196d5a117394e2b2451e36cfa9f98daafa",
+  "seam": "docs/changelog/",
+  "story": "Repository state only: orion's open pull requests, main checkout and running sessions now point at develop. Nothing a user drives changed.",
+  "checks": [],
+  "no_qa_reason": "GitHub and local git state only, plus a changelog line; nothing in the product changed."
+}

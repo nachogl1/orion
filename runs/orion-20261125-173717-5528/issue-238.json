@@ -1,0 +1,21 @@
+{
+  "run_id": "orion-20261125-173717-5528",
+  "issue": 238,
+  "title": "Switch: move open pull requests to develop, refresh the clone and tell running agents",
+  "login": "nachogl1",
+  "started_at": "2026-11-25T17:37:39Z",
+  "finished_at": "2026-11-25T17:43:01Z",
+  "outcome": "merged",
+  "pr": 267,
+  "summary": "After the default branch became develop, checked no open pull request still targeted main, pointed the main checkout's origin/HEAD at develop, warned the one other local session, and merged the changelog line with the switch report.",
+  "agents": [
+    { "name": "review-238-r1", "model": "opus", "tokens_total": 81906, "tokens_source": "tool" }
+  ],
+  "phases": { "qa_seconds": 0, "dev_seconds": 600, "review_seconds": 225, "ci_seconds": 190 },
+  "rounds": { "review": 1, "ci": 1 },
+  "friction": [
+    "tests/wsl.sh could not start on this computer (the WSL distro has no bash), so the full suite ran only in CI; a machine-setup check would catch it before a run relies on it"
+  ],
+  "lessons_learned": [],
+  "deferred": []
+}
