@@ -1307,6 +1307,22 @@ check "verify reads the worktree limit" eval 'bash "$ORION" verify --project "$P
 set_cfg worktreeLimit 10
 check "below both limits: silent" eval 'run_check --force && [ ! -s "$SB/hook" ]'
 
+echo "scanner: the release branch is never offered once it differs from the default branch"
+newproj; "$REAL_GIT" -C "$P" init -q -b main; "$REAL_GIT" -C "$P" commit -q --allow-empty -m one
+"$REAL_GIT" -C "$P" checkout -q -b develop && "$REAL_GIT" -C "$P" commit -q --allow-empty -m two
+"$REAL_GIT" -C "$P" remote add origin https://example.invalid/a.git
+for b in main develop; do "$REAL_GIT" -C "$P" update-ref "refs/remotes/origin/$b" "refs/heads/$b"; done
+"$REAL_GIT" -C "$P" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/develop
+scan_release() { bash "$REPO/skills/clear-git-resources/scripts/scan.sh" --project "$P" --wt-root "$SB/wt-release" > "$SB/scan"; }
+no_command_for() { ! awk -F'\t' -v n="$1" '$1=="ITEM" && $3==n && $6!=""' "$SB/scan" | grep -q .; }
+scan_release
+check "no releaseBranch key, default branch develop: main, fully merged, is kept with no command, local and remote" eval 'item_is br-protected "^main$" keep && item_is rb-protected "^origin/main$" keep && no_command_for main && no_command_for origin/main'
+mkdir -p "$P/.claude/orion" && printf '{\n  "developBranch": "develop",\n  "releaseBranch": "stable"\n}\n' > "$P/.claude/orion/config.json"
+"$REAL_GIT" -C "$P" branch stable main && "$REAL_GIT" -C "$P" update-ref refs/remotes/origin/stable stable
+scan_release
+check "releaseBranch declared: that branch is kept with no command, local and remote" eval 'item_is br-protected "^stable$" keep && item_is rb-protected "^origin/stable$" keep && no_command_for stable && no_command_for origin/stable'
+check "and main, no longer the release branch, is classified like any other branch" item_is br-merged '^main$' ask
+
 echo "check pulls the branch the session opens on (fast-forward only, every session)"
 R="$SB/remote.git"; "$REAL_GIT" init -q --bare "$R"
 "$REAL_GIT" clone -q "$R" "$SB/peer" 2>/dev/null; "$REAL_GIT" -C "$SB/peer" checkout -q -b main
