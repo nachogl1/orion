@@ -1,0 +1,1 @@
+With updates set to `off` (however it is typed) orion now offers nothing newer at session start, a mistyped mode warns instead of updating, `orion.sh repair` puts back missing orion files without changing the version, and a project an old orion updated gets its version number back.

@@ -11,7 +11,7 @@
 #   .\orion.ps1 init [--update-mode ask|auto|off] [--statusline] [--mods] [--force] [--yes]
 #     (init shows what orion's agents do on their own and asks to go on; --yes, which this
 #     launcher hands to orion.sh like every other argument, goes on without asking)
-#   .\orion.ps1 update | check | verify | status | uninstall | statusline merge|skip
+#   .\orion.ps1 update | repair | check | verify | status | uninstall | statusline merge|skip
 #   .\orion.ps1 mod install|skip|remove <name>   (an optional mod for this computer, on your word)
 #
 # Pure ASCII, Windows PowerShell 5.1 compatible.

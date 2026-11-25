@@ -935,11 +935,57 @@ check "newer orion, ask mode: one JSON line" eval 'FAKE_LS_SHA=11111111111111111
 check "the update is offered at every session start, not once a day" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && grep -q "newer orion.*update --skip" "$SB/hook" && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && grep -q "newer orion" "$SB/hook"'
 skip_update() { env PATH="$FAKEPATH" FAKE_LS_SHA="$1" bash "$P/.claude/orion/orion.sh" update --skip --project "$P" >"$SB/out" 2>&1; }
 check "declined with update --skip: quiet until a newer orion, which is offered again" eval 'skip_update 1111111111111111111111111111111111111111 && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && [ ! -s "$SB/hook" ] && FAKE_LS_SHA=2222222222222222222222222222222222222222 run_check && grep -q "newer orion" "$SB/hook"'
-set_cfg updateMode '"off"'
-check "off mode: silent, exit 0" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && [ ! -s "$SB/hook" ]'
+project_state() { ( cd "$P" && find . -type f -exec cksum {} + | LC_ALL=C sort ); }
+# updateMode is read ignoring letter case and spaces around the value: every spelling of off is off.
+off_however_typed() {
+    local v
+    for v in off OFF Off ' off' 'off '; do
+        set_cfg updateMode "\"$v\""
+        FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && [ ! -s "$SB/hook" ] || { echo "  updateMode '$v' is not off"; return 1; }
+    done
+}
+check "off mode, however typed (off, OFF, Off, a space before or after): silent, exit 0" off_however_typed
+# A value orion does not understand, or a config.json it cannot read as text, stops updates and warns in one sentence.
+utf16_config() {  # bom|nobom: config.json saved as UTF-16, as Windows PowerShell 5.1 writes it
+    local enc=utf-16; [ "$1" = bom ] || enc=utf-16-le
+    "$PY" -c 'import sys; t = open(sys.argv[1], encoding="utf-8").read(); open(sys.argv[1], "w", encoding=sys.argv[2], newline="").write(t)' "$P/.claude/orion/config.json" "$enc"
+}
+warned_once() {  # what the warning must also say
+    hook_out_ok "$SB/hook" && [ "$(grep -oE "does not understand updateMode|cannot read .claude/orion/config.json" "$SB/hook" | wc -l | tr -d ' ')" = 1 ] \
+        && grep -qF "ask, auto or off" "$SB/hook" && grep -qF "$1" "$SB/hook" && ! grep -q "newer orion" "$SB/hook"
+}
+not_understood_is_off() {
+    local v
+    cp "$P/.claude/orion/config.json" "$SB/cfg-kept"
+    for v in false never ''; do
+        set_cfg updateMode "\"$v\""; project_state > "$SB/state-before"; : > "$SB/git-log"
+        FAKE_GIT_LOG="$SB/git-log" FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && warned_once "updateMode '$v'" \
+            && ! grep -qE "^(ls-remote|clone)" "$SB/git-log" && project_state | cmp -s - "$SB/state-before" \
+            || { echo "  updateMode '$v': not one warning, or an update was looked for or run"; return 1; }
+    done
+    set_cfg updateMode false   # a bare JSON false, no quotes
+    FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && warned_once "updateMode 'false'" || { echo "  a bare false: not one warning"; return 1; }
+    for v in bom nobom; do
+        cp "$SB/cfg-kept" "$P/.claude/orion/config.json"; set_cfg updateMode '"auto"'; utf16_config "$v"; : > "$SB/git-log"
+        FAKE_GIT_LOG="$SB/git-log" FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && warned_once "UTF-8" \
+            && ! grep -qE "^(ls-remote|clone)" "$SB/git-log" || { echo "  UTF-16 ($v): not one warning, or an update was looked for"; return 1; }
+    done
+    cp "$SB/cfg-kept" "$P/.claude/orion/config.json"
+}
+check "a value not understood (false, never, empty, a bare false) or a UTF-16 config.json: no update looked for or run, exit 0, one JSON line with one warning naming ask, auto and off" not_understood_is_off
+check "the warning comes again at the next session start" eval 'set_cfg updateMode "\"never\"" && run_check && warned_once "never" && run_check && warned_once "never"'
+check "AUTO is auto, Ask with a space after is ask" eval 'set_cfg updateMode "\"AUTO\"" && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && grep -q "updateMode is .auto." "$SB/hook" && set_cfg updateMode "\"Ask \"" && FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && grep -q "newer orion.*update --skip" "$SB/hook"'
+no_mode_is_ask() {
+    cp "$P/.claude/orion/config.json" "$SB/cfg-kept"
+    grep -v '"updateMode"' "$SB/cfg-kept" > "$P/.claude/orion/config.json"
+    FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && grep -q "newer orion.*update --skip" "$SB/hook" || { echo "  no updateMode key is not ask"; return 1; }
+    rm -f "$P/.claude/orion/config.json"
+    FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check --force && grep -q "newer orion.*update --skip" "$SB/hook" || { echo "  no config.json is not ask"; return 1; }
+    cp "$SB/cfg-kept" "$P/.claude/orion/config.json"
+}
+check "a missing updateMode key or a missing config.json still means ask" no_mode_is_ask
 set_cfg updateMode '"auto"'
 # auto never updates the folder the session opens in: it asks the agent to ship the update through its own pull request
-project_state() { ( cd "$P" && find . -type f -exec cksum {} + | LC_ALL=C sort ); }
 auto_asks_to_ship() { grep -q "newer orion.*updateMode is 'auto'.*through its own pull request" "$SB/hook" && ! grep -q "failed" "$SB/hook" && hook_out_ok "$SB/hook"; }
 run_update() {  # the update the agent runs in its own worktree: the installed copy, from a sandboxed temporary folder
     mkdir -p "$SB/tmp"; rm -rf "$SB/tmp"/*
@@ -1280,6 +1326,15 @@ printf 'mine
 check "a pull blocked by local changes is refused, never stashed (even with merge.autoStash set)" eval 'run_check && grep -q "git pull" "$SB/hook" && hook_out_ok "$SB/hook" && [ -z "$("$REAL_GIT" -C "$P" stash list)" ] && grep -qx mine "$P/f.txt"'
 "$REAL_GIT" -C "$P" checkout -q -b lone
 check "a branch with no remote copy: silent" eval 'run_check && [ ! -s "$SB/hook" ]'
+# updateMode is read after the pull: a teammate who turned updates off is obeyed in the same session start.
+RM="$SB/remote-mode.git"; "$REAL_GIT" init -q --bare "$RM"
+newproj; rmdir "$P"; "$REAL_GIT" clone -q "$RM" "$P" 2>/dev/null; "$REAL_GIT" -C "$P" checkout -q -b main
+init auto; consume_marker
+"$REAL_GIT" -C "$P" -c core.autocrlf=false add -A && "$REAL_GIT" -C "$P" commit -qm orion && "$REAL_GIT" -C "$P" push -q -u origin main 2>/dev/null
+"$REAL_GIT" clone -q -b main "$RM" "$SB/mate-mode" 2>/dev/null
+sed 's|"updateMode": [^,}]*|"updateMode": "off"|' "$SB/mate-mode/.claude/orion/config.json" > "$SB/cfg" && mv "$SB/cfg" "$SB/mate-mode/.claude/orion/config.json"
+"$REAL_GIT" -C "$SB/mate-mode" commit -qam "updates off" && "$REAL_GIT" -C "$SB/mate-mode" push -q 2>/dev/null
+check "a pull that turns updateMode off: the same session start offers no update, even with a newer orion under auto" eval 'FAKE_LS_SHA=1111111111111111111111111111111111111111 run_check && grep -q "\"updateMode\": \"off\"" "$P/.claude/orion/config.json" && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
 
 echo "declared branches (init asks for them, branches makes GitHub match: a stand-in gh and a local remote, no network)"
 # A local bare remote whose default branch is trunk, reached through a GitHub-looking origin URL that git rewrites
@@ -1517,6 +1572,10 @@ check "the guide's install steps name both questions and their flags" eval 'grep
 echo "verify"
 newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
+check "verify reports OFF as a valid mode and status prints it as off; never fails verify and status says it reads as off" eval 'set_cfg updateMode "\"OFF\"" && bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "ok    config-update-mode: updateMode is .off." "$SB/out" && bash "$ORION" status --project "$P" | grep -q "^updateMode: off   " && set_cfg updateMode "\"never\"" && ! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  config-update-mode: updateMode is .never." "$SB/out" && bash "$ORION" status --project "$P" | grep -q "^updateMode: off (not understood" && set_cfg updateMode "\"ask\""'
+# Every skill's advice for a missing orion file names the same-version repair, which never updates orion.
+check "no skill tells an agent to restore a missing orion file with update --force, init --force --yes or orion update" \
+    eval '! grep -rIqE "update --force|init --force --yes|orion update\` restores|orion update restores" "$REPO/skills"'
 check "every skill marker ends in a newline (a project lint may require one)" eval 'ls "$P"/.claude/skills/*/.orion-managed >/dev/null && [ -z "$(for m in "$P"/.claude/skills/*/.orion-managed; do [ "$(tail -c1 "$m" | od -An -c | tr -d " ")" = "\n" ] || echo "$m"; done)" ]'
 check "init writes no test-copies row: nothing sizes the suite's parallel workers" eval '! grep -qiE "test copies|<copies>" "$P/CLAUDE.md"'
 check "the starter's slots are flagged as unfilled" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  claude-md-slots" "$SB/out"'
@@ -1832,7 +1891,8 @@ sl_put() {  # dir number: the project's copy as a teammate's git pull brings it
     { sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '%s\n' "$2"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
 }
 sl_pull() { sl_put "$SLSRC/baselines/statusline" "$SL_VER"; }
-sl_check() { HOME="$SLH" run_check "$@"; }
+# The update check finds the installed commit is the newest, so under ask and auto only the status line can speak.
+sl_check() { HOME="$SLH" FAKE_LS_SHA="${FAKE_LS_SHA:-$(sed -n 1p "$P/.claude/orion/VERSION")}" run_check "$@"; }
 sl_cmd() { HOME="$SLH" bash "$P/.claude/orion/orion.sh" statusline "$1" --project "$P" >"$SB/out" 2>&1; }
 "$REAL_GIT" -C "$SLSRC" init -q -b main; sl_commit 1
 newproj
@@ -1844,10 +1904,12 @@ check "same baseline: check is silent" eval 'sl_check --force && [ ! -s "$SB/hoo
 cp -R "$P/.claude/orion/statusline" "$SB/sl-v1"; T1="$(sed -n 5p "$P/.claude/orion/VERSION")"
 sl_release 2 2 '# orion v2'; sl_pull
 awk '{ printf "%s\r\n", $0 }' "$P/.claude/orion/statusline/statusline.sh" > "$SB/crlf" && mv "$SB/crlf" "$P/.claude/orion/statusline/statusline.sh"
+check "under updateMode off a newer baseline is neither offered nor taken" eval 'sl_check --force && [ ! -s "$SB/hook" ] && ! grep -q "^# orion v2" "$SLFILE"'
+set_cfg updateMode '"ask"'
 check "a newer baseline is offered to an unedited copy in one JSON line, never taken on its own" eval 'sl_check --force && grep -q "Take it" "$SB/hook" && hook_out_ok "$SB/hook" && ! grep -q "^# orion v2" "$SLFILE"'
 set_cfg updateMode '"auto"'
 check "auto mode still only offers it" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && grep -q "Take it" "$SB/hook" && ! grep -q "^# orion v2" "$SLFILE"'
-set_cfg updateMode '"off"'
+set_cfg updateMode '"ask"'
 awk '{ printf "%s\r\n", $0 }' "$SLFILE" > "$SB/crlf" && cat "$SB/crlf" > "$SLFILE"   # saved by a Windows editor: still unedited
 check "statusline merge takes it for an unedited copy, Windows line endings and all" eval 'sl_cmd merge && grep -q "^# orion v2" "$SLFILE" && ! grep -q "<<<<<<<" "$SLFILE" && sl_check --force && [ ! -s "$SB/hook" ]'
 check "without Windows line endings, so bash can still run it" eval '! grep -q "$(printf "\r")" "$SLFILE"'
@@ -1889,7 +1951,7 @@ rm -rf "$P/.claude/orion/statusline"; sed -n '1,3p' "$P/.claude/orion/VERSION" >
 check "update at the same commit still adds what an older orion.sh did not copy" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && [ -f "$P/.claude/orion/statusline/statusline.sh" ] && [ -n "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
 rm -rf "$P/.claude/orion/statusline"; set_cfg updateMode '"ask"'
 check "check offers no update to a project an older orion.sh updated, at the same commit (the next update copies what is missing)" eval 'FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" sl_check --force && ! grep -q "newer orion" "$SB/hook" && hook_out_ok "$SB/hook"'
-set_cfg updateMode '"off"'; HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1
+HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1
 : > "$SLH/.claude/statusline/.DS_Store"
 sl_release 10 2 '# orion v5d'; sl_pull
 check "a file the system drops in the folder (.DS_Store) is not an edit" eval 'sl_check --force && grep -q "Take it" "$SB/hook" && sl_cmd merge && grep -q "^# orion v5d" "$SLFILE"'
@@ -1908,7 +1970,7 @@ check "update says a newer status line waits and leaves an unedited copy alone" 
 { printf '1792417094\n'; sed -n 2p "$SLH/.claude/statusline/.orion-baseline"; } > "$SB/stamp" && mv "$SB/stamp" "$SLH/.claude/statusline/.orion-baseline"
 printf '# mine\n' >> "$SLFILE"
 check "a copy stamped with a commit time before version numbers is offered the newer one, and merge takes it and keeps the edits" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && sl_cmd merge && grep -q "^# orion v6" "$SLFILE" && grep -q "^# mine" "$SLFILE" && [ "$(sed -n 1p "$SLH/.claude/statusline/.orion-baseline")" = "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
-check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
+check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
 check "uninstall removes the project's copy and leaves the computer's" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ]'
 
 echo "mods (the project carries orion's copy of each mod; a computer installs one only on the person's word)"
@@ -1925,7 +1987,7 @@ MODPATH="$SB/claude-bin:$FAKEPATH"
 # The same path with every folder holding a real claude left out, for the run where Claude Code is missing.
 NOCLAUDE_PATH="$(printf '%s' "$FAKEPATH" | tr ':' '\n' | while IFS= read -r d; do [ -e "$d/claude" ] || [ -e "$d/claude.exe" ] || printf '%s:' "$d"; done)"
 mod_cmd() { HOME="$MDH" PATH="$MODPATH" bash "$P/.claude/orion/orion.sh" mod "$@" --project "$P" >"$SB/out" 2>&1; }
-mod_check() { HOME="$MDH" run_check "$@"; }
+mod_check() { HOME="$MDH" FAKE_LS_SHA="${FAKE_LS_SHA:-$(sed -n 1p "$P/.claude/orion/VERSION")}" run_check "$@"; }
 mod_calls() { if [ -f "$CALLS" ]; then wc -l < "$CALLS" | tr -d ' '; else printf 0; fi; }
 mod_bump() {  # version [line]: the project at orion <version>, as a teammate's pull brings it; its mod gains <line>
     local a="$P/.claude/orion/mods/$MOD.tar"
@@ -1959,9 +2021,13 @@ mod_bump 2.1.0
 check "mod install copies the mod into this computer's marketplace folder" eval 'mod_cmd install "$MOD" && [ -f "$MKT/$MOD/.claude-plugin/plugin.json" ] && json_ok "$MKT/.claude-plugin/marketplace.json" && grep -qF "\"./$MOD\"" "$MKT/.claude-plugin/marketplace.json"'
 check "and installs it from there with the plugin command, at user scope" eval '[ "$(cat "$CALLS")" = "plugin install $MOD --marketplace $MKT --scope user" ]'
 check "and records the orion version it took" eval '[ "$(sed -n 1p "$MKT/$MOD.orion-baseline")" = 2.1.0 ]'
+set_cfg updateMode '"ask"'
 check "the copies match: check prints nothing" eval 'mod_check --force && [ ! -s "$SB/hook" ]'
 mod_bump 2.2.0 '# orion v2'; n="$(mod_calls)"
-check "a newer mod is offered once, in one JSON line, even under updateMode off" eval 'mod_check --force && hook_out_ok "$SB/hook" && [ "$(grep -o "mod install $MOD" "$SB/hook" | wc -l | tr -d " ")" = 1 ] && grep -qF "mod skip $MOD" "$SB/hook"'
+set_cfg updateMode '"off"'
+check "under updateMode off a newer mod is not offered" eval 'mod_check --force && [ ! -s "$SB/hook" ]'
+set_cfg updateMode '"ask"'
+check "a newer mod is offered once, in one JSON line" eval 'mod_check --force && hook_out_ok "$SB/hook" && [ "$(grep -o "mod install $MOD" "$SB/hook" | wc -l | tr -d " ")" = 1 ] && grep -qF "mod skip $MOD" "$SB/hook"'
 check "and never taken on its own" eval '! grep -q "# orion v2" "$MKT/$MOD/README.md" && [ "$(mod_calls)" = "$n" ]'
 check "mod skip declines that version: check prints nothing" eval 'mod_cmd skip "$MOD" && mod_check --force && [ ! -s "$SB/hook" ] && [ "$(mod_calls)" = "$n" ]'
 mod_bump 2.3.0
@@ -1986,5 +2052,75 @@ check "update at the same commit brings back the mods an older orion.sh did not 
 rm -rf "$MKT/$MOD"
 check "mod remove takes a record whose copy was deleted by hand" eval ': > "$CALLS" && HOME="$MDH" PATH="$MODPATH" bash "$ORION" mod remove "$MOD" >"$SB/out" 2>&1 && grep -qxF "plugin uninstall $MOD@orion-mods --scope user" "$CALLS" && [ ! -e "$MKT" ]'
 check "the guide page says how mods are installed, offered, skipped and removed, and the shortcut Control Tower binds" eval 'grep -qF -- "--mods" "$GUIDE" && grep -qF "mod install" "$GUIDE" && grep -qF "mod skip" "$GUIDE" && grep -qF "mod remove" "$GUIDE" && grep -qF "~/.claude/orion-mods" "$GUIDE" && grep -qF "/control-tower" "$GUIDE" && grep -qF "Ctrl+X then P to your own <code>~/.claude/keybindings.json</code>" "$GUIDE"'
+
+echo "updateMode off means off (nothing newer from orion is offered; repair keeps the installed version)"
+# A computer of its own with orion's status line and a record of an installed mod, a cache of its own, and a project
+# where three offers wait: changed rules, a newer status line and a newer mod. The update check finds nothing newer.
+OFH="$SB/home-off"; OFC="$SB/cache-off"; mkdir -p "$OFH"; seen_all_personal_rules "$OFH"
+newproj
+HOME="$OFH" XDG_CACHE_HOME="$OFC" PATH="$FAKEPATH" bash "$ORION" init --project "$P" --yes --statusline --no-mods --update-mode ask >"$SB/out" 2>&1
+HOME="$OFH" XDG_CACHE_HOME="$OFC" bash "$ORION" verify --project "$P" >/dev/null 2>&1
+V="$(sed -n 1p "$P/.claude/orion/VERSION")"
+{ sed -n '1,4p' "$P/.claude/orion/VERSION"; printf '99.0.0\n'; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
+printf '# a newer status line\n' >> "$P/.claude/orion/statusline/statusline.sh"
+mkdir -p "$OFH/.claude/orion-mods"; printf '1.0.0\nan older copy\n' > "$OFH/.claude/orion-mods/$MOD.orion-baseline"
+printf '\n- a changed rule\n' >> "$P/.claude/orion/BASE_CLAUDE.md"
+cp -R "$OFC" "$SB/cache-off-kept"
+off_check() { rm -rf "$OFC"; cp -R "$SB/cache-off-kept" "$OFC"; HOME="$OFH" XDG_CACHE_HOME="$OFC" FAKE_LS_SHA="$V" run_check "$@"; }
+asked_sl() { grep -q "Take it" "$SB/hook"; }
+asked_mod() { grep -qF "mod install $MOD" "$SB/hook"; }
+offers_follow_the_mode() {
+    local m
+    for m in off OFF ' Off ' never false ''; do
+        set_cfg updateMode "\"$m\""
+        off_check --force || { echo "  '$m': check failed"; return 1; }
+        ! asked_rules && ! asked_sl && ! asked_mod || { echo "  updateMode '$m' still asks"; return 1; }
+        case "$m" in
+            never|false|'') warned_once "updateMode '$m'" || { echo "  updateMode '$m': not one warning"; return 1; } ;;
+            *) [ ! -s "$SB/hook" ] || { echo "  updateMode '$m' is not silent"; return 1; } ;;
+        esac
+    done
+    for m in ask auto; do
+        set_cfg updateMode "\"$m\""
+        off_check --force && asked_rules && asked_sl && asked_mod && hook_out_ok "$SB/hook" || { echo "  updateMode '$m' does not ask all three"; return 1; }
+    done
+}
+check "under off and a value not understood, changed rules, a newer status line and a newer mod ask nothing; under ask and auto each is asked" offers_follow_the_mode
+check "changed rules are asked about once after the mode goes from off back to ask" eval 'set_cfg updateMode "\"off\"" && off_check && [ ! -s "$SB/hook" ] && set_cfg updateMode "\"ask\"" && HOME="$OFH" XDG_CACHE_HOME="$OFC" FAKE_LS_SHA="$V" run_check && asked_rules && HOME="$OFH" XDG_CACHE_HOME="$OFC" FAKE_LS_SHA="$V" run_check && ! asked_rules'
+# The same-version repair, against a source of its own whose newest release is newer than the installed one.
+RS="$SB/repair-src"; mkdir -p "$RS"; cp -R "$REPO/orion.sh" "$REPO/skills" "$REPO/baselines" "$REPO/mods" "$RS/"
+rs_commit() { ( cd "$RS" && "$REAL_GIT" -c core.autocrlf=false add . && "$REAL_GIT" commit -qm "v$1" && "$REAL_GIT" tag "v$1" ); }
+"$REAL_GIT" -C "$RS" init -q -b main; rs_commit 2.1.0
+newproj; HOME="$OFH" bash "$RS/orion.sh" init --project "$P" --yes --source "$RS" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1
+RESTORED=.claude/skills/dev-next/references/new-issue.md
+printf '\n- newer\n' >> "$RS/skills/dev-next/references/new-issue.md"; printf '\n- newer\n' >> "$RS/baselines/BASE_CLAUDE.md"; rs_commit 2.2.0
+repair() { env PATH="$FAKEPATH" HOME="$OFH" GIT_CONFIG_NOSYSTEM=1 bash "$P/.claude/orion/orion.sh" repair --project "$P" "$@" >"$SB/out" 2>&1; }
+repair_keeps_the_version() {
+    local m
+    for m in ask auto off; do
+        set_cfg updateMode "\"$m\""; project_state > "$SB/state-before"; rm -f "$P/$RESTORED"
+        repair || { echo "  repair failed under $m"; sed 's/^/    /' "$SB/out"; return 1; }
+        project_state | cmp -s - "$SB/state-before" || { echo "  under $m, more changed than the deleted file:"; project_state | diff "$SB/state-before" - | sed 's/^/    /'; return 1; }
+    done
+    ! grep -q -- "- newer" "$P/$RESTORED" && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.1.0 ]
+}
+check "repair, with a newer release at the source: in each mode only the deleted file comes back, as the installed commit has it; VERSION and config.json unchanged" repair_keeps_the_version
+check "repair is in the usage text" eval 'bash "$ORION" help | grep -q "orion.sh repair"'
+rm -rf "$P/.claude/skills/wayfinder"; mkdir -p "$P/.claude/skills/wayfinder"; printf 'own\n' > "$P/.claude/skills/wayfinder/SKILL.md"
+check "a project skill in an orion skill's place: repair skips it, repair --force replaces it" eval 'repair && grep -q "skip wayfinder" "$SB/out" && grep -qx own "$P/.claude/skills/wayfinder/SKILL.md" && repair --force && [ -f "$P/.claude/skills/wayfinder/.orion-managed" ]'
+{ printf '1111111111111111111111111111111111111111\n'; sed -n '2,5p' "$P/.claude/orion/VERSION"; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
+rm -f "$P/$RESTORED"; project_state > "$SB/state-before"
+check "the installed commit cannot be fetched: repair changes nothing, prints one line and exits 1" eval '! repair && [ "$(wc -l < "$SB/out" | tr -d " ")" = 1 ] && project_state | cmp -s - "$SB/state-before"'
+# An update by orion 16's script (kept in tests/fixtures, as tag v16 has it) reads its version number from a file the
+# source no longer ships, so it leaves line 5 of VERSION empty; the new script's next check fills it in.
+OVH="$SB/home-v16"; mkdir -p "$OVH"; seen_all_personal_rules "$OVH"   # no status line or mod record of its own: nothing else to offer
+newproj; HOME="$OVH" XDG_CACHE_HOME="$OFC" bash "$RS/orion.sh" init --project "$P" --yes --source "$RS" --no-statusline --no-mods --update-mode ask >"$SB/out" 2>&1
+HOME="$OVH" XDG_CACHE_HOME="$OFC" bash "$ORION" verify --project "$P" >/dev/null 2>&1
+cp "$REPO/tests/fixtures/orion-v16.sh" "$P/.claude/orion/orion.sh"
+{ printf '0000000000000000000000000000000000000000\n'; sed -n '2,4p' "$P/.claude/orion/VERSION"; printf '16\n'; } > "$SB/v" && mv "$SB/v" "$P/.claude/orion/VERSION"
+check "orion 16's update from today's source leaves line 5 of VERSION empty" eval 'env PATH="$FAKEPATH" HOME="$OVH" XDG_CACHE_HOME="$OFC" bash "$P/.claude/orion/orion.sh" update --project "$P" >"$SB/out" 2>&1; grep -q ORION_VERSION "$SB/out" && [ "$(sed -n 1p "$P/.claude/orion/VERSION")" = "$("$REAL_GIT" -C "$RS" rev-parse HEAD)" ] && [ -z "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
+others_state() { project_state | grep -v '\./\.claude/orion/VERSION$'; }
+others_state > "$SB/state-before"; sed -n '1,4p' "$P/.claude/orion/VERSION" > "$SB/version-head"
+check "the new script's next check in ask mode writes the release number there, says nothing and changes no other file" eval 'HOME="$OVH" XDG_CACHE_HOME="$OFC" run_check && [ ! -s "$SB/hook" ] && [ "$(sed -n 5p "$P/.claude/orion/VERSION")" = 2.2.0 ] && sed -n "1,4p" "$P/.claude/orion/VERSION" | cmp -s - "$SB/version-head" && others_state | cmp -s - "$SB/state-before"'
 
 summary
