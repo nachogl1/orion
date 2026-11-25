@@ -1,6 +1,6 @@
 # PRD — orion: skills, rules and an installer for Claude Code projects
 
-**Status: approved by the owner on 2026-10-17; updated on 2026-11-08 with the decisions of the improvement map, and on 2026-11-15 with those of the develop-branch map.**
+**Status: approved by the owner on 2026-10-17; updated on 2026-11-08 with the decisions of the improvement map, on 2026-11-15 with those of the develop-branch map, and on 2026-11-25 when the owner dropped test copies.**
 This is the PRD for orion. It describes orion as it is once the epics [Improvement list of 2026-11-03: the decided
 changes](https://github.com/nachogl1/orion/issues/168) and [Develop branch and release flow, ADR status lines, missing
 CLAUDE.md rows and shipped auto-updates](https://github.com/nachogl1/orion/issues/235) are built; until then, the
@@ -72,14 +72,13 @@ one, so old installs are offered the update as usual. This replaces decision 1 o
 | orion-managed | Carries the `.orion-managed` marker or sits in `.orion-manifest`: owned by orion, overwritten on update, removed on uninstall. |
 | Baseline / `BASE_CLAUDE.md` | The one mandatory rules file, generic and slot-free, overwritten in projects on update. |
 | Starter `CLAUDE.md` | The slot-only project rules file `init` writes once when the project has none; yours from then on. |
-| Slot | A project fact the starter asks for (commands, including how to pass the test-copies count to the full suite or `none`, stack, worktree root, boundaries); `TBD` until filled. |
+| Slot | A project fact the starter asks for (commands, stack, worktree root, boundaries); `TBD` until filled. |
 | PRD | Product requirements document under `docs/PRDs/`: the north star for what a project builds; written or provided by the person, never drafted by an agent on its own. |
 | ADR | A decision record at `docs/ADRs/adr-<change-name>.md` (context, decision, consequences, alternatives) for a hard-to-reverse decision; approved by the person before any ticket or code. Carries one of three status lines: `pending`, `folded into the PRD on <date>`, or `replaced by <newer ADR> on <date>` (skipped by every skill and never folded); a skill that meets any other line asks the person which it is and fixes it. |
 | Version number | `major.minor.patch`, held only in the `v<major.minor.patch>` release tags and on line 5 of a project's `.claude/orion/VERSION`; set by the release job after each release that changes what a project receives. |
 | Default branch | The repository's GitHub default branch, where daily work starts from and squash-merges into; the rules and skills look it up instead of naming `main`. `develop` for orion, usually `main` in a project. |
 | Release | A pull request from the default branch into the release branch (the branch a project deploys from, named in its `CLAUDE.md`; `main` for orion), opened only on the owner's word and merged with a merge commit, the one exception to squash-merging. A project with no release branch has none. |
 | Mod | A Claude Code plugin that changes how Claude Code looks and behaves, offered per computer and installed at user scope only on the person's word. |
-| Test copies | How many parallel copies (workers) a run's test suite uses on a shared computer; each run sizes its own. |
 | Epic / story | A group of work / one buildable piece of it. Agents build stories only. Epic → story is a native GitHub sub-issue. |
 | Blocker | An issue that must be CLOSED first; set both as GitHub's native relation and under `### Blocked by`. |
 | Seam | The folder or module a story owns, so two stories on one folder are caught before they collide. |
@@ -175,8 +174,7 @@ The loop, from idea to checked software:
   code change in chat.
 - `dev-next` — the engine: picks the next free story, claims it, builds it in a worktree, has a fresh agent review it,
   merges on green CI, closes it, writes the run report and QA record, and counts what is due. It merges the default branch
-  before its gate and checks it is not behind right before merging; before each local test run it sizes its test
-  copies (physical cores ÷ live runs, at most half the cores, at least 1, and 1 when under 2 GB of memory is free);
+  before its gate and checks it is not behind right before merging;
   it names every sub-agent with the issue number and writes its terminal, step and sub-agents into its in-flight
   entry. A run that gives up keeps its assignee: a technical
   failure stays `agent-ready`, a real question becomes `needs-human`, and the runner resumes with `/dev-next #<N>`.
@@ -296,8 +294,6 @@ A change to orion is done when all of these hold:
 - **TypeScript for mods**, each a Claude Code plugin under `mods/<name>/`, installed at user scope from a local
   marketplace under `~/.claude/`; the mod interface is early access and may change between Claude Code releases, so
   orion offers one mod at a time.
-- **Test copies sized per run, per computer**: each run reads the computer's physical cores, the live runs in the
-  in-flight file and the free memory before every local test run, so the rule needs no setup or measuring.
 - **No test framework.** The init/update/check/uninstall round trip is the suite; CI runs it on Ubuntu, and the
   PowerShell parse on Windows.
 - **Markdown for every skill**, `SKILL.md` as the entry point; longer skills add `references/`, `prompts/`,

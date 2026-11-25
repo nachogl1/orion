@@ -1271,7 +1271,7 @@ echo "verify"
 newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
 check "every skill marker ends in a newline (a project lint may require one)" eval 'ls "$P"/.claude/skills/*/.orion-managed >/dev/null && [ -z "$(for m in "$P"/.claude/skills/*/.orion-managed; do [ "$(tail -c1 "$m" | od -An -c | tr -d " ")" = "\n" ] || echo "$m"; done)" ]'
-check "init writes the starter's test-copies row (how the suite takes <copies>, or none), still to fill" eval 'grep -qE "^\| Test copies \(.*<copies>.*none.*\| .TBD. \|$" "$P/CLAUDE.md"'
+check "init writes no test-copies row: nothing sizes the suite's parallel workers" eval '! grep -qiE "test copies|<copies>" "$P/CLAUDE.md"'
 check "the starter's slots are flagged as unfilled" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  claude-md-slots" "$SB/out"'
 # The key words verify finds each commands-table row by (COMMAND_ROW_KEYS in orion.sh) against the starter's rows: each
 # key word is in exactly one row's label (a note in brackets left out), every row has one, and an optional row
@@ -1295,10 +1295,10 @@ command_row_keys_match_the_starter() {
 check "every commands-table key word names exactly one row of the starter, and every required row has one" command_row_keys_match_the_starter
 check "a full commands table: no missing-row warning" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && ! grep -q "claude-md-row:" "$SB/out" && grep -q "ok    claude-md-rows" "$SB/out"'
 cp "$P/CLAUDE.md" "$SB/full.md"
-grep -v '^| Test copies' "$SB/full.md" > "$P/CLAUDE.md"
-check "a missing test-copies row: one warning naming orion's row, and verify still exits 0" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && [ "$(grep -c "WARN  claude-md-row:" "$SB/out")" -eq 1 ] && grep -q "WARN  claude-md-row: .*\"Test copies (how the full suite takes.*copies" "$SB/out"'
+grep -v '^| Lint' "$SB/full.md" > "$P/CLAUDE.md"
+check "a missing lint row: one warning naming orion's row, and verify still exits 0" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && [ "$(grep -c "WARN  claude-md-row:" "$SB/out")" -eq 1 ] && grep -q "WARN  claude-md-row: .*\"Lint\".*word .lint." "$SB/out"'
 sed -e 's/^| One file |/| Run a single file |/' -e 's/^| \*\*The full suite\*\* |/| Whole test suite (CI runs it) |/' \
-    -e 's/^| Typecheck \/ static analysis |/| Type checks |/' -e 's/^| Test copies ([^|]*|/| Parallel copies |/' \
+    -e 's/^| Typecheck \/ static analysis |/| Type checks |/' \
     -e 's/^## Build and test commands$/## Commands/' "$SB/full.md" > "$P/CLAUDE.md"
 check "reworded row labels and heading still count as present" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && ! grep -q "claude-md-row:" "$SB/out"'
 { printf '```\n# commands to try later\n```\n\n'; grep -v -e '^| Build' -e '^| Lint' "$SB/full.md"; printf '\n## Other notes\n\n| Build | `make` |\n| Lint | `make lint` |\n'; } > "$P/CLAUDE.md"
@@ -1322,11 +1322,12 @@ orion_verify_proposes_missing_rows() {
     local s; s="$(tr '\n' ' ' <"$REPO/skills/orion-verify/SKILL.md" | tr -s ' ')"
     for want in "every row a \`claude-md-row\` warning says the table lacks" "the file and line it came from" \
         "is added only on a yes" "rename that row's label to orion's wording, keeping the project's command" \
-        "never propose a second row" "are judged by reading alone"; do
+        "never propose a second row" "are judged by reading alone" \
+        "never work out or fill its command. Offer once, as **needs a yes**, to delete the row"; do
         case "$s" in *"$want"*) ;; *) echo "    orion-verify lacks: $want"; return 1 ;; esac
     done
 }
-check "orion-verify proposes a missing row with its source, adds it only on a yes, and offers a rename on a false warning" orion_verify_proposes_missing_rows
+check "orion-verify proposes a missing row with its source, adds it only on a yes, offers a rename on a false warning and offers to delete a row orion no longer reads" orion_verify_proposes_missing_rows
 cp "$P/CLAUDE.md" "$SB/starter.md"; printf '%s\n\n| One test | `dotnet test --filter <test-name>` |\n| Test copies | `-n <copies>` |\n- Branches: `feat/<N>-<slug>`.\n' "$IMPORT" > "$P/CLAUDE.md"
 check "a <placeholder> inside a real command is not a slot" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; ! grep -q "claude-md-slots" "$SB/out"'
 cp "$SB/starter.md" "$P/CLAUDE.md"

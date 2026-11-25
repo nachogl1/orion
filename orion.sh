@@ -786,7 +786,6 @@ has no use for. A rule written here must not contradict the mandatory rules.
 | Lint | \`TBD\` |
 | Deterministic checks on generated output (if any) | \`TBD\` |
 | Dev server (if the review surface needs one) | \`TBD\` |
-| Test copies (how the full suite takes \`<copies>\` parallel workers, e.g. \`-n <copies>\`; \`none\` if it does not split) | \`TBD\` |
 
 ## Stack and layout
 
@@ -816,21 +815,20 @@ EOF
 
 # The starter's own <placeholder> slots, one per line, for verify to look for. A <...> the project wrote itself (a
 # test filter's <test-name>) is a real command, never a slot. <angle-bracket> only names the slots in the starter's
-# intro, <copies> is the token a filled test-copies command keeps (dev-next puts the number there), and the bare <N>
-# is looked for with its label, as a branch pattern's <N> is no slot.
+# intro, and the bare <N> is looked for with its label, as a branch pattern's <N> is no slot.
 starter_slots() {
     local tmp; tmp=$(mktemp)
     write_claude_md_starter "$tmp"
-    grep -oE '<[^<>]+>' "$tmp" | grep -vxF -e '<angle-bracket>' -e '<copies>' | sed 's/^<N>$/baseline: <N>/' | sort -u
+    grep -oE '<[^<>]+>' "$tmp" | grep -vxF -e '<angle-bracket>' | sed 's/^<N>$/baseline: <N>/' | sort -u
     rm -f "$tmp"
 }
 
 # The commands-table rows the mandatory rules rely on, one key word each, in lower case. A row of the project's table
 # whose label holds the word counts as that row, so a reworded label still does. A note in brackets is left out of a
-# label first, so the test-copies row's "(how the full suite takes ...)" never reads as the full suite. The starter's
+# label first, so a note that names another row ("(run before the full suite)") never reads as that row. The starter's
 # rows marked "(if ...)" are optional and have no key word. The suite checks every key word is in exactly one starter
 # row and every other starter row has one.
-COMMAND_ROW_KEYS=(build suite file "one test" type lint copies)
+COMMAND_ROW_KEYS=(build suite file "one test" type lint)
 
 # One line per row of the commands table in a CLAUDE.md: the label in lower case without bold marks or notes in
 # brackets, a tab, then the label as written without bold marks. The table is the one under the first heading that
