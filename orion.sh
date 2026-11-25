@@ -133,43 +133,39 @@ config_get() {  # file key default
     printf '%s' "${v:-$3}"
 }
 
-# The update mode, read in this one place: check, the personal rules offer, verify and status all use it.
-# update_mode prints ask, auto or off, ignoring letter case and spaces around the value; a missing config.json or a
-# missing key is ask. A value orion does not understand (false, never, an empty string), or a config.json it cannot
-# read as plain text (one saved as UTF-16 holds NUL bytes), is off, and update_mode_problem says why in one sentence.
-update_mode_unreadable() {  # file
-    [ -f "$1" ] && [ "$(LC_ALL=C tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]
-}
-# The value as written: a string's text, or a bare value such as false; status 1 when the file or the key is missing.
-update_mode_raw() {  # file
+# The update mode, read in this one place: check, the personal rules offer, verify and status all use it. One pass
+# over config.json, no subshell, sets UPDATE_MODE to ask, auto or off, ignoring letter case and spaces around the
+# value; a missing config.json or a missing key is ask. A value orion does not understand (false, never, an empty
+# string), or a config.json it cannot read as plain text (one saved as UTF-16 holds NUL bytes), is off, and
+# UPDATE_MODE_PROBLEM then says why in one sentence. UPDATE_MODE_RAW is the value as written (a string's text, or a
+# bare value such as false); UPDATE_MODE_UNREADABLE is 1 for a file that is not plain text.
+UPDATE_MODE="" UPDATE_MODE_RAW="" UPDATE_MODE_PROBLEM="" UPDATE_MODE_UNREADABLE=0
+read_update_mode() {  # file
     local v
-    [ -f "$1" ] && grep -q '"updateMode"[[:space:]]*:' "$1" 2>/dev/null || return 1
-    v="$(sed -n 's/.*"updateMode"[[:space:]]*:[[:space:]]*//p' "$1" | head -n1 | tr -d '\r')"
-    case "$v" in
-        \"*) v="${v#\"}"; printf '%s' "${v%%\"*}" ;;
-        *) printf '%s' "$v" | sed 's/[,}].*//' ;;
-    esac
-}
-update_mode_value() {  # file -> the value trimmed and in lower case, control characters dropped
-    update_mode_raw "$1" | LC_ALL=C tr -d '\000-\037' | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
-}
-update_mode() {  # file
-    local v
-    update_mode_unreadable "$1" && { printf off; return 0; }
-    update_mode_raw "$1" >/dev/null || { printf ask; return 0; }
-    v="$(update_mode_value "$1")"
-    case "$v" in ask|auto|off) printf '%s' "$v" ;; *) printf off ;; esac
-}
-update_mode_problem() {  # file -> one sentence, or nothing when the mode is understood
-    local v
-    if update_mode_unreadable "$1"; then
-        printf '%s' "orion cannot read .claude/orion/config.json as plain text (it looks saved as UTF-16, as Windows PowerShell 5.1 writes it), so it treats updateMode as off and offers or runs no update until the file is saved again as UTF-8 with updateMode set to ask, auto or off: tell the user so in one line."
+    UPDATE_MODE=ask UPDATE_MODE_RAW="" UPDATE_MODE_PROBLEM="" UPDATE_MODE_UNREADABLE=0
+    [ -f "$1" ] || return 0
+    if [ "$(LC_ALL=C tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]; then
+        UPDATE_MODE=off UPDATE_MODE_UNREADABLE=1
+        UPDATE_MODE_PROBLEM="orion cannot read .claude/orion/config.json as plain text (it looks saved as UTF-16, as Windows PowerShell 5.1 writes it), so it treats updateMode as off and offers or runs no update until the file is saved again as UTF-8 with updateMode set to ask, auto or off: tell the user so in one line."
         return 0
     fi
-    update_mode_raw "$1" >/dev/null || return 0
-    v="$(update_mode_value "$1")"
-    case "$v" in ask|auto|off) return 0 ;; esac
-    printf '%s' "orion does not understand updateMode '$(json_escape "$(update_mode_raw "$1" | LC_ALL=C tr -d '\000-\037')")' in .claude/orion/config.json, so it treats it as off and offers or runs no update until it is set to ask, auto or off: tell the user so in one line."
+    # "=" marks the key as found, so an empty value is told apart from a missing key
+    v="$(sed -n 's/.*"updateMode"[[:space:]]*:[[:space:]]*/=/p' "$1" | head -n1)"
+    [ -n "$v" ] || return 0
+    v="${v#=}"; v="${v%$'\r'}"
+    case "$v" in
+        \"*) v="${v#\"}"; v="${v%%\"*}" ;;
+        *) v="${v%%[,\}]*}" ;;
+    esac
+    UPDATE_MODE_RAW="$v"
+    v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+    case "$v" in
+        [Aa][Ss][Kk]) UPDATE_MODE=ask ;;
+        [Aa][Uu][Tt][Oo]) UPDATE_MODE=auto ;;
+        [Oo][Ff][Ff]) UPDATE_MODE=off ;;
+        *) UPDATE_MODE=off
+           UPDATE_MODE_PROBLEM="orion does not understand updateMode '$(json_escape "$(printf '%s' "$UPDATE_MODE_RAW" | LC_ALL=C tr -d '\000-\037')")' in .claude/orion/config.json, so it treats it as off and offers or runs no update until it is set to ask, auto or off: tell the user so in one line." ;;
+    esac
 }
 
 # A string made safe to sit between double quotes in JSON: backslashes and double quotes escaped.
@@ -1708,9 +1704,8 @@ cmd_update() {
     fi
 }
 
-# The update mode check runs under, as update_mode reads it once per session start. Under off, nothing newer from
-# orion is offered: no update, no rules check, no status line, no mod, no personal rules.
-UPDATE_MODE=""
+# Under off (read_update_mode, once per session start), nothing newer from orion is offered: no update, no rules
+# check, no status line, no mod, no personal rules.
 updates_off() { [ "${UPDATE_MODE:-}" = off ]; }
 
 # Fetch exactly one commit of orion into a temp dir: SRC_DIR, SRC_SHA and SRC_TIME, as fetch_source sets them.
@@ -1781,8 +1776,7 @@ cmd_check() {
     pulled="$(check_pull_ctx)"
     # Read after the pull, so a mode a teammate changed is obeyed in this same session start. A value orion does
     # not understand behaves as off, and says so at every session start until it is fixed.
-    UPDATE_MODE="$(update_mode "$dir/config.json")"
-    problem="$(update_mode_problem "$dir/config.json")"
+    read_update_mode "$dir/config.json"; problem="$UPDATE_MODE_PROBLEM"
     now=$(date +%s)
     head="$(check_head_ctx "$force" "$now")"
     [ -n "$head" ] && pulled="${pulled:+$pulled After that: }$head"
@@ -2113,7 +2107,8 @@ cmd_status() {
     say "project:    $PROJECT"
     say "version:    $(version_label "$(version_sha "$dir/VERSION")" "$(version_number "$dir/VERSION")"), $(short "$(version_sha "$dir/VERSION")") ($(sed -n '2p' "$dir/VERSION") @ $(sed -n '3p' "$dir/VERSION"))"
     say "source:     $(config_get "$cfg" source "$ORION_DEFAULT_SOURCE")"
-    say "updateMode: $(update_mode "$cfg")$( [ -z "$(update_mode_problem "$cfg")" ] || printf ' (not understood as written, so treated as off)')   (edit .claude/orion/config.json: ask | auto | off)"
+    read_update_mode "$cfg"
+    say "updateMode: $UPDATE_MODE$( [ -z "$UPDATE_MODE_PROBLEM" ] || printf ' (not understood as written, so treated as off)')   (edit .claude/orion/config.json: ask | auto | off)"
     say "branchLimit: $(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")   (branches now: $(branch_count "$PROJECT"); the hook offers /clear-git-resources at the limit; a number or off)"
     say "worktreeLimit: $(config_get "$cfg" worktreeLimit "$WORKTREE_LIMIT_DEFAULT")   (worktrees now: $(worktree_count "$PROJECT"); the hook offers /clear-git-resources at the limit; a number or off)"
     if [ -n "$(config_get "$cfg" developBranch "")" ] && [ -n "$(config_get "$cfg" releaseBranch "")" ]; then
@@ -2263,12 +2258,13 @@ cmd_verify() {
     for f in orion.sh BASE_CLAUDE.md VERSION .orion-manifest config.json global/GLOBAL_CLAUDE.md; do [ -f "$dir/$f" ] || n="$n $f"; done
     if [ -z "$n" ]; then v_ok core-files ".claude/orion/{orion.sh, BASE_CLAUDE.md, VERSION, .orion-manifest, config.json, global/GLOBAL_CLAUDE.md} present"
     else v_fail core-files "missing in .claude/orion:$n (fix: bash .claude/orion/orion.sh repair, or init if orion.sh itself is gone)"; fi
-    if update_mode_unreadable "$cfg"; then
+    read_update_mode "$cfg"
+    if [ "$UPDATE_MODE_UNREADABLE" = 1 ]; then
         v_fail config-update-mode ".claude/orion/config.json is not plain text (saved as UTF-16?), so updateMode reads as off; save it as UTF-8 with updateMode ask, auto or off"
-    elif [ -n "$(update_mode_problem "$cfg")" ]; then
-        v_fail config-update-mode "updateMode is '$(update_mode_raw "$cfg")' in .claude/orion/config.json, which reads as off; must be ask, auto or off"
+    elif [ -n "$UPDATE_MODE_PROBLEM" ]; then
+        v_fail config-update-mode "updateMode is '$UPDATE_MODE_RAW' in .claude/orion/config.json, which reads as off; must be ask, auto or off"
     else
-        v_ok config-update-mode "updateMode is '$(update_mode "$cfg")'"
+        v_ok config-update-mode "updateMode is '$UPDATE_MODE'"
     fi
     mode="$(config_get "$cfg" branchLimit "$BRANCH_LIMIT_DEFAULT")"
     case "$mode" in
