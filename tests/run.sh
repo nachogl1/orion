@@ -1700,6 +1700,8 @@ section 1
 check "a clause above the section's version number is offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global && hook_out_ok "$SB/hook"'
 section "$NEWEST"
 check "every clause at the section's version number or below: silent" eval 'FAKE_LS_SHA="$V" gl_check --force && [ ! -s "$SB/hook" ]'
+# Every real clause is made older first, so the note below is the newest one whatever the real file carries.
+cp "$SB/global-older" "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 printf -- '- a rule changed after 2.4.1 <!-- orion:v2.4.1+ -->\n' >> "$P/.claude/orion/global/GLOBAL_CLAUDE.md"
 section 999999
 check "a section with an old whole number is older than any three-part note: offered" eval 'FAKE_LS_SHA="$V" gl_check --force && asked_global'
