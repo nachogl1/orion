@@ -1330,6 +1330,10 @@ orion_verify_proposes_missing_rows() {
 check "orion-verify proposes a missing row with its source, adds it only on a yes, offers a rename on a false warning and offers to delete a row orion no longer reads" orion_verify_proposes_missing_rows
 cp "$P/CLAUDE.md" "$SB/starter.md"; printf '%s\n\n| One test | `dotnet test --filter <test-name>` |\n| Test copies | `-n <copies>` |\n- Branches: `feat/<N>-<slug>`.\n' "$IMPORT" > "$P/CLAUDE.md"
 check "a <placeholder> inside a real command is not a slot" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; ! grep -q "claude-md-slots" "$SB/out"'
+printf '%s\n\n| One test | `dotnet test` |\n| Test copies (how the full suite takes `<copies>` parallel workers) | `TBD` |\n' "$IMPORT" > "$P/CLAUDE.md"
+check "a test-copies row an older starter left unfilled is not a slot: nothing asks for it" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; ! grep -q "claude-md-slots" "$SB/out"'
+printf '%s\n\n| One test | `TBD` |\n| Test copies | `TBD` |\n' "$IMPORT" > "$P/CLAUDE.md"
+check "beside it, a row still to fill is counted alone" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  claude-md-slots: CLAUDE.md has 1 line" "$SB/out"'
 cp "$SB/starter.md" "$P/CLAUDE.md"
 check "no changelog folder: verify says to create docs/changelog/" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  changelog-missing: docs/changelog/" "$SB/out"'
 rm -f "$P/.claude/orion/BASE_CLAUDE.md"

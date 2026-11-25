@@ -829,6 +829,9 @@ starter_slots() {
 # rows marked "(if ...)" are optional and have no key word. The suite checks every key word is in exactly one starter
 # row and every other starter row has one.
 COMMAND_ROW_KEYS=(build suite file "one test" type lint)
+# A commands-table row an older starter wrote and nothing reads any more ("Test copies": how the full suite took a
+# number of parallel workers). Still reading TBD, it is no unfilled slot: verify never asks for it.
+RETIRED_ROW_RE='^[[:space:]]*\|[[:space:]]*\**[Tt]est copies'
 
 # One line per row of the commands table in a CLAUDE.md: the label in lower case without bold marks or notes in
 # brackets, a tab, then the label as written without bold marks. The table is the one under the first heading that
@@ -1900,7 +1903,7 @@ cmd_verify() {
             *) v_fail claude-md-import "CLAUDE.md carries the import line $n times (fix: keep the first, delete the others)" ;;
         esac
         grep -qxF "$OLD_IMPORT_LINE" "$claude" && v_fail claude-md-old-import "CLAUDE.md still imports the retired ORION.md (fix: delete that line; the BASE_CLAUDE.md import replaces it)"
-        slots=$(grep -cF -e '`TBD`' -f <(starter_slots) "$claude" || true)
+        slots=$(grep -vE "$RETIRED_ROW_RE" "$claude" | grep -cF -e '`TBD`' -f <(starter_slots) || true)
         [ "$slots" -gt 0 ] 2>/dev/null && v_warn claude-md-slots "CLAUDE.md has $slots line(s) with an unfilled slot (TBD or a starter <placeholder>); the rules that rely on them cannot run until they are filled"
         verify_command_rows "$claude"
         while IFS= read -r p; do
