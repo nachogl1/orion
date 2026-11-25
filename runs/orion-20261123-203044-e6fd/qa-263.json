@@ -1,0 +1,38 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 263,
+  "title": "Updates off means off: mistyped values, silent offers, same-version repairs and the version number an old orion loses",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 265,
+  "merged_at": "2026-11-25T12:08:54Z",
+  "merge_commit": "0b35b0a5c3385c217e764334de9fe17094509587",
+  "seam": "orion.sh (update-mode reader, check, update, repair, verify, status), tests/run.sh, skills/orion-verify/, skills' VERIFY.md and SKILL.md restore advice, skills/orion/SKILL.md, README.md, docs/guide/index.html, docs/runbook.md, docs/PRDs/PRD.md, CLAUDE.md wiring paragraph",
+  "story": "Turning updates off now stops everything newer orion would offer at session start (the update, the rules check, the status line and the mods), however the value is typed, even when the change arrives through the same session's pull. A mistyped value or a UTF-16 config file warns at every session start instead of acting like ask. orion.sh repair puts back missing orion files from the version already installed and replaces the old update --force advice; a project an old orion updated gets its version number back.",
+  "checks": [
+    {
+      "key": "orion.sh/updatemode-off-any-case",
+      "do": "Install orion into a throw-away project with --update-mode ask, set \"updateMode\": \" OFF \" in .claude/orion/config.json, run bash .claude/orion/orion.sh check.",
+      "expect": "No output, exit 0."
+    },
+    {
+      "key": "orion.sh/updatemode-not-understood",
+      "do": "Set \"updateMode\": \"never\", then run check twice.",
+      "expect": "Each run prints one JSON line with one sentence naming ask, auto or off; no update is offered or run."
+    },
+    {
+      "key": "orion.sh/updatemode-after-pull",
+      "do": "Commit an orion project on auto and push it to a remote; in a second clone set updateMode off, commit and push; run check in the first clone while a newer orion exists.",
+      "expect": "The pull brings off, and the output does not offer the update."
+    },
+    {
+      "key": "orion.sh/repair-same-version",
+      "do": "Commit the project, delete .claude/skills/dev-next/references/new-issue.md, run bash .claude/orion/orion.sh repair.",
+      "expect": "git status --porcelain is empty and .claude/orion/VERSION is unchanged."
+    },
+    {
+      "key": "orion.sh/status-verify-mode",
+      "do": "Set updateMode OFF and run status and verify; set it to never and run both again.",
+      "expect": "For OFF, updateMode: off and an ok config-update-mode line; for never, a FAIL config-update-mode line and status saying it is treated as off."
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 263,
+  "title": "Updates off means off: mistyped values, silent offers, same-version repairs and the version number an old orion loses",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-25T10:17:19Z",
+  "finished_at": "2026-11-25T12:08:54Z",
+  "outcome": "merged",
+  "pr": 265,
+  "summary": "updateMode is read once, after the session-start pull, ignoring case and spaces; off (or any value orion does not understand, with a warning every session) now silences the update, rules-check, status-line and mods offers; a new orion.sh repair restores missing orion files at the installed version and replaces the update --force advice in the skills; a project an old orion.sh updated gets its version number back.",
+  "agents": [
+    {
+      "name": "dev-263",
+      "model": "opus",
+      "tokens_total": 326485
+    },
+    {
+      "name": "review-263-r1",
+      "model": "opus",
+      "tokens_total": 217641
+    },
+    {
+      "name": "review-263-r2",
+      "model": "opus",
+      "tokens_total": 208743
+    },
+    {
+      "name": "review-263-r3",
+      "model": "opus",
+      "tokens_total": 197040
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 4553,
+    "review_seconds": 2035,
+    "ci_seconds": 200
+  },
+  "rounds": {
+    "review": 3,
+    "ci": 3
+  },
+  "friction": [],
+  "lessons_learned": [
+    "A setting the session-start pull can change must be read after that pull; moving a read earlier in check reopened that gap."
+  ],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "orion.sh check (version-number fill)",
+      "what": "In a git project whose committed VERSION has an empty line 5 (every project an old orion.sh updated), the silent fill leaves .claude/orion/VERSION modified in the main checkout, so the same session start asks to ship orion's uncommitted files, and until that ships a later session-start git pull --ff-only that brings a VERSION change is refused.",
+      "why": "Whether the hook may write a tracked file there, or how the uncommitted check treats that fill, is a design choice the issue did not take.",
+      "owner": "unowned \u2014 next harvest"
+    },
+    {
+      "severity": "medium",
+      "area": "tests (Windows part)",
+      "what": "The check 'init with a BOM in settings.json' with the PowerShell editor failed once on unchanged default-branch code and passed on every later run, so it looks flaky and can turn a later gate red by chance.",
+      "why": "Outside the issue's seam; the cause was not found.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}
