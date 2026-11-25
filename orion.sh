@@ -1369,7 +1369,7 @@ starter_branches() {
 # stale or missing one is never taken for it), never a guess from the branch checked out; when the refresh fails,
 # nothing is pushed or switched.
 apply_branches() {  # dev release
-    local dev="$1" rel="$2" named="$1$2" cfg="$PROJECT/.claude/orion/config.json" cur slug b rc key val
+    local dev="$1" rel="$2" named="$1$2" cfg="$PROJECT/.claude/orion/config.json" cur slug b rc key val dev_missing=0
     slug="$(github_repo)"
     if [ -n "$named" ] && [ -n "$slug" ]; then
         cur=""
@@ -1405,9 +1405,15 @@ apply_branches() {  # dev release
             say "  +    branch '$b' created on origin from '$cur'"
         else
             branches_manual "could not create the branch '$b' on origin: create it from '$cur' by hand (git push origin origin/$cur:refs/heads/$b)"
+            [ "$b" = "$dev" ] && dev_missing=1
         fi
     done
     [ "$dev" = "$cur" ] && return 0
+    # GitHub's default is never pointed at a branch origin lacks.
+    if [ "$dev_missing" = 1 ]; then
+        branches_manual "GitHub's default branch was not changed: '$dev' must exist on origin first; once it does, run bash .claude/orion/orion.sh branches --dev $dev --release $rel"
+        return 0
+    fi
     if ! have gh; then
         branches_manual "gh is not installed, so GitHub's default branch is still '$cur': make '$dev' the default branch in the repository's settings (Settings, General, Default branch), then run git fetch origin, then git remote set-head origin --auto"
     elif ! GH_PROMPT_DISABLED=1 limited 30 gh repo edit "github.com/$slug" --default-branch "$dev" </dev/null >/dev/null 2>&1; then
@@ -1484,8 +1490,16 @@ cmd_init() {
     # The two branch names: asked on a first install at a terminal, as the update mode is; both default to the
     # repository's current default branch, and the same name for both is a one-branch project.
     [ -f "$cfg" ] || first=1
-    cur="$(current_default_branch)"
     if [ "$first" = 1 ] && [ -z "$dev$rel" ] && is_tty; then
+        # The questions name GitHub's default as the remote gives it now, never a stale origin/HEAD: with origin on
+        # GitHub it is refreshed first (time-limited), and a failed refresh names no branch at all.
+        cur="$(current_default_branch)"
+        if [ -n "$(github_repo)" ]; then
+            cur="GitHub's current default branch"
+            if limited 15 git -C "$PROJECT" remote set-head origin --auto </dev/null >/dev/null 2>&1; then
+                [ -z "$(origin_head_branch)" ] || cur="$(origin_head_branch)"
+            fi
+        fi
         say "Which branch does daily work start from and merge into (the development branch)?"
         say "A name other than $cur is created on origin if it is missing and becomes the repository's default branch on GitHub."
         ask "Development branch (Enter = $cur): " || resp=""

@@ -1432,6 +1432,24 @@ check "no origin/HEAD and the remote cannot tell its default: exit 0, the manual
 br_clone; br_init --dev-branch develop --release-branch release; rm -f "$P/CLAUDE.md"
 check "update rewrites a lost CLAUDE.md naming the declared development and release branches" \
     eval 'env PATH="$GHPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && grep -qF "from the release branch \`release\`." "$P/CLAUDE.md" && grep -qF "merges into it): \`develop\`." "$P/CLAUDE.md"'
+# A development branch origin refuses to take: GitHub's default is never pointed at a branch the remote lacks.
+br_clone; printf '#!/bin/sh\nexit 1\n' > "$BR/hooks/pre-receive"; chmod +x "$BR/hooks/pre-receive"
+check "the development branch cannot be created on origin: no gh call, the default left alone, and it says the branch must exist first" \
+    eval 'br_init --dev-branch develop && grep -q "could not create the branch .develop. on origin" "$SB/out" && grep -q "GitHub.s default branch was not changed: .develop. must exist on origin first" "$SB/out" && no_gh_call && ! remote_has develop && [ "$(origin_head)" = origin/trunk ]'
+rm -f "$BR/hooks/pre-receive"
+# At a terminal, the development-branch question names GitHub's default as the remote gives it now: a stale
+# origin/HEAD is refreshed before asking, and when that fails the question names no branch at all.
+if "$PY" -c 'import pty' >/dev/null 2>&1; then
+    br_tty_init() { at_terminal $'y\n\n' "$ORION" init --project "$P" --no-statusline --no-mods --update-mode off >"$SB/out" 2>&1; }
+    br_stale_head
+    check "at a terminal with a stale origin/HEAD: the question names GitHub's default trunk, never the stale main" \
+        eval 'br_tty_init && grep -qF "A name other than trunk is created on origin" "$SB/out" && grep -qF "Development branch (Enter = trunk)" "$SB/out" && ! grep -qF "Enter = main" "$SB/out" && key_is developBranch trunk && no_gh_call'
+    br_stale_head; "$REAL_GIT" -C "$P" config --unset "url.$BR.insteadOf"; "$REAL_GIT" -C "$P" config "url.$SB/no-such-remote.git.insteadOf" "$GH_URL"
+    check "at a terminal when GitHub's default cannot be read: the question names no branch" \
+        eval 'br_tty_init && grep -qF "A name other than GitHub'"'"'s current default branch is created on origin" "$SB/out" && ! grep -qF "Enter = main" "$SB/out" && no_gh_call'
+else
+    echo "  note  not run here: these two checks need a pseudo-terminal, which this computer's Python cannot make; Linux, macOS and CI run them"
+fi
 # gh names github.com itself, so a GH_HOST set for another host never sends the call to a repository of the same name
 # there.
 br_clone
