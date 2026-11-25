@@ -1,0 +1,64 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 247,
+  "title": "Declared branches: install asks for the development and release branches and sets GitHub's default branch to match",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-24T11:28:00Z",
+  "finished_at": "2026-11-25T10:16:09Z",
+  "outcome": "merged",
+  "pr": 261,
+  "summary": "init now asks for the development and release branches (Enter keeps GitHub's current default), a new branches sub-command records them in config.json and, only on github.com and only from the default the remote reports, creates a missing branch and makes the development branch GitHub's default; check, verify, status and /orion-verify report a disagreement, and the suite runs every gh call against a stand-in with a refusing gh first on its path.",
+  "agents": [
+    {
+      "name": "dev-247",
+      "model": "opus",
+      "tokens_total": 355416
+    },
+    {
+      "name": "review-247-r1",
+      "model": "opus",
+      "tokens_total": 172857
+    },
+    {
+      "name": "review-247-r2",
+      "model": "opus",
+      "tokens_total": 183789
+    },
+    {
+      "name": "review-247-r3",
+      "model": "opus",
+      "tokens_total": 209096
+    },
+    {
+      "name": "review-247-r4",
+      "model": "opus",
+      "tokens_total": 208408
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 5604,
+    "review_seconds": 2410,
+    "ci_seconds": 200
+  },
+  "rounds": {
+    "review": 4,
+    "ci": 5
+  },
+  "friction": [
+    "The issue was agent-ready yet its acceptance criteria require an edit to this repository's CLAUDE.md, which a person merges, so the unattended run had to ask the person for leave to merge.",
+    "The first approval came in round 3, so its Fix now lines needed a fourth, confirming review; SKILL.md's three-round cap counts rounds without approval and does not say whether a confirming review after a round-3 approval is allowed. The run took it, and the user-visible exception then sent two more fixes to dev with no further review."
+  ],
+  "lessons_learned": [
+    "Code that changes a remote setting must read the remote's own current state every time (a stale or missing origin/HEAD is common), name the host explicitly on every gh call (GH_HOST can redirect it), and test the host check against mirror and look-alike URLs up front: rounds 1 to 4 each found one more of these."
+  ],
+  "deferred": [
+    {
+      "severity": "medium",
+      "area": "orion.sh init (no branch named)",
+      "what": "In a clone with no origin/HEAD (a git init + git push repo before git 2.48), an init that names no branch on a working branch stores that branch as both names and writes it into the starter CLAUDE.md; the next session then flags GitHub's real default as the mismatch and the offered fix would make the working branch GitHub's default.",
+      "why": "Whether that path may make a network call or should store nothing is a design decision.",
+      "owner": "unowned \u2014 next harvest"
+    }
+  ]
+}

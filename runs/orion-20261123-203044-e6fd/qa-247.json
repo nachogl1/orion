@@ -1,0 +1,28 @@
+{
+  "run_id": "orion-20261123-203044-e6fd",
+  "issue": 247,
+  "title": "Declared branches: install asks for the development and release branches and sets GitHub's default branch to match",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 261,
+  "merged_at": "2026-11-25T10:16:09Z",
+  "merge_commit": "d6d80746b2ca944ea6632679439ce1730b213d44",
+  "seam": "orion.sh (init, branches, check, verify, status, starter CLAUDE.md), tests/run.sh, baselines/BASE_CLAUDE.md last section, skills/orion-verify/, skills/orion/, CLAUDE.md, docs/guide/index.html install steps",
+  "story": "The installer now asks which branch daily work happens on and which branch the project deploys from; pressing Enter keeps GitHub's current default, so a normal install behaves as before. A new orion.sh branches command records the two names and, when the development branch differs from GitHub's default, creates any missing branch and makes it the default, after warning that it will. Session start, verify, status and /orion-verify report when GitHub's default branch and the declared one disagree.",
+  "checks": [
+    {
+      "key": "orion.sh/init-declares-branches",
+      "do": "In an empty folder, run bash orion.sh init --project <dir> --no-statusline --no-mods --update-mode ask, answer y, type develop, then press Enter.",
+      "expect": "A line warning that a name other than the current default is created on origin and becomes GitHub's default, the prompts 'Development branch (Enter = main)' and 'Release branch (Enter = main)', then config.json holding developBranch develop and releaseBranch main; with no GitHub remote a manual step is printed and the install exits 0."
+    },
+    {
+      "key": "orion.sh/status-branches",
+      "do": "After the check above, run bash orion.sh status --project <dir>.",
+      "expect": "branches:   development develop, release main"
+    },
+    {
+      "key": "orion.sh/verify-branches-undeclared",
+      "do": "Delete the two branch keys from config.json, then run bash orion.sh verify --project <dir>.",
+      "expect": "WARN  branches-undeclared and exit 0."
+    }
+  ]
+}
