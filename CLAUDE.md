@@ -19,7 +19,6 @@ This repo is a collection of **general-purpose, publicly distributable** Claude 
 | One file | `bash -n orion.sh` · `bash -n skills/clear-git-resources/scripts/scan.sh` · `python3 -m py_compile skills/issue-map/scripts/issue_map.py skills/generate-project-writeup/assets/build_docx.py` (`python` on Windows) |
 | Typecheck / static analysis | `powershell -NoProfile -Command "[scriptblock]::Create((Get-Content -Raw orion.ps1)) > \$null"` (parses `orion.ps1` with Windows PowerShell 5.1; Windows only) |
 | Lint | `grep -L -E '^description: ["'\'']?ORION - ' skills/*/SKILL.md` (lists every skill whose description lacks the `ORION - ` prefix; must print nothing) |
-| Test copies | `none` (`tests/run.sh` runs its checks one after another and does not split into copies) |
 
 Run the build, the lint and the typecheck after any edit, and the full suite after every edit to `orion.sh`, `orion.ps1`, `scan.sh` or `tests/run.sh`, and always before a pull request opens; every edited `.md` must still render without parse errors. CI (`.github/workflows/ci.yml`) runs the same chain on every pull request and on every push to `develop` and `main`.
 

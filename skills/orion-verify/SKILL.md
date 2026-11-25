@@ -126,9 +126,12 @@ Then judge the project's file against the mandatory one:
    when nothing in the project tells its command, propose it as `TBD` and say so. Fill the blank ones accepted;
    leave a row as `TBD` when nothing in the project tells the command, and say so. Never run a proposed command to
    test it.
-   **A false warning** — the row is there, under a label that lacks the word the warning names (a test-copies row
-   labelled "Parallel workers", say): never propose a second row. Offer instead, as **needs a yes**, to rename
+   **A false warning** — the row is there, under a label that lacks the word the warning names (a typecheck row
+   labelled "Static analysis", say): never propose a second row. Offer instead, as **needs a yes**, to rename
    that row's label to orion's wording, keeping the project's command as it is, so the warning stops for good.
+   **A row orion no longer reads** — a "Test copies" row left by an older starter (how the full suite takes a
+   number of parallel workers): never work out or fill its command. Offer once, as **needs a yes**, to delete the
+   row; kept, it changes nothing.
 5. **Stale references** — a path, command or file the project's `CLAUDE.md` names that does not exist in the project.
    **Reported**.
 
