@@ -577,7 +577,7 @@ const NODES = {
     sub:"Sweeps stale branches, worktrees and leftover files.",
     what:["Lists every worktree, branch and leftover as delete, ask or keep.","Deletes your own stale items whose work is already safe.","Asks before deleting anyone else's."],
     you:["Answer for the items it asks about."], out:["A tidy repository."],
-    rules:["Never touches unmerged work, uncommitted changes, main, audit or QA branches, open pull requests or anything in flight."]},
+    rules:["Never touches unmerged work, uncommitted changes, the default and release branches, audit or QA branches, open pull requests or anything in flight."]},
 
   issuemap:{phase:"D", actor:"agent", touch:"none", kicker:"See the plan", title:"/issue-map", cmd:"/issue-map",
     sub:"Draws every issue's blocked-by chain, level by level.",

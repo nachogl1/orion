@@ -69,6 +69,13 @@ What a person sees orion do in a project, and what to do about it.
   development branch in `.claude/orion/config.json`, the session says so once a day; `/orion-verify` offers the fix
   and runs it only on your yes. Silent when the remote cannot be reached.
 
+## When `/clear-git-resources` lists the branches
+
+- The release branch (the one the project deploys from) is listed as kept, local and remote, with no delete command,
+  even when every commit on it is already on the default branch. It is the `releaseBranch` named in
+  `.claude/orion/config.json`; an install from before that key counts `main` as the release branch whenever the
+  default branch is another one. A one-branch project sees no change.
+
 ## When `/orion-verify` checks the commands table
 
 - `orion.sh verify` prints one `WARN  claude-md-row` line for each commands-table row the rules rely on that your
