@@ -1778,10 +1778,11 @@ cmd_check() {
     local dir="$PROJECT/.claude/orion" now ctx tidy pending pulled global head problem
     [ -f "$dir/VERSION" ] || exit 0
     cache_key_set
-    UPDATE_MODE="$(update_mode "$dir/config.json")"
-    # a value orion does not understand behaves as off, and says so at every session start until it is fixed
-    problem="$(update_mode_problem "$dir/config.json")"
     pulled="$(check_pull_ctx)"
+    # Read after the pull, so a mode a teammate changed is obeyed in this same session start. A value orion does
+    # not understand behaves as off, and says so at every session start until it is fixed.
+    UPDATE_MODE="$(update_mode "$dir/config.json")"
+    problem="$(update_mode_problem "$dir/config.json")"
     now=$(date +%s)
     head="$(check_head_ctx "$force" "$now")"
     [ -n "$head" ] && pulled="${pulled:+$pulled After that: }$head"
