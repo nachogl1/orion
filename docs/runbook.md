@@ -12,9 +12,29 @@ What a person sees orion do in a project, and what to do about it.
 - **`updateMode: auto`**: the same, without asking. Until the pull request merges, every session start asks again.
   A run that stopped (red checks, checks still pending, a person merges) is picked up by the next one from its
   branch, which reports the waiting pull request's link instead of starting over.
-- **`updateMode: off`**: no check.
+- **`updateMode: off`**: nothing newer from orion is offered: no update check, no rules check (`/orion-verify`), no
+  status line offer, no mod offer and no personal rules offer. Each still runs by hand: `/orion-verify`,
+  `bash .claude/orion/orion.sh statusline merge`, `bash .claude/orion/orion.sh mod install <name>`, and asking to go
+  through orion's personal rules. Rules that changed while it was `off` are asked about once when it is `ask` or
+  `auto` again. Letter case and spaces around the value do not matter (`OFF`, ` off ` are `off`).
+- **A value orion does not understand** (`false`, `never`, an empty string), or a `config.json` saved as UTF-16 (as
+  Windows PowerShell 5.1 writes it): orion treats it as `off`, and every session start says so in one line, naming
+  `ask`, `auto` and `off` (and, for UTF-16, that the file must be saved as UTF-8), until the file is fixed.
 - Your own folder is never updated by the session-start hook. If an update reaches it as uncommitted files anyway,
   see the next section.
+
+## When an orion file is missing or damaged
+
+- `bash .claude/orion/orion.sh repair` re-copies every file orion owns from the commit already installed (line 1 of
+  `.claude/orion/VERSION`), in every update mode. The installed version, `VERSION` and `config.json` stay as they
+  are; only what was missing or changed comes back. `/orion-verify` runs it for the files it finds missing.
+- A project skill of your own in an orion skill's place is skipped; `repair --force` replaces it, only on your word.
+- When that commit cannot be fetched (no network, or the source no longer has it), nothing changes: one line, exit 1.
+  `/orion-verify` then asks whether to update to the newest orion instead.
+- After an update by an older orion (16 or earlier) left line 5 of `VERSION` empty, the next session start under
+  `ask` or `auto` writes the release number back there without a word; the old script's own
+  `ORION_VERSION: No such file or directory` line during that update stays, since only a version set by hand could
+  silence it.
 
 ## At session start: orion's files left uncommitted
 

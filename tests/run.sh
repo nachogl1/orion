@@ -1563,6 +1563,10 @@ check "the guide's install steps name both questions and their flags" eval 'grep
 echo "verify"
 newproj; init ask
 check "verify passes after init" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "verify: 0 fail" "$SB/out"'
+check "verify reports OFF as a valid mode and status prints it as off; never fails verify and status says it reads as off" eval 'set_cfg updateMode "\"OFF\"" && bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "ok    config-update-mode: updateMode is .off." "$SB/out" && bash "$ORION" status --project "$P" | grep -q "^updateMode: off   " && set_cfg updateMode "\"never\"" && ! bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "FAIL  config-update-mode: updateMode is .never." "$SB/out" && bash "$ORION" status --project "$P" | grep -q "^updateMode: off (not understood" && set_cfg updateMode "\"ask\""'
+# Every skill's advice for a missing orion file names the same-version repair, which never updates orion.
+check "no skill tells an agent to restore a missing orion file with update --force, init --force --yes or orion update" \
+    eval '! grep -rIqE "update --force|init --force --yes|orion update\` restores|orion update restores" "$REPO/skills"'
 check "every skill marker ends in a newline (a project lint may require one)" eval 'ls "$P"/.claude/skills/*/.orion-managed >/dev/null && [ -z "$(for m in "$P"/.claude/skills/*/.orion-managed; do [ "$(tail -c1 "$m" | od -An -c | tr -d " ")" = "\n" ] || echo "$m"; done)" ]'
 check "init writes no test-copies row: nothing sizes the suite's parallel workers" eval '! grep -qiE "test copies|<copies>" "$P/CLAUDE.md"'
 check "the starter's slots are flagged as unfilled" eval 'bash "$ORION" verify --project "$P" >"$SB/out" 2>&1; grep -q "WARN  claude-md-slots" "$SB/out"'
