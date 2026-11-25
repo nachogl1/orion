@@ -364,7 +364,9 @@ when the project has none; otherwise add what is missing. A slot the project has
   code path, skip-count baseline, CI runner.
 - **Worktrees**: the worktree root outside the project, the port rule (`<base port> + issue number`) and the env
   variable that carries it.
-- **Boundaries**: deploy target, external read-only repositories and their work-item key format, sensitive data
-  classes that must never enter the repository, any boundary an agent must not move, the working language.
+- **Boundaries**: deploy target, the development branch and the release branch (the names declared in
+  `.claude/orion/config.json`; the same name for both when the project has one branch), external read-only
+  repositories and their work-item key format, sensitive data classes that must never enter the repository, any
+  boundary an agent must not move, the working language.
 - **Pending until PRD v1**: the open questions, one table row each with the file and section they decide and who
   decides, asked as one batch (each with a recommended answer) once `docs/PRDs/PRD.md` exists and deleted as answered.

@@ -260,6 +260,7 @@ aside.drawer.on{transform:none}
           <li>Want the optional status bar? Add <code>--statusline</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks.</li>
           <li>Want the optional mods? Add <code>--mods</code> to the end of the Mac/Linux line, or answer <i>yes</i> when the installer asks; later, <code>bash .claude/orion/orion.sh mod install control-tower</code> adds one. They need Claude Code's <code>claude</code> command.</li>
           <li>Want updates shipped without being asked? Choose <i>auto</i> when the installer asks, or add <code>--update-mode auto</code>.</li>
+          <li>Daily work on one branch and releases from another? The installer asks for the <i>development branch</i> (where daily work starts and merges) and the <i>release branch</i> (where the project deploys from), or add <code>--dev-branch &lt;name&gt;</code> and <code>--release-branch &lt;name&gt;</code>. Press Enter to keep the current default branch for both. A new development branch becomes the repository's default branch on GitHub; orion changes no other setting.</li>
           <li>Installing with no terminal to answer in (a script)? Add <code>--yes</code> to say yes to the notice up front.</li>
         </ul>
       </li>
