@@ -1,0 +1,52 @@
+{
+  "run_id": "orion-20261125-151545-7f32",
+  "issue": 256,
+  "title": "clear-git-resources: never offer to delete the release branch once it differs from the default branch",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-25T15:15:45Z",
+  "finished_at": "2026-11-25T16:07:14Z",
+  "outcome": "merged",
+  "pr": 266,
+  "summary": "The branch clean-up scanner offered to delete the release branch, local and remote, once a project's default branch differed from it. It now reads the declared releaseBranch (falling back to main on an older install whose default is another branch), decides it after its own fetch, and always lists that branch as kept with no delete command; 5 new suite checks.",
+  "agents": [
+    {
+      "name": "ready-check-256",
+      "model": "sonnet",
+      "tokens_total": 95389,
+      "tokens_source": "tool"
+    },
+    {
+      "name": "dev-256",
+      "model": "opus",
+      "tokens_total": 182413,
+      "tokens_source": "tool"
+    },
+    {
+      "name": "review-256-r1",
+      "model": "opus",
+      "tokens_total": 164247,
+      "tokens_source": "tool"
+    },
+    {
+      "name": "review-256-r2",
+      "model": "opus",
+      "tokens_total": 149866,
+      "tokens_source": "tool"
+    }
+  ],
+  "phases": {
+    "qa_seconds": 19,
+    "dev_seconds": 1930,
+    "review_seconds": 899,
+    "ci_seconds": 315
+  },
+  "rounds": {
+    "review": 2,
+    "ci": 2
+  },
+  "friction": [],
+  "lessons_learned": [
+    "A scanner fix needs a suite check that scans with --fetch, the way the skill always runs it: the first fix decided the release branch before the fetch, and checks that build origin refs with update-ref could not see it, which cost a whole review round."
+  ],
+  "deferred": []
+}

@@ -1,0 +1,32 @@
+{
+  "run_id": "orion-20261125-151545-7f32",
+  "issue": 256,
+  "title": "clear-git-resources: never offer to delete the release branch once it differs from the default branch",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 266,
+  "merged_at": "2026-11-25T16:07:14Z",
+  "merge_commit": "7eb7e9cf319dc315b3b7349adec1feac905e73fd",
+  "seam": "skills/clear-git-resources/ (scanner and skill text) and its checks in tests/run.sh",
+  "story": "The branch clean-up used to offer to delete main, local and remote, once a project's default branch became develop; one yes would have deleted the branch every project installs and updates from. Now the release branch is always listed as kept with no delete command. It is read from the declared releaseBranch, or is main on an older install whose default is another branch.",
+  "checks": [
+    {
+      "key": "clear-git-resources/release-branch-kept",
+      "criterion": "When the default branch is develop, the scanner lists local and remote main as keep with no delete command, even when main is fully merged, and also in a clone that has not fetched main yet.",
+      "steps": "Create a bare remote and a clone, commit on main and push it. Create develop from it, commit, push, and run git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/develop. Run bash .claude/skills/clear-git-resources/scripts/scan.sh --project <clone> --wt-root <empty dir>. Then make a second clone with no local main and no fetched origin/main (git update-ref -d refs/remotes/origin/main) and scan it with --fetch.",
+      "expected": "ITEM br-protected main keep and ITEM rb-protected origin/main keep, both with an empty command field; no branch -D \"main\" and no push origin --delete \"main\". The second clone, scanned with --fetch, lists rb-protected origin/main keep with no command."
+    },
+    {
+      "key": "clear-git-resources/declared-release-branch",
+      "criterion": "The releaseBranch key in .claude/orion/config.json names the release branch.",
+      "steps": "In the same clone, write {\"releaseBranch\": \"stable\"} to .claude/orion/config.json, create stable from main, and scan again.",
+      "expected": "stable is listed as br-protected keep with no command; main goes back to the normal classification (br-merged ask)."
+    },
+    {
+      "key": "clear-git-resources/one-branch-project",
+      "criterion": "In a project whose default branch is main, nothing changes.",
+      "steps": "Scan a main-default repository that has merged feature branches.",
+      "expected": "The same groups and actions as before the change, and no release-branch item."
+    }
+  ],
+  "no_qa_reason": null
+}
