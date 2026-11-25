@@ -1387,7 +1387,7 @@ apply_branches() {  # dev release
     [ -n "$dev" ] && [ "$dev" = "$rel" ] && say "       (one branch for both: no release pull request)"
     [ -n "$named" ] || return 0
     if [ -z "$cur" ]; then
-        branches_manual "could not tell GitHub's default branch (git remote set-head origin --auto could not read it from origin), so nothing was pushed or switched: run git remote set-head origin --auto, then bash .claude/orion/orion.sh branches --dev ${dev:-<development branch>} --release ${rel:-<release branch>}"
+        branches_manual "could not tell GitHub's default branch (git remote set-head origin --auto could not read it from origin), so nothing was pushed or switched: run git fetch origin, then git remote set-head origin --auto, then bash .claude/orion/orion.sh branches --dev ${dev:-<development branch>} --release ${rel:-<release branch>}"
         return 0
     fi
     [ "$dev" = "$cur" ] && [ "$rel" = "$cur" ] && return 0
@@ -1408,13 +1408,13 @@ apply_branches() {  # dev release
     done
     [ "$dev" = "$cur" ] && return 0
     if ! have gh; then
-        branches_manual "gh is not installed, so GitHub's default branch is still '$cur': make '$dev' the default branch in the repository's settings (Settings, General, Default branch), then run git remote set-head origin --auto"
-    elif ! GH_PROMPT_DISABLED=1 limited 30 gh repo edit "$slug" --default-branch "$dev" </dev/null >/dev/null 2>&1; then
-        branches_manual "gh could not make '$dev' the default branch of $slug (only a repository admin can): ask one to change it in the repository's settings, or run gh repo edit $slug --default-branch $dev, then git remote set-head origin --auto"
+        branches_manual "gh is not installed, so GitHub's default branch is still '$cur': make '$dev' the default branch in the repository's settings (Settings, General, Default branch), then run git fetch origin, then git remote set-head origin --auto"
+    elif ! GH_PROMPT_DISABLED=1 limited 30 gh repo edit "github.com/$slug" --default-branch "$dev" </dev/null >/dev/null 2>&1; then
+        branches_manual "gh could not make '$dev' the default branch of $slug (only a repository admin can): ask one to change it in the repository's settings, or run gh repo edit github.com/$slug --default-branch $dev, then git fetch origin, then git remote set-head origin --auto"
     else
         say "  ~    GitHub's default branch of $slug is now '$dev' (was '$cur')"
         limited 15 git -C "$PROJECT" remote set-head origin --auto </dev/null >/dev/null 2>&1 \
-            || branches_manual "could not refresh origin/HEAD: run git remote set-head origin --auto"
+            || branches_manual "could not refresh origin/HEAD: run git fetch origin, then git remote set-head origin --auto"
         say "       orion changed nothing else; three things to know:"
         say "       - open pull requests keep their base '$cur': move each one with gh pr edit <N> --base $dev"
         say "       - a workflow that runs only on a push to '$cur' gets no run for a merge into '$dev' until you add that branch to it"
@@ -2087,7 +2087,7 @@ verify_branches() {  # config.json
     fix="fix, on the person's yes: bash .claude/orion/orion.sh branches --dev $dev --release $rel"
     slug="$(github_repo)"
     if [ -n "$slug" ] && have gh; then
-        gh_default="$(GH_PROMPT_DISABLED=1 limited 15 gh repo view "$slug" --json defaultBranchRef --jq .defaultBranchRef.name </dev/null 2>/dev/null | tr -d '\r' || true)"
+        gh_default="$(GH_PROMPT_DISABLED=1 limited 15 gh repo view "github.com/$slug" --json defaultBranchRef --jq .defaultBranchRef.name </dev/null 2>/dev/null | tr -d '\r' || true)"
         if [ -z "$gh_default" ]; then v_ok github-default "not compared: gh could not read the default branch of $slug"
         elif [ "$gh_default" = "$dev" ]; then v_ok github-default "GitHub's default branch is the declared development branch '$dev'"
         else v_warn github-default "GitHub's default branch of $slug is '$gh_default', not the declared development branch '$dev', so the skills merge daily work into '$gh_default' ($fix)"; fi
@@ -2095,7 +2095,7 @@ verify_branches() {  # config.json
     head="$(git -C "$PROJECT" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)"
     head="${head#origin/}"
     if [ -n "$head" ] && [ "$head" != "$dev" ]; then
-        v_warn origin-head "this checkout's origin/HEAD points at '$head', not the declared development branch '$dev' (run git remote set-head origin --auto; if it still points there, GitHub's default branch differs: $fix)"
+        v_warn origin-head "this checkout's origin/HEAD points at '$head', not the declared development branch '$dev' (run git fetch origin, then git remote set-head origin --auto; if it still points there, GitHub's default branch differs: $fix)"
     fi
 }
 

@@ -1346,7 +1346,7 @@ check "and the starter CLAUDE.md names the release branch in its deploy line and
 check "status prints the two names" eval 'bash "$ORION" status --project "$P" | grep -q "^branches:   development trunk, release trunk"'
 br_clone
 check "init --dev-branch develop --release-branch release creates both on the remote from trunk, sets GitHub's default, moves origin/HEAD and writes both keys" \
-    eval 'br_init --dev-branch develop --release-branch release && remote_has develop && remote_has release && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && [ "$(cat "$SB/gh-br.log")" = "repo edit example-owner/example-repo --default-branch develop" ] && [ "$(origin_head)" = origin/develop ] && key_is developBranch develop && key_is releaseBranch release'
+    eval 'br_init --dev-branch develop --release-branch release && remote_has develop && remote_has release && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && [ "$(cat "$SB/gh-br.log")" = "repo edit github.com/example-owner/example-repo --default-branch develop" ] && [ "$(origin_head)" = origin/develop ] && key_is developBranch develop && key_is releaseBranch release'
 check "and it names the three things a switch does that orion leaves alone" \
     eval 'grep -q "gh pr edit <N> --base develop" "$SB/out" && grep -q "only on a push to .trunk. gets no run" "$SB/out" && grep -q "started by hand or on a schedule now runs on .develop." "$SB/out"'
 check "and the starter names the release branch" eval 'grep -qF "from the release branch \`release\`." "$P/CLAUDE.md"'
@@ -1370,7 +1370,7 @@ check "branches adds the two keys to a config.json that lacks them, keeping ever
     eval 'env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev trunk --release trunk >"$SB/out" 2>&1 && key_is developBranch trunk && key_is releaseBranch trunk && json_ok "$P/.claude/orion/config.json" && [ "$(grep -vE "developBranch|releaseBranch" "$P/.claude/orion/config.json" | tr -d ",")" = "$(tr -d "," < "$SB/config-before.json")" ] && no_gh_call'
 old_config
 check "init --dev-branch on an existing install runs it: keys added and GitHub's default set" \
-    eval 'br_init --dev-branch develop && key_is developBranch develop && key_is releaseBranch trunk && grep -q "^repo edit example-owner/example-repo --default-branch develop$" "$SB/gh-br.log"'
+    eval 'br_init --dev-branch develop && key_is developBranch develop && key_is releaseBranch trunk && grep -q "^repo edit github.com/example-owner/example-repo --default-branch develop$" "$SB/gh-br.log"'
 check "branches refuses a name git would refuse, and changes nothing" \
     eval 'cp "$P/.claude/orion/config.json" "$SB/cfg-keep" && ! env PATH="$GHPATH" bash "$ORION" branches --project "$P" --dev "bad..name" --release trunk >"$SB/out" 2>&1 && cmp -s "$SB/cfg-keep" "$P/.claude/orion/config.json"'
 # Only github.com as the host counts as a GitHub remote: a mirror whose path or user part holds github.com, or a host
@@ -1392,7 +1392,7 @@ github_host_only() {
     done
     for url in "git@github.com:example-owner/example-repo.git" "github.com:example-owner/example-repo" \
         "ssh://git@github.com:22/example-owner/example-repo.git" "https://user@github.com/example-owner/example-repo"; do
-        br_origin_case "$url" && grep -q "^repo edit example-owner/example-repo --default-branch develop$" "$SB/gh-br.log" \
+        br_origin_case "$url" && grep -q "^repo edit github.com/example-owner/example-repo --default-branch develop$" "$SB/gh-br.log" \
             || { echo "    not counted as GitHub: $url"; return 1; }
     done
 }
@@ -1418,20 +1418,25 @@ check "a stale origin/HEAD is refreshed first: develop starts from trunk's newes
     eval 'br_init --dev-branch develop --release-branch trunk && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && grep -q "(was .trunk.)" "$SB/out" && ! grep -qF "'"'"'main'"'"'" "$SB/out" && [ "$(origin_head)" = origin/develop ]'
 br_stale_head
 check "a stale origin/HEAD naming the declared branch: GitHub's actual default still differs, so it is set" \
-    eval 'br_init --dev-branch main --release-branch main && [ "$(cat "$SB/gh-br.log")" = "repo edit example-owner/example-repo --default-branch main" ] && [ "$(origin_head)" = origin/main ]'
+    eval 'br_init --dev-branch main --release-branch main && [ "$(cat "$SB/gh-br.log")" = "repo edit github.com/example-owner/example-repo --default-branch main" ] && [ "$(origin_head)" = origin/main ]'
 br_clone; "$REAL_GIT" -C "$P" config --unset "url.$BR.insteadOf"; "$REAL_GIT" -C "$P" config "url.$SB/no-such-remote.git.insteadOf" "$GH_URL"
 check "names given and the refresh fails: the default counts as unknown, the manual step, nothing pushed or switched" \
-    eval 'br_init --dev-branch develop && grep -q "could not tell GitHub.s default branch" "$SB/out" && no_gh_call && ! remote_has develop && key_is developBranch develop && ! grep -q "releaseBranch" "$P/.claude/orion/config.json"'
+    eval 'br_init --dev-branch develop && grep -q "could not tell GitHub.s default branch" "$SB/out" && grep -q "run git fetch origin, then git remote set-head origin --auto" "$SB/out" && no_gh_call && ! remote_has develop && key_is developBranch develop && ! grep -q "releaseBranch" "$P/.claude/orion/config.json"'
 br_no_head
 check "no origin/HEAD: it is asked of the remote first, so develop starts from trunk, not from the branch checked out" \
     eval 'br_init --dev-branch develop && [ "$("$REAL_GIT" --git-dir="$BR" rev-parse develop)" = "$("$REAL_GIT" --git-dir="$BR" rev-parse trunk)" ] && key_is releaseBranch trunk && grep -q "(was .trunk.)" "$SB/out" && ! grep -q "feature" "$P/.claude/orion/config.json"'
 br_no_head; "$REAL_GIT" --git-dir="$BR" symbolic-ref HEAD refs/heads/no-such-branch
 check "no origin/HEAD and the remote cannot tell its default: exit 0, the manual step, nothing pushed or switched, no guessed name stored" \
-    eval 'br_init --dev-branch develop && grep -q "could not tell GitHub.s default branch" "$SB/out" && no_gh_call && ! remote_has develop && key_is developBranch develop && ! grep -q "feature" "$P/.claude/orion/config.json"'
+    eval 'br_init --dev-branch develop && grep -q "could not tell GitHub.s default branch" "$SB/out" && grep -q "run git fetch origin, then git remote set-head origin --auto" "$SB/out" && no_gh_call && ! remote_has develop && key_is developBranch develop && ! grep -q "feature" "$P/.claude/orion/config.json"'
 # update writes a lost CLAUDE.md from the starter with the declared names, not main.
 br_clone; br_init --dev-branch develop --release-branch release; rm -f "$P/CLAUDE.md"
 check "update rewrites a lost CLAUDE.md naming the declared development and release branches" \
     eval 'env PATH="$GHPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && grep -qF "from the release branch \`release\`." "$P/CLAUDE.md" && grep -qF "merges into it): \`develop\`." "$P/CLAUDE.md"'
+# gh names github.com itself, so a GH_HOST set for another host never sends the call to a repository of the same name
+# there.
+br_clone
+check "with GH_HOST set to another host, gh is still asked about github.com: the edit and the view name it" \
+    eval 'GH_HOST=gh.example.invalid br_init --dev-branch develop && [ "$(cat "$SB/gh-br.log")" = "repo edit github.com/example-owner/example-repo --default-branch develop" ] && GH_HOST=gh.example.invalid FAKE_GH_DEFAULT=develop env PATH="$GHPATH" bash "$ORION" verify --project "$P" >"$SB/out" 2>&1 && grep -q "^repo view github.com/example-owner/example-repo " "$SB/gh-br.log" && ! grep -q "^repo [a-z]* example-owner/" "$SB/gh-br-all.log"'
 check "update and uninstall make no gh call" \
     eval 'rm -f "$SB/gh-br.log" && env PATH="$GHPATH" bash "$ORION" update --project "$P" --force >"$SB/out" 2>&1 && env PATH="$GHPATH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && no_gh_call'
 
@@ -1473,7 +1478,7 @@ check "verify: no keys (an older install): one warning, exit 0" eval 'br_verify 
 rm -f "$P/.claude/orion/BASE_CLAUDE.md"
 check "verify still exits 1 only on a FAIL" eval '! br_verify && grep -q "FAIL  core-files" "$SB/out" && grep -q "WARN  branches-undeclared" "$SB/out"'
 check "no branch protection or any other repository setting: every gh call was a view or an edit of the default branch alone" \
-    eval '! grep -qi "protection" "$ORION" && [ -s "$SB/gh-br-all.log" ] && ! grep -vE "^repo (edit example-owner/example-repo --default-branch [^ ]+|view example-owner/example-repo --json defaultBranchRef --jq [.]defaultBranchRef[.]name)$" "$SB/gh-br-all.log"'
+    eval '! grep -qi "protection" "$ORION" && [ -s "$SB/gh-br-all.log" ] && ! grep -vE "^repo (edit github.com/example-owner/example-repo --default-branch [^ ]+|view github.com/example-owner/example-repo --json defaultBranchRef --jq [.]defaultBranchRef[.]name)$" "$SB/gh-br-all.log"'
 check "no check of the declared branches reached a real gh: the refusing one first on the path was never called" eval '[ ! -s "$SB/nogh.log" ] || { sed "s/^/    gh called with: /" "$SB/nogh.log"; false; }'
 
 # The words: the baseline asks for both branches, orion-verify asks for the names and runs branches only on a yes,

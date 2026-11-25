@@ -63,7 +63,7 @@ project wrote:
 with / turned into -), holding one line: what changed and why it matters. Newest first: sort the names in reverse.`;
 an old single-file changelog stays where it is, as the history before the folder), `claude-md-row`, handled with
 the blank commands in step 2, `origin-head`, fixed **without asking** since it moves only this clone's own pointer
-(`git remote set-head origin --auto`, then re-run `verify`; a warning that stays is GitHub's default branch differing,
+(`git fetch origin`, then `git remote set-head origin --auto`, then re-run `verify`; a warning that stays is GitHub's default branch differing,
 handled as `github-default` below), and these, which **need a yes**:
 
 - `branches-undeclared` — `.claude/orion/config.json` does not name the development branch (where daily work starts
