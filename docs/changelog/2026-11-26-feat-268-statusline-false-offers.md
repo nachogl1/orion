@@ -1,0 +1,1 @@
+Status line offers come only for a real change: help text alone, a copy a failed Windows folder swap nested inside, and a record an orion from before three-part versions rewrote no longer bring the question back.
