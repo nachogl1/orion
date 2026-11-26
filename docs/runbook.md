@@ -69,6 +69,17 @@ What a person sees orion do in a project, and what to do about it.
   development branch in `.claude/orion/config.json`, the session says so once a day; `/orion-verify` offers the fix
   and runs it only on your yes. Silent when the remote cannot be reached.
 
+## At session start: a new status line
+
+- A release that changes only the status line's help text (its `*.md` files) is no longer offered: the session start
+  and `orion update` say nothing, and the new help text comes in with the next change you take or merge.
+- A project on an orion from before three-part version numbers keeps offering its own older status line until
+  someone runs `orion update` there. Answering it no longer makes your updated projects ask again, unless taking it
+  changed your copy's files. orion keeps its own note of what you took or skipped in `~/.cache/orion/statusline-seen`.
+- On Windows, taking the status line while a program holds `~/.claude/statusline` open replaces its files in place,
+  where it used to nest the new copy inside as `statusline.new/` and then call every later offer "your own edits".
+  Such a leftover is no longer counted as an edit, and the next take or merge removes it.
+
 ## When `/clear-git-resources` lists the branches
 
 - The release branch (the one the project deploys from) is listed as kept, local and remote, with no delete command,

@@ -1994,8 +1994,52 @@ check "update says a newer status line waits and leaves an unedited copy alone" 
 { printf '1792417094\n'; sed -n 2p "$SLH/.claude/statusline/.orion-baseline"; } > "$SB/stamp" && mv "$SB/stamp" "$SLH/.claude/statusline/.orion-baseline"
 printf '# mine\n' >> "$SLFILE"
 check "a copy stamped with a commit time before version numbers is offered the newer one, and merge takes it and keeps the edits" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && sl_cmd merge && grep -q "^# orion v6" "$SLFILE" && grep -q "^# mine" "$SLFILE" && [ "$(sed -n 1p "$SLH/.claude/statusline/.orion-baseline")" = "$(sed -n 5p "$P/.claude/orion/VERSION")" ]'
+# Help text alone (*.md) never makes a status line new: it comes in with the next change taken or merged.
+SLDIR="$SLH/.claude/statusline"; SLNOTE="$XDG_CACHE_HOME/orion/statusline-seen"
+sl_doc() { printf '%s\n' "$2" >> "$SLSRC/baselines/statusline/README.md"; sl_commit "$1"; }  # number text
+sl_snap() { cp "$SLFILE" "$SB/sl-file-before" && cp "$SLDIR/README.md" "$SB/sl-doc-before"; }
+sl_untouched() { cmp -s "$SB/sl-file-before" "$SLFILE" && cmp -s "$SB/sl-doc-before" "$SLDIR/README.md"; }
+sl_doc 15 'Help text of release 15.'; sl_pull; sl_snap
+check "a release that changes only the help text is not offered to an edited copy, which stays untouched" eval 'sl_check --force && [ ! -s "$SB/hook" ] && sl_untouched'
+sl_doc 16 'Help text of release 16.'
+check "update says nothing about a release that changes only the help text" eval 'HOME="$SLH" PATH="$FAKEPATH" bash "$SLSRC/orion.sh" update --project "$P" >"$SB/out" 2>&1 && ! grep -q "statusline merge" "$SB/out" && sl_untouched'
+sl_release 17 2 '# orion v7'; sl_pull
+check "the next merge after a real change brings the newer help text in too" eval 'sl_check --force && grep -q "statusline merge" "$SB/hook" && sl_cmd merge && grep -q "^# orion v7" "$SLFILE" && grep -q "^# mine" "$SLFILE" && grep -q "release 15" "$SLDIR/README.md" && grep -q "release 16" "$SLDIR/README.md"'
+# The orion just before this note kept only .orion-baseline: its checksum covers the help text too.
+cp "$P/.claude/orion/statusline/statusline.sh" "$SLFILE"; rm -f "$SLNOTE"
+sl_doc 18 'Help text of release 18.'; sl_pull; sl_snap
+check "a record from the orion before the note, with orion's statusline.sh, is not offered help text alone" eval 'sl_check --force && [ ! -s "$SB/hook" ] && sl_untouched'
+check "the note lives in the cache folder, not in the status line folder" eval '[ -f "$SLNOTE" ] && [ ! -e "$SLDIR/statusline-seen" ]'
+# A folder some process holds open cannot be renamed on Windows: a stand-in mv refuses to move the copy aside.
+REAL_MV="$(command -v mv)"; mkdir -p "$SB/mvbusy"
+cat > "$SB/mvbusy/mv" <<EOF
+#!/usr/bin/env bash
+case "\$1" in */.claude/statusline) : > "$SB/mv-refused"; echo "mv: cannot move '\$1': Device or resource busy" >&2; exit 1 ;; esac
+exec "$REAL_MV" "\$@"
+EOF
+chmod +x "$SB/mvbusy/mv"
+sl_release 19 2 '# orion v8'; sl_pull
+check "when the folder cannot be renamed, taking orion's status line replaces its files in place, nothing nested or left beside" eval 'rm -f "$SB/mv-refused" && HOME="$SLH" PATH="$SB/mvbusy:$PATH" bash "$P/.claude/orion/orion.sh" statusline merge --project "$P" >"$SB/out" 2>&1 && [ -e "$SB/mv-refused" ] && diff -r -x .orion-base -x .orion-baseline "$P/.claude/orion/statusline" "$SLDIR" >/dev/null && diff -r "$P/.claude/orion/statusline" "$SLDIR/.orion-base" >/dev/null && [ "$(sed -n 1p "$SLDIR/.orion-baseline")" = "$SL_VER" ] && [ ! -e "$SLDIR/statusline.new" ] && [ ! -e "$SLDIR.new" ] && [ ! -e "$SLDIR.old" ] && sl_check --force && [ ! -s "$SB/hook" ]'
+# What an earlier orion left when that rename failed: the new copy nested inside, with its own record.
+mkdir -p "$SLDIR/statusline.new"; cp -R "$SLFILE" "$SLDIR/README.md" "$SLDIR/.orion-base" "$SLDIR/.orion-baseline" "$SLDIR/statusline.new/"
+sl_release 20 2 '# orion v9'; sl_pull
+check "a copy nested inside by an earlier failed swap is not an edit, and taking orion's removes it" eval 'sl_check --force && grep -q "Take it" "$SB/hook" && hook_out_ok "$SB/hook" && sl_cmd merge && grep -q "^# orion v9" "$SLFILE" && [ ! -e "$SLDIR/statusline.new" ]'
+mkdir -p "$SLDIR/statusline.new"; printf 'mine\n' > "$SLDIR/statusline.new/notes.txt"
+sl_release 21 2 '# orion v10'; sl_pull
+check "a statusline.new folder without orion's record is the person's and counts as an edit" eval 'sl_check --force && grep -q "Merge them in" "$SB/hook" && sl_cmd merge && [ -f "$SLDIR/statusline.new/notes.txt" ]'
+rm -rf "$SLDIR/statusline.new"
+# An orion.sh from before three-part versions reads the record as version 0, offers its own older status line, and
+# on the person's answer rewrites the record with its lower whole number (or, older still, a commit time).
+sl_old_record() { printf '%s\n%s\n' "$1" "$(printf 'an older baseline\n' | cksum)" > "$SLDIR/.orion-baseline"; }
+printf '# mine again\n' >> "$SLFILE"
+sl_release 22 2 '# orion v11'; sl_pull; sl_cmd merge; sl_snap
+check "after a take, a record an older orion rewrote with a lower whole number and the files unchanged brings no offer" eval 'sl_old_record 16 && sl_check --force && [ ! -s "$SB/hook" ] && sl_untouched'
+check "nor one it rewrote with a commit time" eval 'sl_old_record 1792417094 && sl_check --force && [ ! -s "$SB/hook" ] && sl_untouched'
+sl_release 23 2 '# orion v12'; sl_pull; sl_cmd skip
+check "after a skip, a record an older orion rewrote with the files unchanged brings no offer" eval 'sl_old_record 16 && sl_check --force && [ ! -s "$SB/hook" ] && sl_untouched'
+check "once the older orion's answer changed the files, the newer status line is offered again" eval 'rm -rf "$SLDIR" && mkdir -p "$SLDIR" && cp -R "$SB/sl-v1/." "$SLDIR/" && cp -R "$SB/sl-v1" "$SLDIR/.orion-base" && sl_old_record 16 && sl_check --force && grep -q "Take it" "$SB/hook" && hook_out_ok "$SB/hook" && sl_cmd merge && grep -q "^# orion v12" "$SLFILE"'
 check "a computer without orion's status line gets none from check" eval 'HOME="$SB/home-none" FAKE_LS_SHA="$(sed -n 1p "$P/.claude/orion/VERSION")" run_check --force && [ ! -e "$SB/home-none/.claude/statusline" ]'
-check "uninstall removes the project's copy and leaves the computer's" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ]'
+check "uninstall removes the project's copy and leaves the computer's, and its note" eval 'HOME="$SLH" bash "$ORION" uninstall --project "$P" --yes >"$SB/out" 2>&1 && [ ! -e "$P/.claude/orion" ] && [ -f "$SLFILE" ] && [ -f "$SLNOTE" ]'
 
 echo "mods (the project carries orion's copy of each mod; a computer installs one only on the person's word)"
 # A computer of its own (HOME) and a stub `claude` that records every call, first on the path: the real plugin
