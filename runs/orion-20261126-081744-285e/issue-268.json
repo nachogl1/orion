@@ -1,0 +1,38 @@
+{
+  "run_id": "orion-20261126-081744-285e",
+  "issue": 268,
+  "title": "Status line: stop false and repeated offers (help text only, a failed folder swap on Windows, a record reset by an old orion)",
+  "login": "Ignacio-Gonzalez-Harris",
+  "started_at": "2026-11-26T08:17:44Z",
+  "finished_at": "2026-11-26T08:54:20Z",
+  "outcome": "merged",
+  "pr": 269,
+  "summary": "Computers were asked to take a new status line when a release had changed only its help text, a failed folder swap on Windows made untouched copies read as edited, and an orion from before three-part versions brought the same question back in a loop. Help text alone is no longer offered, a busy folder is replaced in place with a nested leftover no longer counted as an edit, and a per-computer note in the cache folder keeps what was taken or skipped; 12 new suite checks.",
+  "agents": [
+    {
+      "name": "dev-268",
+      "model": "opus",
+      "tokens_total": 216607,
+      "tokens_source": "tool"
+    },
+    {
+      "name": "review-268-r1",
+      "model": "opus",
+      "tokens_total": 171585,
+      "tokens_source": "tool"
+    }
+  ],
+  "phases": {
+    "qa_seconds": 0,
+    "dev_seconds": 1546,
+    "review_seconds": 497,
+    "ci_seconds": 201
+  },
+  "rounds": {
+    "review": 1,
+    "ci": 1
+  },
+  "friction": [],
+  "lessons_learned": [],
+  "deferred": []
+}

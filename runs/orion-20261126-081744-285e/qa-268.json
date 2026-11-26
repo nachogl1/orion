@@ -1,0 +1,38 @@
+{
+  "run_id": "orion-20261126-081744-285e",
+  "issue": 268,
+  "title": "Status line: stop false and repeated offers (help text only, a failed folder swap on Windows, a record reset by an old orion)",
+  "login": "Ignacio-Gonzalez-Harris",
+  "pr": 269,
+  "merged_at": "2026-11-26T08:53:51Z",
+  "merge_commit": "fbe73b4bb2b479dddf381743d2dde72fd33fad77",
+  "seam": "orion.sh, the status line section, and the status line section of tests/run.sh",
+  "story": "Computers were asked to take a \"new status line\" when a release had changed only its help text. On Windows, a failed folder swap left a nested copy that made every later offer say \"your own edits\", and older orion scripts brought the same question back in a loop. Now the session-start hook and `orion update` stay quiet about help-text-only changes, `statusline merge` replaces the files in place when the folder is busy, and a note in `~/.cache/orion/statusline-seen` keeps what was taken or skipped, so a rewrite by an old orion no longer reopens the question.",
+  "checks": [
+    {
+      "key": "orion.sh-statusline/help-text-only-not-offered",
+      "criterion": "A release that changes only the status line's help text brings no offer, and the computer's copy stays as it is.",
+      "steps": "In a throw-away HOME, run `orion.sh init --project <tmp-project> --yes --statusline`. Add a sentence to `<tmp-project>/.claude/orion/statusline/README.md`. Raise line 5 of `<tmp-project>/.claude/orion/VERSION` to `2.99.0`. Run `bash .claude/orion/orion.sh check --project <tmp-project>`.",
+      "expected": "No output, and `~/.claude/statusline/README.md` unchanged."
+    },
+    {
+      "key": "orion.sh-statusline/folder-busy-take",
+      "criterion": "When the status line folder cannot be renamed, taking orion's status line replaces its files in place.",
+      "steps": "Start from the state of the help-text check. Add a line to the project's `.claude/orion/statusline/statusline.sh` and raise the version on line 5 of `VERSION`. On Windows, hold `~/.claude/statusline` open (for example, a terminal whose current folder is inside it). Run `bash .claude/orion/orion.sh statusline merge` from the project.",
+      "expected": "The line \"orion's newest taken\", the new line in `~/.claude/statusline/statusline.sh`, and no `statusline.new` folder inside the status line folder or beside it."
+    },
+    {
+      "key": "orion.sh-statusline/nested-leftover-not-an-edit",
+      "criterion": "A `statusline.new/` folder carrying orion's own `.orion-baseline` is not counted as an edit.",
+      "steps": "In the throw-away HOME, copy `statusline.sh`, `README.md`, `.orion-base` and `.orion-baseline` from `~/.claude/statusline/` into `~/.claude/statusline/statusline.new/`. Change the project's `.claude/orion/statusline/statusline.sh` and raise the version. Run `bash .claude/orion/orion.sh check --project <tmp-project>`, then `bash .claude/orion/orion.sh statusline merge`.",
+      "expected": "The check offers with the \"Take it\" wording, not \"Merge them in\". After the merge, `~/.claude/statusline/statusline.new/` is gone."
+    },
+    {
+      "key": "orion.sh-statusline/old-orion-record-rewrite",
+      "criterion": "A record rewritten by an orion from before three-part versions brings no offer while the files are unchanged.",
+      "steps": "Take a version with `bash .claude/orion/orion.sh statusline merge`. Overwrite `~/.claude/statusline/.orion-baseline` with the two lines `16` and `123 45`. Run `bash .claude/orion/orion.sh check --project <tmp-project>`. Then replace the copy's `statusline.sh` with different content and run the check again.",
+      "expected": "The first check prints nothing. After the copy's files changed, the check offers the project's status line again."
+    }
+  ],
+  "no_qa_reason": null
+}
